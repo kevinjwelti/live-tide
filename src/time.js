@@ -1,8 +1,11 @@
 /** America/Los_Angeles clock helpers and solar tint. */
 
 export const TZ = "America/Los_Angeles";
-export const SD_LAT = 32.7156;
-export const SD_LON = -117.1767;
+/** Scripps Pier / La Jolla — drive the sky from this station. */
+export const LJ_LAT = 32.8669;
+export const LJ_LON = -117.2571;
+export const SD_LAT = LJ_LAT;
+export const SD_LON = LJ_LON;
 
 const timeFmt = new Intl.DateTimeFormat("en-US", {
   timeZone: TZ,
@@ -102,8 +105,8 @@ export function parseNoaaGmt(stamp) {
   return Date.parse(`${day}T${time}:00Z`);
 }
 
-/** Solar elevation in degrees for San Diego (good enough for sky tint). */
-export function solarElevation(date, lat = SD_LAT, lon = SD_LON) {
+/** Solar altitude and azimuth (degrees, azimuth clockwise from north). */
+export function solarPosition(date, lat = LJ_LAT, lon = LJ_LON) {
   const rad = Math.PI / 180;
   const jd = date.getTime() / 86400000 + 2440587.5;
   const T = (jd - 2451545) / 36525;
@@ -120,10 +123,22 @@ export function solarElevation(date, lat = SD_LAT, lon = SD_LON) {
   const lst = ((gmst + lon) % 360) * rad;
   const ra = Math.atan2(Math.cos(eps) * Math.sin(lam * rad), Math.cos(lam * rad));
   const ha = lst - ra;
+  const latR = lat * rad;
   const alt = Math.asin(
-    Math.sin(lat * rad) * Math.sin(decl) + Math.cos(lat * rad) * Math.cos(decl) * Math.cos(ha)
+    Math.sin(latR) * Math.sin(decl) + Math.cos(latR) * Math.cos(decl) * Math.cos(ha)
   );
-  return alt / rad;
+  const az = Math.atan2(
+    -Math.sin(ha),
+    Math.tan(decl) * Math.cos(latR) - Math.sin(latR) * Math.cos(ha)
+  );
+  return {
+    elevation: alt / rad,
+    azimuth: ((az / rad) + 360) % 360,
+  };
+}
+
+export function solarElevation(date, lat = LJ_LAT, lon = LJ_LON) {
+  return solarPosition(date, lat, lon).elevation;
 }
 
 function mix(a, b, t) {
@@ -131,85 +146,124 @@ function mix(a, b, t) {
   return a.map((v, i) => v + (b[i] - v) * u);
 }
 
-function rgb(c) {
-  return `rgb(${c[0] | 0}, ${c[1] | 0}, ${c[2] | 0})`;
+function rgb(c, a) {
+  if (a == null) return `rgb(${c[0] | 0}, ${c[1] | 0}, ${c[2] | 0})`;
+  return `rgba(${c[0] | 0}, ${c[1] | 0}, ${c[2] | 0}, ${a})`;
+}
+
+function smoothstep(a, b, x) {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+const NIGHT = {
+  zenith: [8, 14, 30],
+  horizon: [16, 26, 48],
+  water: [8, 22, 38],
+  foam: [168, 188, 210],
+  sun: [210, 220, 240],
+  type: "#e7eef6",
+};
+const TWILIGHT = {
+  zenith: [36, 34, 68],
+  horizon: [186, 108, 82],
+  water: [28, 44, 64],
+  foam: [232, 210, 186],
+  sun: [255, 176, 96],
+  type: "#f3ead8",
+};
+const GOLDEN = {
+  zenith: [98, 132, 168],
+  horizon: [236, 164, 92],
+  water: [36, 86, 110],
+  foam: [244, 228, 204],
+  sun: [255, 198, 112],
+  type: "#f3ead8",
+};
+const MORNING = {
+  zenith: [92, 168, 214],
+  horizon: [176, 210, 228],
+  water: [32, 112, 138],
+  foam: [232, 244, 250],
+  sun: [255, 246, 224],
+  type: "#eef4f8",
+};
+const DAY = {
+  zenith: [78, 158, 214],
+  horizon: [164, 206, 228],
+  water: [24, 108, 134],
+  foam: [236, 246, 250],
+  sun: [255, 250, 236],
+  type: "#eef4f8",
+};
+
+function mixFive(weights, palettes) {
+  const sum = weights.reduce((s, w) => s + w, 0) || 1;
+  const keys = ["zenith", "horizon", "water", "foam", "sun"];
+  const out = {};
+  for (const key of keys) {
+    out[key] = [0, 0, 0];
+    palettes.forEach((p, i) => {
+      const w = weights[i] / sum;
+      out[key][0] += p[key][0] * w;
+      out[key][1] += p[key][1] * w;
+      out[key][2] += p[key][2] * w;
+    });
+  }
+  const top = palettes[weights.indexOf(Math.max(...weights))];
+  out.type = top.type;
+  return out;
 }
 
 /**
- * Palette keyed off real solar elevation so morning gold, noon teal,
- * and night indigo follow the clock — not a fake mock hour.
+ * Continuous lighting from Scripps solar altitude.
+ * Golden warmth only near the real horizon; morning/day is cool and bright.
  */
 export function skyPalette(date) {
-  const el = solarElevation(date);
-  const night = {
-    zenith: [8, 14, 28],
-    horizon: [18, 28, 46],
-    water: [10, 28, 42],
-    foam: [170, 190, 210],
-    sun: [210, 220, 240],
-    type: "#e7eef6",
-  };
-  const twilight = {
-    zenith: [28, 30, 58],
-    horizon: [196, 110, 78],
-    water: [28, 42, 62],
-    foam: [232, 210, 186],
-    sun: [255, 186, 110],
-    type: "#f3ead8",
-  };
-  const golden = {
-    zenith: [92, 128, 168],
-    horizon: [236, 164, 92],
-    water: [36, 86, 110],
-    foam: [244, 228, 204],
-    sun: [255, 198, 112],
-    type: "#f3ead8",
-  };
-  const day = {
-    zenith: [92, 156, 196],
-    horizon: [176, 206, 220],
-    water: [28, 96, 118],
-    foam: [236, 246, 250],
-    sun: [255, 236, 196],
-    type: "#f6f1e4",
-  };
+  const { elevation: el, azimuth: az } = solarPosition(date);
+  const evening = smoothstep(155, 210, az);
+  const nightW = 1 - smoothstep(-16, -6, el);
+  const twilightW = smoothstep(-14, -6, el) * (1 - smoothstep(-3, 2, el));
+  const goldenHi = 8 + 8 * evening;
+  const goldenW = smoothstep(-5, 1, el) * (1 - smoothstep(goldenHi - 6, goldenHi, el));
+  const morningW = (1 - evening) * smoothstep(4, 10, el) * (1 - smoothstep(16, 26, el));
+  const dayW = smoothstep(12 + 4 * evening, 22 + 4 * evening, el);
+  const mixed = mixFive(
+    [nightW, twilightW, goldenW, morningW, dayW],
+    [NIGHT, TWILIGHT, GOLDEN, MORNING, DAY]
+  );
+  const warm = Math.min(1, goldenW + twilightW * 0.7);
+  const cool = Math.min(1, Math.max(0, morningW + dayW - warm * 0.35));
+  const facing = 258;
+  const sunAhead = Math.cos(((az - facing) * Math.PI) / 180);
+  const sunInFrame =
+    Math.max(0, sunAhead) * smoothstep(-6, 1, el) * (1 - smoothstep(20, 36, el) * 0.4);
 
-  let a = night;
-  let b = night;
-  let t = 0;
-  if (el < -12) {
-    a = b = night;
-  } else if (el < -4) {
-    a = night;
-    b = twilight;
-    t = (el + 12) / 8;
-  } else if (el < 8) {
-    a = twilight;
-    b = golden;
-    t = (el + 4) / 12;
-  } else if (el < 28) {
-    a = golden;
-    b = day;
-    t = (el - 8) / 20;
-  } else {
-    a = b = day;
-  }
-
-  const zenith = mix(a.zenith, b.zenith, t);
-  const horizon = mix(a.horizon, b.horizon, t);
-  const water = mix(a.water, b.water, t);
-  const foam = mix(a.foam, b.foam, t);
-  const sun = mix(a.sun, b.sun, t);
-  const type = t < 0.5 ? a.type : b.type;
   return {
     elevation: el,
-    zenith: rgb(zenith),
-    horizon: rgb(horizon),
-    waterDeep: rgb(mix(water, [6, 16, 24], 0.55)),
-    water: rgb(water),
-    foam: rgb(foam),
-    sun: rgb(sun),
-    type,
-    night: el < -4,
+    azimuth: az,
+    zenith: rgb(mixed.zenith),
+    horizon: rgb(mixed.horizon),
+    waterDeep: rgb(mix(mixed.water, [6, 16, 24], 0.55)),
+    water: rgb(mixed.water),
+    foam: rgb(mixed.foam),
+    sun: rgb(mixed.sun),
+    type: nightW > 0.5 ? "#e7eef6" : warm > 0.45 ? "#f3ead8" : "#eef4f8",
+    night: nightW,
+    warm,
+    cool,
+    sunInFrame,
+    gradeKey: `${(el * 4).toFixed(0)}:${(warm * 20).toFixed(0)}:${(cool * 20).toFixed(0)}:${(nightW * 20).toFixed(0)}`,
+    photo: {
+      hue: -28 * cool + -8 * nightW,
+      sat: 1 - 0.42 * cool - 0.55 * nightW,
+      bright: 1.2 * (1 - nightW) * (0.82 + 0.18 * cool) + 0.38 * nightW,
+      contrast: 1.04 - 0.08 * nightW,
+    },
+    overlay: rgb(mix(mixed.zenith, mixed.horizon, 0.35)),
+    overlayAlpha: 0.08 * warm + 0.36 * cool + 0.58 * nightW,
+    overlayMode: nightW > 0.45 ? "multiply" : "soft-light",
+    skyWash: 0.08 * warm + 0.48 * cool + 0.22 * nightW,
+    nightFill: rgb(NIGHT.zenith, 0.62 * nightW),
   };
 }

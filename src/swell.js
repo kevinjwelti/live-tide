@@ -1,4 +1,4 @@
-import { skyPalette, solarElevation, SD_LAT, SD_LON } from "./time.js";
+import { skyPalette, solarPosition, LJ_LAT, LJ_LON } from "./time.js";
 
 const LAYERS = [
   { y: 0.58, amp: 0.012, len: 0.28, speed: 0.12, phase: 0.2, alpha: 0.1 },
@@ -17,29 +17,14 @@ function waveY(x, t, layer, w, h) {
   );
 }
 
-function sunPos(date, w, h) {
-  const el = solarElevation(date);
-  const rad = Math.PI / 180;
-  const jd = date.getTime() / 86400000 + 2440587.5;
-  const T = (jd - 2451545) / 36525;
-  const L0 = (280.46646 + 36000.76983 * T) % 360;
-  const M = (357.52911 + 35999.05029 * T) % 360;
-  const C = (1.914602 - 0.004817 * T) * Math.sin(M * rad) + 0.019993 * Math.sin(2 * M * rad);
-  const lam = (L0 + C) * rad;
-  const eps = (23.439291 - 0.0130042 * T) * rad;
-  const decl = Math.asin(Math.sin(eps) * Math.sin(lam));
-  const gmst = (280.46061837 + 360.98564736629 * (jd - 2451545)) % 360;
-  const lst = ((gmst + SD_LON) % 360) * rad;
-  const ra = Math.atan2(Math.cos(eps) * Math.sin(lam), Math.cos(lam));
-  const ha = lst - ra;
-  const az = Math.atan2(
-    Math.sin(ha),
-    Math.cos(ha) * Math.sin(SD_LAT * rad) - Math.tan(decl) * Math.cos(SD_LAT * rad)
-  );
-  const x = w * (0.5 + (az / Math.PI) * 0.42);
+function sunScreenPos(date, w, h) {
+  const { elevation: el, azimuth: az } = solarPosition(date, LJ_LAT, LJ_LON);
+  const facing = 258;
+  const rel = ((az - facing + 540) % 360) - 180;
+  const x = w * (0.5 + (rel / 90) * 0.42);
   const horizon = h * 0.48;
   const y = horizon - (el / 70) * h * 0.4;
-  return { x, y, el };
+  return { x, y, el, az };
 }
 
 function drawCover(ctx, img, w, h) {
@@ -70,6 +55,9 @@ export function createSwell(canvas) {
   let palette = skyPalette(new Date());
   const plate = new Image();
   plate.src = `${import.meta.env.BASE_URL}coast.jpg`;
+  const graded = document.createElement("canvas");
+  const gctx = graded.getContext("2d");
+  let gradeKey = "";
 
   const resize = () => {
     const dpr = Math.min(1.75, window.devicePixelRatio || 1);
@@ -80,6 +68,30 @@ export function createSwell(canvas) {
     canvas.style.width = `${w}px`;
     canvas.style.height = `${h}px`;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    gradeKey = "";
+  };
+
+  const rebuildGrade = (w, h, light) => {
+    const key = `${w}x${h}:${light.gradeKey}`;
+    if (key === gradeKey && graded.width) return;
+    gradeKey = key;
+    const dpr = Math.min(1.75, window.devicePixelRatio || 1);
+    graded.width = Math.round(w * dpr);
+    graded.height = Math.round(h * dpr);
+    gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (plate.complete && plate.naturalWidth) {
+      const p = light.photo;
+      gctx.filter = `hue-rotate(${p.hue}deg) saturate(${p.sat}) brightness(${p.bright}) contrast(${p.contrast})`;
+      drawCover(gctx, plate, w, h);
+      gctx.filter = "none";
+    } else {
+      const sky = gctx.createLinearGradient(0, 0, 0, h * 0.62);
+      sky.addColorStop(0, light.zenith);
+      sky.addColorStop(0.62, light.horizon);
+      sky.addColorStop(1, light.water);
+      gctx.fillStyle = sky;
+      gctx.fillRect(0, 0, w, h);
+    }
   };
 
   const draw = (now) => {
@@ -92,59 +104,60 @@ export function createSwell(canvas) {
 
     const w = window.innerWidth;
     const h = window.innerHeight;
+    rebuildGrade(w, h, palette);
+    ctx.drawImage(graded, 0, 0, w, h);
 
-    if (plate.complete && plate.naturalWidth) {
-      drawCover(ctx, plate, w, h);
-    } else {
-      const sky = ctx.createLinearGradient(0, 0, 0, h * 0.62);
-      sky.addColorStop(0, palette.zenith);
-      sky.addColorStop(0.62, palette.horizon);
-      sky.addColorStop(1, palette.water);
-      ctx.fillStyle = sky;
-      ctx.fillRect(0, 0, w, h);
-    }
-
-    const el = palette.elevation;
     ctx.save();
-    ctx.globalCompositeOperation = "multiply";
-    if (el < -6) {
-      ctx.fillStyle = "rgb(18, 28, 48)";
-      ctx.globalAlpha = 0.55;
-    } else if (el < 8) {
-      ctx.fillStyle = palette.horizon;
-      ctx.globalAlpha = 0.16;
-    } else if (el < 28) {
-      ctx.fillStyle = palette.zenith;
-      ctx.globalAlpha = 0.12;
-    } else {
-      ctx.fillStyle = palette.zenith;
-      ctx.globalAlpha = 0.2;
-    }
+    ctx.globalCompositeOperation = palette.overlayMode;
+    ctx.globalAlpha = palette.overlayAlpha;
+    ctx.fillStyle = palette.overlay;
     ctx.fillRect(0, 0, w, h);
     ctx.restore();
 
-    const sun = sunPos(date, w, h);
-    if (sun.el > -9) {
+    if (palette.skyWash > 0.02) {
+      const wash = ctx.createLinearGradient(0, 0, 0, h * 0.58);
+      wash.addColorStop(0, palette.zenith);
+      wash.addColorStop(0.55, palette.horizon);
+      wash.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.save();
+      ctx.globalAlpha = palette.skyWash;
+      ctx.fillStyle = wash;
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
+
+    if (palette.night > 0.05) {
+      ctx.save();
+      ctx.globalCompositeOperation = "multiply";
+      ctx.globalAlpha = 0.55 * palette.night;
+      ctx.fillStyle = "rgb(10, 18, 36)";
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
+
+    const sun = sunScreenPos(date, w, h);
+    if (palette.sunInFrame > 0.08 && sun.el > -6) {
       const glow = ctx.createRadialGradient(sun.x, sun.y, 6, sun.x, sun.y, h * 0.38);
       glow.addColorStop(0, palette.sun);
-      glow.addColorStop(0.18, "rgba(255, 186, 110, 0.18)");
+      glow.addColorStop(0.2, palette.horizon);
       glow.addColorStop(1, "rgba(0,0,0,0)");
       ctx.save();
       ctx.globalCompositeOperation = "soft-light";
+      ctx.globalAlpha = 0.35 + 0.65 * palette.warm;
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, w, h);
       ctx.restore();
       ctx.beginPath();
       ctx.fillStyle = palette.sun;
-      ctx.globalAlpha = 0.55;
-      ctx.arc(sun.x, sun.y, Math.max(8, 14 + sun.el * 0.12), 0, Math.PI * 2);
+      ctx.globalAlpha = 0.35 + 0.5 * palette.sunInFrame;
+      ctx.arc(sun.x, sun.y, Math.max(7, 12 + sun.el * 0.1), 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
-    } else {
+    } else if (palette.night > 0.55) {
       const mx = w * 0.72;
       const my = h * 0.16;
       const moon = ctx.createRadialGradient(mx, my, 2, mx, my, 70);
-      moon.addColorStop(0, "rgba(230,236,245,0.55)");
+      moon.addColorStop(0, "rgba(230,236,245,0.45)");
       moon.addColorStop(1, "rgba(230,236,245,0)");
       ctx.fillStyle = moon;
       ctx.fillRect(mx - 70, my - 70, 140, 140);
@@ -161,11 +174,11 @@ export function createSwell(canvas) {
       ctx.closePath();
       ctx.save();
       ctx.globalCompositeOperation = "soft-light";
-      ctx.globalAlpha = layer.alpha;
+      ctx.globalAlpha = layer.alpha * (0.7 + 0.3 * palette.cool);
       ctx.fillStyle = palette.water;
       ctx.fill();
       ctx.restore();
-      ctx.globalAlpha = 0.14;
+      ctx.globalAlpha = 0.12;
       ctx.strokeStyle = palette.foam;
       ctx.lineWidth = 0.9;
       ctx.stroke();
@@ -178,7 +191,7 @@ export function createSwell(canvas) {
   resize();
   window.addEventListener("resize", resize);
   plate.addEventListener("load", () => {
-    start = performance.now();
+    gradeKey = "";
   });
   document.addEventListener("visibilitychange", () => {
     running = document.visibilityState !== "hidden";
