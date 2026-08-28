@@ -1,11 +1,9 @@
 import { skyPalette, solarElevation, SD_LAT, SD_LON } from "./time.js";
 
 const LAYERS = [
-  { y: 0.52, amp: 0.018, len: 0.22, speed: 0.18, phase: 0.2, alpha: 0.28 },
-  { y: 0.58, amp: 0.028, len: 0.31, speed: 0.13, phase: 1.1, alpha: 0.34 },
-  { y: 0.66, amp: 0.04, len: 0.42, speed: 0.09, phase: 2.4, alpha: 0.42 },
-  { y: 0.76, amp: 0.055, len: 0.58, speed: 0.06, phase: 0.7, alpha: 0.55 },
-  { y: 0.88, amp: 0.07, len: 0.8, speed: 0.04, phase: 1.8, alpha: 0.72 },
+  { y: 0.58, amp: 0.012, len: 0.28, speed: 0.12, phase: 0.2, alpha: 0.1 },
+  { y: 0.68, amp: 0.02, len: 0.42, speed: 0.08, phase: 1.4, alpha: 0.14 },
+  { y: 0.8, amp: 0.028, len: 0.62, speed: 0.05, phase: 2.1, alpha: 0.18 },
 ];
 
 function waveY(x, t, layer, w, h) {
@@ -15,8 +13,7 @@ function waveY(x, t, layer, w, h) {
   return (
     base +
     Math.sin(x * k + t * layer.speed + layer.phase) * amp +
-    Math.sin(x * k * 2.15 + t * layer.speed * 1.35 + 1.7) * amp * 0.32 +
-    Math.sin(x * k * 0.47 - t * layer.speed * 0.55) * amp * 0.22
+    Math.sin(x * k * 2.15 + t * layer.speed * 1.35 + 1.7) * amp * 0.28
   );
 }
 
@@ -40,9 +37,30 @@ function sunPos(date, w, h) {
     Math.cos(ha) * Math.sin(SD_LAT * rad) - Math.tan(decl) * Math.cos(SD_LAT * rad)
   );
   const x = w * (0.5 + (az / Math.PI) * 0.42);
-  const horizon = h * 0.5;
-  const y = horizon - (el / 70) * h * 0.42;
+  const horizon = h * 0.48;
+  const y = horizon - (el / 70) * h * 0.4;
   return { x, y, el };
+}
+
+function drawCover(ctx, img, w, h) {
+  const ir = img.width / img.height;
+  const cr = w / h;
+  let dw;
+  let dh;
+  let dx;
+  let dy;
+  if (ir > cr) {
+    dh = h;
+    dw = h * ir;
+    dx = (w - dw) / 2;
+    dy = 0;
+  } else {
+    dw = w;
+    dh = w / ir;
+    dx = 0;
+    dy = (h - dh) / 2;
+  }
+  ctx.drawImage(img, dx, dy, dw, dh);
 }
 
 export function createSwell(canvas) {
@@ -50,6 +68,8 @@ export function createSwell(canvas) {
   let running = true;
   let start = performance.now();
   let palette = skyPalette(new Date());
+  const plate = new Image();
+  plate.src = `${import.meta.env.BASE_URL}coast.jpg`;
 
   const resize = () => {
     const dpr = Math.min(1.75, window.devicePixelRatio || 1);
@@ -72,68 +92,82 @@ export function createSwell(canvas) {
 
     const w = window.innerWidth;
     const h = window.innerHeight;
-    const sky = ctx.createLinearGradient(0, 0, 0, h * 0.62);
-    sky.addColorStop(0, palette.zenith);
-    sky.addColorStop(0.62, palette.horizon);
-    sky.addColorStop(1, palette.water);
-    ctx.fillStyle = sky;
+
+    if (plate.complete && plate.naturalWidth) {
+      drawCover(ctx, plate, w, h);
+    } else {
+      const sky = ctx.createLinearGradient(0, 0, 0, h * 0.62);
+      sky.addColorStop(0, palette.zenith);
+      sky.addColorStop(0.62, palette.horizon);
+      sky.addColorStop(1, palette.water);
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    const el = palette.elevation;
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+    if (el < -6) {
+      ctx.fillStyle = "rgb(18, 28, 48)";
+      ctx.globalAlpha = 0.55;
+    } else if (el < 8) {
+      ctx.fillStyle = palette.horizon;
+      ctx.globalAlpha = 0.16;
+    } else if (el < 28) {
+      ctx.fillStyle = palette.zenith;
+      ctx.globalAlpha = 0.12;
+    } else {
+      ctx.fillStyle = palette.zenith;
+      ctx.globalAlpha = 0.2;
+    }
     ctx.fillRect(0, 0, w, h);
+    ctx.restore();
 
     const sun = sunPos(date, w, h);
     if (sun.el > -9) {
-      const glow = ctx.createRadialGradient(sun.x, sun.y, 8, sun.x, sun.y, h * 0.42);
+      const glow = ctx.createRadialGradient(sun.x, sun.y, 6, sun.x, sun.y, h * 0.38);
       glow.addColorStop(0, palette.sun);
-      glow.addColorStop(0.12, palette.horizon);
+      glow.addColorStop(0.18, "rgba(255, 186, 110, 0.18)");
       glow.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.globalCompositeOperation = "lighter";
+      ctx.save();
+      ctx.globalCompositeOperation = "soft-light";
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, w, h);
-      ctx.globalCompositeOperation = "source-over";
+      ctx.restore();
       ctx.beginPath();
       ctx.fillStyle = palette.sun;
-      ctx.arc(sun.x, sun.y, Math.max(10, 18 + sun.el * 0.15), 0, Math.PI * 2);
+      ctx.globalAlpha = 0.55;
+      ctx.arc(sun.x, sun.y, Math.max(8, 14 + sun.el * 0.12), 0, Math.PI * 2);
       ctx.fill();
+      ctx.globalAlpha = 1;
     } else {
       const mx = w * 0.72;
-      const my = h * 0.18;
-      const moon = ctx.createRadialGradient(mx, my, 2, mx, my, 80);
-      moon.addColorStop(0, "rgba(230,236,245,0.85)");
+      const my = h * 0.16;
+      const moon = ctx.createRadialGradient(mx, my, 2, mx, my, 70);
+      moon.addColorStop(0, "rgba(230,236,245,0.55)");
       moon.addColorStop(1, "rgba(230,236,245,0)");
       ctx.fillStyle = moon;
-      ctx.fillRect(mx - 80, my - 80, 160, 160);
-      ctx.beginPath();
-      ctx.fillStyle = "rgba(228,234,242,0.8)";
-      ctx.arc(mx, my, 14, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillRect(mx - 70, my - 70, 140, 140);
     }
-
-    const haze = ctx.createLinearGradient(0, h * 0.38, 0, h * 0.55);
-    haze.addColorStop(0, "rgba(255,255,255,0)");
-    haze.addColorStop(0.5, "rgba(255,255,255,0.08)");
-    haze.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = haze;
-    ctx.fillRect(0, h * 0.38, w, h * 0.2);
 
     for (const layer of LAYERS) {
       ctx.beginPath();
       ctx.moveTo(0, h);
-      const step = Math.max(8, Math.round(w / 90));
+      const step = Math.max(10, Math.round(w / 80));
       for (let x = 0; x <= w; x += step) {
-        const y = waveY(x, t, layer, w, h);
-        if (x === 0) ctx.lineTo(x, y);
-        else ctx.lineTo(x, y);
+        ctx.lineTo(x, waveY(x, t, layer, w, h));
       }
       ctx.lineTo(w, h);
       ctx.closePath();
-      const fill = ctx.createLinearGradient(0, layer.y * h - 30, 0, h);
-      fill.addColorStop(0, palette.water);
-      fill.addColorStop(1, palette.waterDeep);
+      ctx.save();
+      ctx.globalCompositeOperation = "soft-light";
       ctx.globalAlpha = layer.alpha;
-      ctx.fillStyle = fill;
+      ctx.fillStyle = palette.water;
       ctx.fill();
-      ctx.globalAlpha = 0.35;
+      ctx.restore();
+      ctx.globalAlpha = 0.14;
       ctx.strokeStyle = palette.foam;
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 0.9;
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
@@ -143,6 +177,9 @@ export function createSwell(canvas) {
 
   resize();
   window.addEventListener("resize", resize);
+  plate.addEventListener("load", () => {
+    start = performance.now();
+  });
   document.addEventListener("visibilitychange", () => {
     running = document.visibilityState !== "hidden";
     if (running) {

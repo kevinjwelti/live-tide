@@ -1,17 +1,7 @@
 import { formatClock, startOfZonedDay, startOfNextZonedDay } from "./time.js";
 import { sampleTide } from "./tide.js";
 
-const PAD = { top: 0.1, bottom: 0.24, left: 0.02, right: 0.06 };
-
-function niceTicks(min, max) {
-  const span = Math.max(2, max - min);
-  const step = span > 8 ? 3 : span > 5 ? 2 : 1;
-  const lo = Math.floor(min / step) * step;
-  const hi = Math.ceil(max / step) * step;
-  const ticks = [];
-  for (let v = lo; v <= hi + 1e-6; v += step) ticks.push(v);
-  return ticks;
-}
+const PAD = { top: 0.12, bottom: 0.22, left: 0.03, right: 0.04 };
 
 function layout(w, h, series, rangeStart, rangeEnd) {
   const left = w * PAD.left;
@@ -26,7 +16,7 @@ function layout(w, h, series, rangeStart, rangeEnd) {
   max += pad;
   const x = (t) => left + ((t - rangeStart) / (rangeEnd - rangeStart)) * (right - left);
   const y = (v) => bottom - ((v - min) / (max - min)) * (bottom - top);
-  return { left, right, top, bottom, min, max, x, y, ticks: niceTicks(min, max) };
+  return { left, right, top, bottom, min, max, x, y };
 }
 
 function curvePath(ctx, series, L, from, to) {
@@ -83,50 +73,35 @@ export function createChart(stage) {
     ctx.save();
     curvePath(ctx, series, L, rangeStart, rangeEnd);
     const lastX = L.x(Math.min(rangeEnd, series[series.length - 1].t));
-    ctx.lineTo(lastX, L.bottom + 40);
-    ctx.lineTo(L.x(rangeStart), L.bottom + 40);
-    ctx.closePath();
-    const wash = ctx.createLinearGradient(0, L.top, 0, L.bottom);
-    wash.addColorStop(0, "rgba(243,234,216,0.32)");
-    wash.addColorStop(0.55, "rgba(243,234,216,0.12)");
-    wash.addColorStop(1, "rgba(243,234,216,0.02)");
-    ctx.filter = "blur(10px)";
-    ctx.fillStyle = wash;
-    ctx.fill();
-    ctx.filter = "none";
-    ctx.restore();
-
-    ctx.save();
-    curvePath(ctx, series, L, rangeStart, rangeEnd);
     ctx.lineTo(lastX, L.bottom);
     ctx.lineTo(L.x(rangeStart), L.bottom);
     ctx.closePath();
     const mist = ctx.createLinearGradient(0, L.top, 0, L.bottom);
-    mist.addColorStop(0, "rgba(243,234,216,0.22)");
-    mist.addColorStop(1, "rgba(243,234,216,0.03)");
+    mist.addColorStop(0, "rgba(243,234,216,0.16)");
+    mist.addColorStop(1, "rgba(243,234,216,0.02)");
     ctx.fillStyle = mist;
     ctx.fill();
     ctx.restore();
 
+    if (L.min < 0 && L.max > 0) {
+      const y0 = L.y(0);
+      ctx.beginPath();
+      ctx.moveTo(L.left, y0);
+      ctx.lineTo(L.right, y0);
+      ctx.strokeStyle = "rgba(243,234,216,0.1)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
     ctx.save();
     curvePath(ctx, series, L, rangeStart, rangeEnd);
     ctx.strokeStyle = "rgba(243,234,216,0.92)";
-    ctx.lineWidth = 1.7;
+    ctx.lineWidth = 1.8;
     ctx.lineJoin = "round";
     ctx.stroke();
     ctx.restore();
 
     yAxis.replaceChildren();
-    for (const tick of L.ticks) {
-      if (tick < L.min - 0.05 || tick > L.max + 0.05) continue;
-      const row = document.createElement("div");
-      row.className = "y-tick";
-      row.style.top = `${L.y(tick)}px`;
-      const label = document.createElement("span");
-      label.textContent = `${tick} ft`;
-      row.append(label);
-      yAxis.append(row);
-    }
 
     labelsEl.replaceChildren();
     const todayExtrema = extrema.filter((e) => e.t >= rangeStart && e.t <= rangeEnd);
@@ -137,7 +112,6 @@ export function createChart(stage) {
       const py = L.y(e.v);
       node.style.left = `${px}px`;
       node.style.top = `${L.bottom + 8}px`;
-      node.style.setProperty("--stem", `${Math.max(18, L.bottom - py - 4)}px`);
       const kind = e.type === "H" ? "HIGH TIDE" : "LOW TIDE";
       node.innerHTML = `<div class="t-time">${formatClock(new Date(e.t))}</div>
         <div class="t-kind">${kind}</div>
@@ -145,12 +119,9 @@ export function createChart(stage) {
       labelsEl.append(node);
 
       ctx.beginPath();
-      ctx.arc(px, py, 4.5, 0, Math.PI * 2);
+      ctx.arc(px, py, 4.2, 0, Math.PI * 2);
       ctx.fillStyle = "rgba(243,234,216,0.95)";
       ctx.fill();
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = "rgba(20,28,34,0.25)";
-      ctx.stroke();
     });
   };
 

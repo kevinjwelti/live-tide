@@ -54,8 +54,8 @@ body {
   z-index: 1;
   pointer-events: none;
   background:
-    radial-gradient(120% 90% at 50% 35%, transparent 45%, rgba(6, 10, 16, 0.35) 100%),
-    linear-gradient(180deg, rgba(8, 12, 18, 0.18), transparent 22%, transparent 70%, rgba(8, 12, 18, 0.28));
+    radial-gradient(120% 90% at 50% 35%, transparent 52%, rgba(6, 10, 16, 0.22) 100%),
+    linear-gradient(180deg, rgba(8, 12, 18, 0.08), transparent 18%, transparent 78%, rgba(8, 12, 18, 0.18));
 }
 
 .frame {
@@ -329,44 +329,11 @@ body {
   pointer-events: none;
 }
 
-.y-tick {
-  position: absolute;
-  right: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  width: 100%;
-  transform: translateY(-50%);
-}
-
-.y-tick::before {
-  content: "";
-  flex: 1;
-  border-top: 1px dashed rgba(243, 234, 216, 0.22);
-}
-
-.y-tick span {
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
-  color: var(--cream-dim);
-  min-width: 2.4rem;
-  text-align: right;
-}
-
 .extremum {
   position: absolute;
   transform: translateX(-50%);
   text-align: center;
   min-width: 6.5rem;
-}
-
-.extremum::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 100%;
-  height: var(--stem, 48px);
-  border-left: 1px dashed rgba(243, 234, 216, 0.35);
 }
 
 .extremum .t-time {
