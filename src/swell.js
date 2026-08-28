@@ -1,9 +1,10 @@
 import { skyPalette, solarPosition, LJ_LAT, LJ_LON } from "./time.js";
+import coastUrl from "./assets/coast.jpg";
 
 const LAYERS = [
-  { y: 0.58, amp: 0.012, len: 0.28, speed: 0.12, phase: 0.2, alpha: 0.1 },
-  { y: 0.68, amp: 0.02, len: 0.42, speed: 0.08, phase: 1.4, alpha: 0.14 },
-  { y: 0.8, amp: 0.028, len: 0.62, speed: 0.05, phase: 2.1, alpha: 0.18 },
+  { y: 0.58, amp: 0.014, len: 0.28, speed: 0.12, phase: 0.2, alpha: 0.16 },
+  { y: 0.68, amp: 0.022, len: 0.42, speed: 0.08, phase: 1.4, alpha: 0.2 },
+  { y: 0.8, amp: 0.03, len: 0.62, speed: 0.05, phase: 2.1, alpha: 0.24 },
 ];
 
 function waveY(x, t, layer, w, h) {
@@ -48,16 +49,62 @@ function drawCover(ctx, img, w, h) {
   ctx.drawImage(img, dx, dy, dw, dh);
 }
 
+/** Punch sunset sky to alpha so a live sky can show through. Keep dark palms/rocks. */
+function knockOutSky(img) {
+  const c = document.createElement("canvas");
+  c.width = img.naturalWidth;
+  c.height = img.naturalHeight;
+  const x = c.getContext("2d", { willReadFrequently: true });
+  x.drawImage(img, 0, 0);
+  const data = x.getImageData(0, 0, c.width, c.height);
+  const d = data.data;
+  const h = c.height;
+  const w = c.width;
+  for (let y = 0; y < h; y += 1) {
+    const fy = y / h;
+    for (let col = 0; col < w; col += 1) {
+      const i = (y * w + col) * 4;
+      const r = d[i];
+      const g = d[i + 1];
+      const b = d[i + 2];
+      const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      if (lum < 58) continue;
+      const warm = r - b;
+      const peach = lum > 118 && r > 145 && g > 100 && b < r - 4;
+      const orange = r > 110 && warm > 18 && r >= g - 8;
+      const haze = fy < 0.52 && lum > 135 && warm > 0 && r > 130;
+      let sky = 0;
+      if (fy < 0.6 && (orange || peach || haze)) {
+        sky = orange || peach ? 1 : 0.85;
+      } else if (fy < 0.48 && lum > 100 && warm > 8) {
+        sky = 0.75;
+      }
+      if (fy > 0.5) sky *= Math.max(0, 1 - (fy - 0.5) / 0.14);
+      if (sky > 0.04) d[i + 3] = Math.round(d[i + 3] * (1 - sky));
+    }
+  }
+  x.putImageData(data, 0, 0);
+  return c;
+}
+
+function paintLiveSky(ctx, w, h, light) {
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, light.zenith);
+  g.addColorStop(0.42, light.horizon);
+  g.addColorStop(0.62, light.water);
+  g.addColorStop(1, light.waterDeep);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+}
+
 export function createSwell(canvas) {
   const ctx = canvas.getContext("2d", { alpha: false });
   let running = true;
   let start = performance.now();
   let palette = skyPalette(new Date());
   const plate = new Image();
-  plate.src = `${import.meta.env.BASE_URL}coast.jpg`;
-  const graded = document.createElement("canvas");
-  const gctx = graded.getContext("2d");
-  let gradeKey = "";
+  plate.src = coastUrl;
+  let land = null;
 
   const resize = () => {
     const dpr = Math.min(1.75, window.devicePixelRatio || 1);
@@ -68,35 +115,16 @@ export function createSwell(canvas) {
     canvas.style.width = `${w}px`;
     canvas.style.height = `${h}px`;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    gradeKey = "";
   };
 
-  const rebuildGrade = (w, h, light) => {
-    const key = `${w}x${h}:${light.gradeKey}`;
-    if (key === gradeKey && graded.width) return;
-    gradeKey = key;
-    const dpr = Math.min(1.75, window.devicePixelRatio || 1);
-    graded.width = Math.round(w * dpr);
-    graded.height = Math.round(h * dpr);
-    gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    if (plate.complete && plate.naturalWidth) {
-      const p = light.photo;
-      gctx.filter = `hue-rotate(${p.hue}deg) saturate(${p.sat}) brightness(${p.bright}) contrast(${p.contrast})`;
-      drawCover(gctx, plate, w, h);
-      gctx.filter = "none";
-    } else {
-      const sky = gctx.createLinearGradient(0, 0, 0, h * 0.62);
-      sky.addColorStop(0, light.zenith);
-      sky.addColorStop(0.62, light.horizon);
-      sky.addColorStop(1, light.water);
-      gctx.fillStyle = sky;
-      gctx.fillRect(0, 0, w, h);
-    }
+  const ensureLand = () => {
+    if (land || !plate.complete || !plate.naturalWidth) return;
+    land = knockOutSky(plate);
   };
 
-  const draw = (now) => {
+  const draw = () => {
     if (!running) return;
-    const t = (now - start) / 1000;
+    const t = (performance.now() - start) / 1000;
     const date = new Date();
     palette = skyPalette(date);
     document.documentElement.style.setProperty("--type", palette.type);
@@ -104,52 +132,48 @@ export function createSwell(canvas) {
 
     const w = window.innerWidth;
     const h = window.innerHeight;
-    rebuildGrade(w, h, palette);
-    ctx.drawImage(graded, 0, 0, w, h);
+    ensureLand();
 
-    ctx.save();
-    ctx.globalCompositeOperation = palette.overlayMode;
-    ctx.globalAlpha = palette.overlayAlpha;
-    ctx.fillStyle = palette.overlay;
-    ctx.fillRect(0, 0, w, h);
-    ctx.restore();
+    paintLiveSky(ctx, w, h, palette);
 
-    if (palette.skyWash > 0.02) {
-      const wash = ctx.createLinearGradient(0, 0, 0, h * 0.58);
-      wash.addColorStop(0, palette.zenith);
-      wash.addColorStop(0.55, palette.horizon);
-      wash.addColorStop(1, "rgba(0,0,0,0)");
+    if (palette.warm > 0.04 && plate.complete && plate.naturalWidth) {
       ctx.save();
-      ctx.globalAlpha = palette.skyWash;
-      ctx.fillStyle = wash;
-      ctx.fillRect(0, 0, w, h);
+      ctx.globalAlpha = palette.warm * 0.92;
+      drawCover(ctx, plate, w, h);
       ctx.restore();
     }
 
-    if (palette.night > 0.05) {
+    if (land) {
+      ctx.save();
+      if (palette.night > 0.2) ctx.globalAlpha = 1 - 0.35 * palette.night;
+      drawCover(ctx, land, w, h);
+      ctx.restore();
+    }
+
+    if (palette.night > 0.08) {
       ctx.save();
       ctx.globalCompositeOperation = "multiply";
-      ctx.globalAlpha = 0.55 * palette.night;
-      ctx.fillStyle = "rgb(10, 18, 36)";
+      ctx.globalAlpha = 0.62 * palette.night;
+      ctx.fillStyle = "rgb(8, 14, 32)";
       ctx.fillRect(0, 0, w, h);
       ctx.restore();
     }
 
     const sun = sunScreenPos(date, w, h);
-    if (palette.sunInFrame > 0.08 && sun.el > -6) {
+    if (palette.sunInFrame > 0.08 && sun.el > -6 && palette.warm > 0.15) {
       const glow = ctx.createRadialGradient(sun.x, sun.y, 6, sun.x, sun.y, h * 0.38);
       glow.addColorStop(0, palette.sun);
-      glow.addColorStop(0.2, palette.horizon);
+      glow.addColorStop(0.22, palette.horizon);
       glow.addColorStop(1, "rgba(0,0,0,0)");
       ctx.save();
       ctx.globalCompositeOperation = "soft-light";
-      ctx.globalAlpha = 0.35 + 0.65 * palette.warm;
+      ctx.globalAlpha = palette.warm;
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, w, h);
       ctx.restore();
       ctx.beginPath();
       ctx.fillStyle = palette.sun;
-      ctx.globalAlpha = 0.35 + 0.5 * palette.sunInFrame;
+      ctx.globalAlpha = 0.4 + 0.5 * palette.sunInFrame * palette.warm;
       ctx.arc(sun.x, sun.y, Math.max(7, 12 + sun.el * 0.1), 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
@@ -174,11 +198,11 @@ export function createSwell(canvas) {
       ctx.closePath();
       ctx.save();
       ctx.globalCompositeOperation = "soft-light";
-      ctx.globalAlpha = layer.alpha * (0.7 + 0.3 * palette.cool);
+      ctx.globalAlpha = layer.alpha;
       ctx.fillStyle = palette.water;
       ctx.fill();
       ctx.restore();
-      ctx.globalAlpha = 0.12;
+      ctx.globalAlpha = 0.14;
       ctx.strokeStyle = palette.foam;
       ctx.lineWidth = 0.9;
       ctx.stroke();
@@ -191,7 +215,8 @@ export function createSwell(canvas) {
   resize();
   window.addEventListener("resize", resize);
   plate.addEventListener("load", () => {
-    gradeKey = "";
+    land = null;
+    ensureLand();
   });
   document.addEventListener("visibilitychange", () => {
     running = document.visibilityState !== "hidden";
