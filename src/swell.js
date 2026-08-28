@@ -134,16 +134,16 @@ function recastDaylight(src) {
 
       // Kill sun-glint: warm highlights collapse toward mean water.
       const crushed =
-        warm > 28 && lum > 70 ? 38 + (lum - 70) * 0.18 : 24 + lum * 0.42;
+        warm > 28 && lum > 70 ? 52 + (lum - 70) * 0.28 : 40 + lum * 0.5;
 
       if (fy > 0.8) {
-        d[i] = 48 + crushed * 0.55;
-        d[i + 1] = 62 + crushed * 0.48;
-        d[i + 2] = 70 + crushed * 0.42;
+        d[i] = 62 + crushed * 0.5;
+        d[i + 1] = 78 + crushed * 0.45;
+        d[i + 2] = 86 + crushed * 0.4;
       } else {
-        d[i] = 12 + crushed * 0.22 + (1 - depth) * 8;
-        d[i + 1] = 72 + crushed * 0.38 - depth * 16;
-        d[i + 2] = 96 + crushed * 0.42 - depth * 10;
+        d[i] = 20 + crushed * 0.28 + (1 - depth) * 14;
+        d[i + 1] = 96 + crushed * 0.4 - depth * 14;
+        d[i + 2] = 124 + crushed * 0.42 - depth * 8;
       }
     }
   }
