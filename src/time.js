@@ -255,15 +255,15 @@ export function skyPalette(date) {
     sunInFrame,
     gradeKey: `${(el * 4).toFixed(0)}:${(warm * 20).toFixed(0)}:${(cool * 20).toFixed(0)}:${(nightW * 20).toFixed(0)}`,
     photo: {
-      hue: -28 * cool + -8 * nightW,
-      sat: 1 - 0.42 * cool - 0.55 * nightW,
-      bright: 1.2 * (1 - nightW) * (0.82 + 0.18 * cool) + 0.38 * nightW,
-      contrast: 1.04 - 0.08 * nightW,
+      hue: -32 * cool - 8 * nightW,
+      sat: 1 - 0.26 * cool - 0.48 * nightW,
+      bright: (1 - nightW) * (1.02 + 0.04 * cool) + 0.42 * nightW,
+      contrast: 1.05 - 0.06 * nightW,
     },
     overlay: rgb(mix(mixed.zenith, mixed.horizon, 0.35)),
-    overlayAlpha: 0.08 * warm + 0.36 * cool + 0.58 * nightW,
-    overlayMode: nightW > 0.45 ? "multiply" : "soft-light",
-    skyWash: 0.08 * warm + 0.48 * cool + 0.22 * nightW,
+    overlayAlpha: 0.44 * cool,
+    overlayMode: "color",
+    skyWash: 0.36 * cool,
     nightFill: rgb(NIGHT.zenith, 0.62 * nightW),
   };
 }

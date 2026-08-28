@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-title" content="LIVE TIDE" />
     <meta name="theme-color" content="#88b8dc" />
     <meta http-equiv="Cache-Control" content="no-cache" />
-    <meta name="live-tide-build" content="day-water-v7" />
+    <meta name="live-tide-build" content="sharp-photo-v10" />
     <meta
       name="description"
       content="Living tide wall art for San Diego and La Jolla, drawn from NOAA CO-OPS predictions."
@@ -28,7 +28,13 @@
     />
   </head>
   <body>
-    <canvas id="swell" class="swell" aria-hidden="true"></canvas>
+    <div class="scene" aria-hidden="true">
+      <img id="coast-plate" class="coast-plate" alt="" decoding="async" fetchpriority="high" />
+      <div class="grade grade-color"></div>
+      <div class="grade grade-soft"></div>
+      <div class="grade grade-night"></div>
+      <canvas id="swell" class="swell"></canvas>
+    </div>
     <div class="vignette" aria-hidden="true"></div>
 
     <main class="frame">

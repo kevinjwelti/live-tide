@@ -39,12 +39,72 @@ body {
   min-height: -webkit-fill-available;
 }
 
-.swell {
+.scene {
   position: fixed;
+  inset: 0;
+  z-index: 0;
+  isolation: isolate;
+  pointer-events: none;
+  background: #101820;
+}
+
+.coast-plate {
+  position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 0;
+  object-fit: cover;
+  object-position: center;
+  image-rendering: auto;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
+  filter:
+    hue-rotate(var(--plate-hue, 0deg))
+    saturate(var(--plate-sat, 1))
+    brightness(var(--plate-bright, 1))
+    contrast(var(--plate-contrast, 1));
+}
+
+.grade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.grade-color {
+  mix-blend-mode: color;
+  opacity: var(--grade-color, 0);
+  background: linear-gradient(
+    180deg,
+    rgb(152, 198, 228) 0%,
+    rgb(58, 138, 170) 46%,
+    rgb(22, 88, 118) 100%
+  );
+}
+
+.grade-soft {
+  mix-blend-mode: soft-light;
+  opacity: var(--grade-soft, 0);
+  background: linear-gradient(
+    180deg,
+    rgb(186, 220, 242) 0%,
+    rgb(96, 168, 196) 40%,
+    rgb(28, 86, 112) 100%
+  );
+}
+
+.grade-night {
+  mix-blend-mode: multiply;
+  opacity: var(--grade-night, 0);
+  background: rgb(8, 14, 32);
+}
+
+.swell {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   display: block;
 }
 
