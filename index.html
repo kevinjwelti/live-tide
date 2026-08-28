@@ -45,6 +45,14 @@
               <span class="unit">ft</span>
             </div>
             <p id="scrub-note" class="scrub-note" hidden></p>
+            <div class="moon">
+              <svg id="moon-icon" class="moon-icon" viewBox="0 0 48 48" aria-hidden="true"></svg>
+              <div>
+                <span class="eyebrow">MOON PHASE</span>
+                <p id="moon-name" class="moon-name">—</p>
+                <p id="moon-pct" class="moon-pct"></p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -78,68 +86,6 @@
         <p id="status-msg" class="status-msg" hidden></p>
         <div id="chart-hit" class="chart-hit"></div>
       </section>
-
-      <footer class="glass">
-        <div class="glass-col moon-col">
-          <svg id="moon-icon" class="foot-icon moon-icon" viewBox="0 0 48 48" aria-hidden="true"></svg>
-          <div>
-            <span class="eyebrow">MOON PHASE</span>
-            <p id="moon-name" class="foot-title">—</p>
-            <p id="moon-pct" class="foot-sub"></p>
-          </div>
-        </div>
-        <div class="glass-col">
-          <svg class="foot-icon" viewBox="0 0 48 48" aria-hidden="true">
-            <path
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.6"
-              stroke-linecap="round"
-              d="M4 30c4-8 8-8 12 0s8 8 12 0 8-8 12 0 4 8 8 0"
-            />
-          </svg>
-          <div>
-            <span class="eyebrow">TIDE TIP</span>
-            <p class="foot-copy">
-              High water is the hour for swimming, surfing, and staying in the swell.
-            </p>
-          </div>
-        </div>
-        <div class="glass-col">
-          <svg class="foot-icon" viewBox="0 0 48 48" aria-hidden="true">
-            <path
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.6"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M24 8c2 6 8 10 8 16a8 8 0 1 1-16 0c0-6 6-10 8-16zM16 28c-4 2-8 8-8 8m24-8c4 2 8 8 8 8M24 40v-6"
-            />
-          </svg>
-          <div>
-            <span class="eyebrow">LOW TIDE TIP</span>
-            <p class="foot-copy">
-              Low water opens the beach for walking, tidepools, and shell hunting.
-            </p>
-          </div>
-        </div>
-        <div class="glass-col">
-          <svg class="foot-icon" viewBox="0 0 48 48" aria-hidden="true">
-            <circle cx="24" cy="24" r="8" fill="none" stroke="currentColor" stroke-width="1.6" />
-            <path
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.6"
-              stroke-linecap="round"
-              d="M24 6v4M24 38v4M6 24h4M38 24h4M11 11l3 3M34 34l3 3M11 37l3-3M34 14l3-3"
-            />
-          </svg>
-          <div>
-            <span class="eyebrow">REMEMBER</span>
-            <p class="foot-copy">Always check your local tide conditions before you go.</p>
-          </div>
-        </div>
-      </footer>
 
       <p class="credit">
         Tide predictions in feet, MLLW · NOAA NOS CO-OPS
