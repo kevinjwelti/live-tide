@@ -95,9 +95,13 @@ export function createChart(stage) {
 
     ctx.save();
     curvePath(ctx, series, L, rangeStart, rangeEnd);
-    ctx.strokeStyle = "rgba(243,234,216,0.92)";
-    ctx.lineWidth = 1.8;
     ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "rgba(8, 14, 22, 0.55)";
+    ctx.lineWidth = 4.4;
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(243,234,216,0.96)";
+    ctx.lineWidth = 1.8;
     ctx.stroke();
     ctx.restore();
 
@@ -120,8 +124,11 @@ export function createChart(stage) {
 
       ctx.beginPath();
       ctx.arc(px, py, 4.2, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(243,234,216,0.95)";
+      ctx.fillStyle = "rgba(243,234,216,0.96)";
+      ctx.strokeStyle = "rgba(8, 14, 22, 0.55)";
+      ctx.lineWidth = 2.4;
       ctx.fill();
+      ctx.stroke();
     });
   };
 
