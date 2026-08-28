@@ -173,10 +173,11 @@ body {
 
 .scrub-note {
   margin-top: 0.25rem;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   letter-spacing: 0.18em;
   color: var(--gold);
-  font-weight: 300;
+  font-weight: 400;
+  text-shadow: 0 1px 10px rgba(8, 14, 22, 0.55);
 }
 
 .mast-right {
