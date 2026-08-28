@@ -59,11 +59,6 @@ body {
   -webkit-user-select: none;
   user-select: none;
   pointer-events: none;
-  filter:
-    hue-rotate(var(--plate-hue, 0deg))
-    saturate(var(--plate-sat, 1))
-    brightness(var(--plate-bright, 1))
-    contrast(var(--plate-contrast, 1));
 }
 
 .grade {
@@ -72,90 +67,16 @@ body {
   pointer-events: none;
 }
 
-.grade-color {
-  mix-blend-mode: color;
-  opacity: var(--grade-color, 0);
-  background: linear-gradient(
-    180deg,
-    rgb(28, 118, 214) 0%,
-    rgb(0, 160, 200) 46%,
-    rgb(196, 226, 236) 100%
-  );
-}
-
-.grade-sat {
-  mix-blend-mode: saturation;
-  opacity: var(--grade-sat, 0);
-  background: rgb(20, 140, 220);
-}
-
-.grade-vivid {
-  mix-blend-mode: overlay;
-  opacity: var(--grade-vivid, 0);
-  background: linear-gradient(
-    180deg,
-    rgb(16, 86, 186) 0%,
-    rgb(0, 156, 200) 50%,
-    rgb(236, 246, 252) 100%
-  );
-}
-
-.grade-soft {
-  mix-blend-mode: soft-light;
-  opacity: var(--grade-soft, 0);
-  background: linear-gradient(
-    180deg,
-    rgb(70, 150, 230) 0%,
-    rgb(0, 176, 210) 55%,
-    rgb(230, 246, 252) 100%
-  );
-}
-
-.grade-water {
-  mix-blend-mode: overlay;
-  opacity: var(--grade-water, 0);
-  background: linear-gradient(
-    180deg,
-    transparent 44%,
-    rgb(0, 186, 196) 72%,
-    rgb(0, 132, 168) 100%
-  );
-}
-
-.grade-sky {
-  opacity: var(--grade-sky, 0);
-  background: linear-gradient(
-    180deg,
-    rgb(22, 108, 210) 0%,
-    rgb(48, 148, 226) 22%,
-    rgb(72, 172, 232) 38%,
-    rgba(90, 186, 236, 0.45) 48%,
-    rgba(90, 186, 236, 0) 58%
-  );
-}
-
-.grade-sun {
-  opacity: var(--grade-sun, 0);
-  background: radial-gradient(
-    ellipse 44% 38% at 17% 41%,
-    rgb(64, 160, 230) 0%,
-    rgb(48, 148, 226) 36%,
-    rgba(48, 148, 226, 0) 70%
-  );
+.grade-day {
+  mix-blend-mode: hue;
+  opacity: var(--grade-day, 0);
+  background: rgb(42, 128, 196);
 }
 
 .grade-night {
   mix-blend-mode: multiply;
   opacity: var(--grade-night, 0);
   background: rgb(8, 14, 32);
-}
-
-.swell {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
 }
 
 .vignette {
