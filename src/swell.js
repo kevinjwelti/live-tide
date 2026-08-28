@@ -2,9 +2,9 @@ import { skyPalette, solarPosition, LJ_LAT, LJ_LON } from "./time.js";
 import coastUrl from "./assets/coast.jpg";
 
 const LAYERS = [
-  { y: 0.58, amp: 0.014, len: 0.28, speed: 0.12, phase: 0.2, alpha: 0.16 },
-  { y: 0.68, amp: 0.022, len: 0.42, speed: 0.08, phase: 1.4, alpha: 0.2 },
-  { y: 0.8, amp: 0.03, len: 0.62, speed: 0.05, phase: 2.1, alpha: 0.24 },
+  { y: 0.56, amp: 0.016, len: 0.28, speed: 0.12, phase: 0.2, alpha: 0.22 },
+  { y: 0.66, amp: 0.024, len: 0.42, speed: 0.08, phase: 1.4, alpha: 0.28 },
+  { y: 0.78, amp: 0.032, len: 0.62, speed: 0.05, phase: 2.1, alpha: 0.32 },
 ];
 
 function waveY(x, t, layer, w, h) {
@@ -49,7 +49,18 @@ function drawCover(ctx, img, w, h) {
   ctx.drawImage(img, dx, dy, dw, dh);
 }
 
-/** Punch sunset sky to alpha so a live sky can show through. Keep dark palms/rocks. */
+function cloneCanvas(src) {
+  const c = document.createElement("canvas");
+  c.width = src.width;
+  c.height = src.height;
+  c.getContext("2d").drawImage(src, 0, 0);
+  return c;
+}
+
+/**
+ * Punch only the sunset SKY. Horizon water stays in the plate so it can be
+ * recast; punching it was leaving a blue-sky / orange-sea seam.
+ */
 function knockOutSky(img) {
   const c = document.createElement("canvas");
   c.width = img.naturalWidth;
@@ -72,15 +83,68 @@ function knockOutSky(img) {
       const warm = r - b;
       const peach = lum > 118 && r > 145 && g > 100 && b < r - 4;
       const orange = r > 110 && warm > 18 && r >= g - 8;
-      const haze = fy < 0.52 && lum > 135 && warm > 0 && r > 130;
+      const haze = fy < 0.46 && lum > 135 && warm > 0 && r > 130;
       let sky = 0;
-      if (fy < 0.6 && (orange || peach || haze)) {
-        sky = orange || peach ? 1 : 0.85;
-      } else if (fy < 0.48 && lum > 100 && warm > 8) {
-        sky = 0.75;
+      if (fy < 0.47 && (orange || peach || haze)) {
+        sky = orange || peach ? 1 : 0.9;
+      } else if (fy < 0.44 && lum > 100 && warm > 8) {
+        sky = 0.8;
       }
-      if (fy > 0.5) sky *= Math.max(0, 1 - (fy - 0.5) / 0.14);
+      if (fy > 0.42) sky *= Math.max(0, 1 - (fy - 0.42) / 0.07);
       if (sky > 0.04) d[i + 3] = Math.round(d[i + 3] * (1 - sky));
+    }
+  }
+  x.putImageData(data, 0, 0);
+  return c;
+}
+
+/**
+ * Rebuild water/sand/land from luminance only. Hue is discarded so baked
+ * sunset gold cannot leak. Bright orange glints flatten into teal water.
+ */
+function recastDaylight(src) {
+  const c = cloneCanvas(src);
+  const x = c.getContext("2d", { willReadFrequently: true });
+  const data = x.getImageData(0, 0, c.width, c.height);
+  const d = data.data;
+  const w = c.width;
+  const h = c.height;
+  for (let y = 0; y < h; y += 1) {
+    const fy = y / h;
+    const depth = Math.min(1, Math.max(0, (fy - 0.46) / 0.38));
+    for (let col = 0; col < w; col += 1) {
+      const i = (y * w + col) * 4;
+      if (d[i + 3] < 10) continue;
+      const r = d[i];
+      const g = d[i + 1];
+      const b = d[i + 2];
+      const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      const warm = r - b;
+      const fx = col / w;
+      const landBias = fx > 0.62 ? 26 : fx > 0.5 ? 10 : 0;
+      const isLand = lum < 56 + landBias && warm < 42;
+
+      if (isLand) {
+        const k = lum / 255;
+        d[i] = 8 + k * 42;
+        d[i + 1] = 14 + k * 52;
+        d[i + 2] = 22 + k * 58;
+        continue;
+      }
+
+      // Kill sun-glint: warm highlights collapse toward mean water.
+      const crushed =
+        warm > 28 && lum > 70 ? 38 + (lum - 70) * 0.18 : 24 + lum * 0.42;
+
+      if (fy > 0.8) {
+        d[i] = 48 + crushed * 0.55;
+        d[i + 1] = 62 + crushed * 0.48;
+        d[i + 2] = 70 + crushed * 0.42;
+      } else {
+        d[i] = 12 + crushed * 0.22 + (1 - depth) * 8;
+        d[i + 1] = 72 + crushed * 0.38 - depth * 16;
+        d[i + 2] = 96 + crushed * 0.42 - depth * 10;
+      }
     }
   }
   x.putImageData(data, 0, 0);
@@ -97,6 +161,19 @@ function paintLiveSky(ctx, w, h, light) {
   ctx.fillRect(0, 0, w, h);
 }
 
+/** Cool teal sea + wet sand so punched holes never show the sunset JPEG. */
+function paintDaySeascape(ctx, w, h, light) {
+  const y0 = h * 0.44;
+  const g = ctx.createLinearGradient(0, y0, 0, h);
+  g.addColorStop(0, light.water);
+  g.addColorStop(0.42, light.water);
+  g.addColorStop(0.72, light.waterDeep);
+  g.addColorStop(0.88, "rgb(70, 98, 108)");
+  g.addColorStop(1, "rgb(86, 104, 110)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, y0, w, h - y0);
+}
+
 export function createSwell(canvas) {
   const ctx = canvas.getContext("2d", { alpha: false });
   let running = true;
@@ -104,7 +181,8 @@ export function createSwell(canvas) {
   let palette = skyPalette(new Date());
   const plate = new Image();
   plate.src = coastUrl;
-  let land = null;
+  let landWarm = null;
+  let landDay = null;
 
   const resize = () => {
     const dpr = Math.min(1.75, window.devicePixelRatio || 1);
@@ -118,8 +196,9 @@ export function createSwell(canvas) {
   };
 
   const ensureLand = () => {
-    if (land || !plate.complete || !plate.naturalWidth) return;
-    land = knockOutSky(plate);
+    if (landDay || !plate.complete || !plate.naturalWidth) return;
+    landWarm = knockOutSky(plate);
+    landDay = recastDaylight(landWarm);
   };
 
   const draw = () => {
@@ -136,17 +215,27 @@ export function createSwell(canvas) {
 
     paintLiveSky(ctx, w, h, palette);
 
-    if (palette.warm > 0.04 && plate.complete && plate.naturalWidth) {
+    const warm = palette.warm;
+    const cool = palette.cool;
+    // Original sunset JPEG only when the real Scripps sun is near the horizon.
+    const showSunsetPlate = warm > 0.35 && cool < 0.4;
+
+    if (cool > 0.25) {
       ctx.save();
-      ctx.globalAlpha = palette.warm * 0.92;
-      drawCover(ctx, plate, w, h);
+      ctx.globalAlpha = Math.min(1, cool * 1.05);
+      paintDaySeascape(ctx, w, h, palette);
       ctx.restore();
     }
 
-    if (land) {
+    if (showSunsetPlate && landWarm) {
       ctx.save();
-      if (palette.night > 0.2) ctx.globalAlpha = 1 - 0.35 * palette.night;
-      drawCover(ctx, land, w, h);
+      ctx.globalAlpha = Math.min(1, (warm - 0.35) / 0.5);
+      drawCover(ctx, landWarm, w, h);
+      ctx.restore();
+    } else if (landDay) {
+      ctx.save();
+      ctx.globalAlpha = palette.night > 0.2 ? 1 - 0.28 * palette.night : 1;
+      drawCover(ctx, landDay, w, h);
       ctx.restore();
     }
 
@@ -160,20 +249,20 @@ export function createSwell(canvas) {
     }
 
     const sun = sunScreenPos(date, w, h);
-    if (palette.sunInFrame > 0.08 && sun.el > -6 && palette.warm > 0.15) {
+    if (palette.sunInFrame > 0.08 && sun.el > -6 && showSunsetPlate) {
       const glow = ctx.createRadialGradient(sun.x, sun.y, 6, sun.x, sun.y, h * 0.38);
       glow.addColorStop(0, palette.sun);
       glow.addColorStop(0.22, palette.horizon);
       glow.addColorStop(1, "rgba(0,0,0,0)");
       ctx.save();
       ctx.globalCompositeOperation = "soft-light";
-      ctx.globalAlpha = palette.warm;
+      ctx.globalAlpha = warm;
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, w, h);
       ctx.restore();
       ctx.beginPath();
       ctx.fillStyle = palette.sun;
-      ctx.globalAlpha = 0.4 + 0.5 * palette.sunInFrame * palette.warm;
+      ctx.globalAlpha = 0.4 + 0.5 * palette.sunInFrame * warm;
       ctx.arc(sun.x, sun.y, Math.max(7, 12 + sun.el * 0.1), 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
@@ -197,12 +286,12 @@ export function createSwell(canvas) {
       ctx.lineTo(w, h);
       ctx.closePath();
       ctx.save();
-      ctx.globalCompositeOperation = "soft-light";
-      ctx.globalAlpha = layer.alpha;
+      ctx.globalCompositeOperation = cool > 0.35 ? "source-over" : "soft-light";
+      ctx.globalAlpha = layer.alpha * (cool > 0.35 ? 0.4 : 1);
       ctx.fillStyle = palette.water;
       ctx.fill();
       ctx.restore();
-      ctx.globalAlpha = 0.14;
+      ctx.globalAlpha = 0.16;
       ctx.strokeStyle = palette.foam;
       ctx.lineWidth = 0.9;
       ctx.stroke();
@@ -215,7 +304,8 @@ export function createSwell(canvas) {
   resize();
   window.addEventListener("resize", resize);
   plate.addEventListener("load", () => {
-    land = null;
+    landWarm = null;
+    landDay = null;
     ensureLand();
   });
   document.addEventListener("visibilitychange", () => {
