@@ -36,7 +36,8 @@ function applyGrade(root, light) {
   root.style.setProperty("--plate-contrast", photo.contrast.toFixed(3));
   root.style.setProperty("--grade-color", light.overlayAlpha.toFixed(3));
   root.style.setProperty("--grade-soft", light.skyWash.toFixed(3));
-  root.style.setProperty("--grade-screen", light.screenLift.toFixed(3));
+  root.style.setProperty("--grade-sat", light.satBlend.toFixed(3));
+  root.style.setProperty("--grade-vivid", light.vivid.toFixed(3));
   root.style.setProperty("--grade-water", light.waterWash.toFixed(3));
   root.style.setProperty("--grade-sky", light.skyCover.toFixed(3));
   root.style.setProperty("--grade-sun", light.sunHide.toFixed(3));

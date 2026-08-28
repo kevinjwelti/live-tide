@@ -77,9 +77,26 @@ body {
   opacity: var(--grade-color, 0);
   background: linear-gradient(
     180deg,
-    rgb(118, 186, 232) 0%,
-    rgb(64, 156, 198) 48%,
-    rgb(32, 118, 158) 100%
+    rgb(28, 118, 214) 0%,
+    rgb(0, 160, 200) 46%,
+    rgb(196, 226, 236) 100%
+  );
+}
+
+.grade-sat {
+  mix-blend-mode: saturation;
+  opacity: var(--grade-sat, 0);
+  background: rgb(20, 140, 220);
+}
+
+.grade-vivid {
+  mix-blend-mode: overlay;
+  opacity: var(--grade-vivid, 0);
+  background: linear-gradient(
+    180deg,
+    rgb(16, 86, 186) 0%,
+    rgb(0, 156, 200) 50%,
+    rgb(236, 246, 252) 100%
   );
 }
 
@@ -88,16 +105,10 @@ body {
   opacity: var(--grade-soft, 0);
   background: linear-gradient(
     180deg,
-    rgb(244, 250, 255) 0%,
-    rgb(210, 232, 248) 36%,
-    rgb(150, 196, 224) 100%
+    rgb(70, 150, 230) 0%,
+    rgb(0, 176, 210) 55%,
+    rgb(230, 246, 252) 100%
   );
-}
-
-.grade-screen {
-  mix-blend-mode: screen;
-  opacity: var(--grade-screen, 0);
-  background: rgb(168, 206, 236);
 }
 
 .grade-water {
@@ -105,8 +116,9 @@ body {
   opacity: var(--grade-water, 0);
   background: linear-gradient(
     180deg,
-    transparent 46%,
-    rgb(36, 128, 168) 100%
+    transparent 44%,
+    rgb(0, 186, 196) 72%,
+    rgb(0, 132, 168) 100%
   );
 }
 
@@ -114,20 +126,21 @@ body {
   opacity: var(--grade-sky, 0);
   background: linear-gradient(
     180deg,
-    rgb(64, 152, 226) 0%,
-    rgb(118, 188, 236) 28%,
-    rgba(176, 218, 246, 0.5) 46%,
-    rgba(176, 218, 246, 0) 58%
+    rgb(22, 108, 210) 0%,
+    rgb(48, 148, 226) 22%,
+    rgb(72, 172, 232) 38%,
+    rgba(90, 186, 236, 0.45) 48%,
+    rgba(90, 186, 236, 0) 58%
   );
 }
 
 .grade-sun {
   opacity: var(--grade-sun, 0);
   background: radial-gradient(
-    ellipse 42% 36% at 17% 41%,
-    rgb(176, 216, 244) 0%,
-    rgb(158, 206, 238) 34%,
-    rgba(158, 206, 238, 0) 68%
+    ellipse 44% 38% at 17% 41%,
+    rgb(64, 160, 230) 0%,
+    rgb(48, 148, 226) 36%,
+    rgba(48, 148, 226, 0) 70%
   );
 }
 
