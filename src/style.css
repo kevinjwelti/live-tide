@@ -158,24 +158,19 @@ body {
 }
 
 .mast-left::before {
-  inset: -1.2rem -2.6rem -0.2rem -1.7rem;
-  background: radial-gradient(
-    108% 82% at 14% 20%,
-    rgba(6, 10, 16, 0.72) 0%,
-    rgba(6, 10, 16, 0.38) 38%,
-    rgba(6, 10, 16, 0.1) 64%,
-    transparent 78%
-  );
+  inset: -0.9rem -1.7rem -0.95rem -1.25rem;
+  background: rgba(6, 10, 16, 0.52);
+  border-radius: 1.15rem;
+  box-shadow: 0 0 34px 14px rgba(6, 10, 16, 0.28);
 }
 
 .mast-right::before {
-  inset: -1.2rem -1.4rem -0.15rem -2.8rem;
+  inset: -1rem -1.3rem -0.35rem -2.2rem;
   background: radial-gradient(
     112% 86% at 86% 18%,
-    rgba(6, 10, 16, 0.76) 0%,
-    rgba(6, 10, 16, 0.4) 36%,
-    rgba(6, 10, 16, 0.1) 64%,
-    transparent 78%
+    rgba(6, 10, 16, 0.58) 0%,
+    rgba(6, 10, 16, 0.28) 42%,
+    transparent 76%
   );
 }
 
@@ -190,12 +185,11 @@ body {
 
 .tagline {
   margin-top: 0.45rem;
-  font-size: clamp(0.64rem, 1.05vw, 0.8rem);
-  letter-spacing: 0.34em;
-  font-weight: 400;
-  color: var(--cream);
-  text-shadow: var(--type-halo-tight);
-  -webkit-text-stroke: 0.35px rgba(6, 12, 20, 0.45);
+  font-size: clamp(0.72rem, 1.15vw, 0.88rem);
+  letter-spacing: 0.28em;
+  font-weight: 500;
+  color: #fff;
+  text-shadow: var(--type-halo);
 }
 
 .current {
@@ -204,12 +198,11 @@ body {
 
 .eyebrow {
   display: block;
-  font-size: 0.7rem;
-  letter-spacing: 0.32em;
-  font-weight: 400;
-  color: var(--cream);
-  text-shadow: var(--type-halo-tight);
-  -webkit-text-stroke: 0.35px rgba(6, 12, 20, 0.45);
+  font-size: 0.78rem;
+  letter-spacing: 0.26em;
+  font-weight: 500;
+  color: #fff;
+  text-shadow: var(--type-halo);
 }
 
 .status-row {
@@ -295,7 +288,7 @@ body {
   appearance: none;
   background: none;
   border: 0;
-  color: inherit;
+  color: #fff;
   cursor: pointer;
   display: inline-flex;
   align-items: flex-start;
@@ -303,7 +296,7 @@ body {
   text-align: right;
   font: inherit;
   padding: 0.2rem 0 0.2rem 0.4rem;
-  text-shadow: var(--type-halo-tight);
+  text-shadow: var(--type-halo);
 }
 
 .place-btn .pin {
@@ -325,12 +318,11 @@ body {
 .place-sub {
   display: block;
   margin-top: 0.28rem;
-  font-size: 0.66rem;
-  letter-spacing: 0.16em;
-  color: var(--cream);
-  font-weight: 400;
-  text-shadow: var(--type-halo-tight);
-  -webkit-text-stroke: 0.35px rgba(6, 12, 20, 0.45);
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
+  color: #fff;
+  font-weight: 500;
+  text-shadow: var(--type-halo);
 }
 
 .date-line {
@@ -503,32 +495,38 @@ body {
 
 .moon-name {
   margin-top: 0.22rem;
-  font-size: 0.8rem;
-  letter-spacing: 0.2em;
-  font-weight: 400;
-  color: var(--cream);
-  text-shadow: var(--type-halo-tight);
-  -webkit-text-stroke: 0.35px rgba(6, 12, 20, 0.45);
+  font-size: 0.86rem;
+  letter-spacing: 0.18em;
+  font-weight: 500;
+  color: #fff;
+  text-shadow: var(--type-halo);
 }
 
 .moon-pct {
   margin-top: 0.12rem;
   font-family: var(--serif);
-  font-size: 1.08rem;
-  text-shadow: var(--type-halo-tight);
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: #fff;
+  text-shadow: var(--type-halo);
 }
 
 .credit {
   position: relative;
   z-index: 2;
+  justify-self: center;
+  width: max-content;
+  max-width: calc(100% - 2rem);
   text-align: center;
-  font-size: 0.66rem;
-  letter-spacing: 0.22em;
-  font-weight: 400;
-  color: var(--cream);
-  padding: 0.5rem 1.2rem 0.3rem;
-  text-shadow: var(--type-halo-tight);
-  -webkit-text-stroke: 0.3px rgba(6, 12, 20, 0.45);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  font-weight: 500;
+  color: #fff;
+  padding: 0.42rem 0.95rem 0.4rem;
+  border-radius: 0.55rem;
+  background: rgba(8, 12, 18, 0.72);
+  box-shadow: 0 0 16px 4px rgba(8, 12, 18, 0.28);
+  text-shadow: var(--type-halo);
 }
 
 @media (max-width: 900px), (orientation: portrait) {
