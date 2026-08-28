@@ -29,14 +29,19 @@ function sunScreenPos(date, w, h) {
 }
 
 function applyGrade(root, light) {
-  const { cool, night, photo, overlayAlpha, skyWash } = light;
+  const { night, photo } = light;
   root.style.setProperty("--plate-hue", `${photo.hue}deg`);
   root.style.setProperty("--plate-sat", photo.sat.toFixed(3));
   root.style.setProperty("--plate-bright", photo.bright.toFixed(3));
   root.style.setProperty("--plate-contrast", photo.contrast.toFixed(3));
-  root.style.setProperty("--grade-color", overlayAlpha.toFixed(3));
-  root.style.setProperty("--grade-soft", skyWash.toFixed(3));
-  root.style.setProperty("--grade-night", (0.68 * night).toFixed(3));
+  root.style.setProperty("--grade-color", light.overlayAlpha.toFixed(3));
+  root.style.setProperty("--grade-soft", light.skyWash.toFixed(3));
+  root.style.setProperty("--grade-screen", light.screenLift.toFixed(3));
+  root.style.setProperty("--grade-water", light.waterWash.toFixed(3));
+  root.style.setProperty("--grade-sky", light.skyCover.toFixed(3));
+  root.style.setProperty("--grade-sun", light.sunHide.toFixed(3));
+  root.style.setProperty("--grade-night", (0.78 * night).toFixed(3));
+  root.style.setProperty("--vignette", light.vignette.toFixed(3));
   root.style.setProperty("--type", light.type);
   root.style.setProperty("--cream", light.type);
 }
