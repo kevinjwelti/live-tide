@@ -28,7 +28,7 @@ const els = {
 };
 
 let station = loadSavedStation();
-createSwell();
+const swell = createSwell();
 const chart = createChart(document.querySelector("#chart-stage"));
 
 function setStatus(text) {

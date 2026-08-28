@@ -156,112 +156,38 @@ function smoothstep(a, b, x) {
   return t * t * (3 - 2 * t);
 }
 
-const NIGHT = {
-  zenith: [8, 14, 30],
-  horizon: [16, 26, 48],
-  water: [8, 22, 38],
-  foam: [168, 188, 210],
-  sun: [210, 220, 240],
-  type: "#e7eef6",
-};
-const TWILIGHT = {
-  zenith: [36, 34, 68],
-  horizon: [186, 108, 82],
-  water: [28, 44, 64],
-  foam: [232, 210, 186],
-  sun: [255, 176, 96],
-  type: "#f3ead8",
-};
-const GOLDEN = {
-  zenith: [98, 132, 168],
-  horizon: [236, 164, 92],
-  water: [36, 86, 110],
-  foam: [244, 228, 204],
-  sun: [255, 198, 112],
-  type: "#f3ead8",
-};
-const MORNING = {
-  zenith: [118, 186, 232],
-  horizon: [198, 224, 242],
-  water: [36, 118, 148],
-  foam: [236, 246, 252],
-  sun: [255, 250, 236],
-  type: "#eef4f8",
-};
-const DAY = {
-  zenith: [96, 176, 232],
-  horizon: [186, 220, 242],
-  water: [28, 114, 142],
-  foam: [240, 248, 252],
-  sun: [255, 252, 244],
-  type: "#eef4f8",
-};
-
-function mixFive(weights, palettes) {
-  const sum = weights.reduce((s, w) => s + w, 0) || 1;
-  const keys = ["zenith", "horizon", "water", "foam", "sun"];
-  const out = {};
-  for (const key of keys) {
-    out[key] = [0, 0, 0];
-    palettes.forEach((p, i) => {
-      const w = weights[i] / sum;
-      out[key][0] += p[key][0] * w;
-      out[key][1] += p[key][1] * w;
-      out[key][2] += p[key][2] * w;
-    });
-  }
-  const top = palettes[weights.indexOf(Math.max(...weights))];
-  out.type = top.type;
-  return out;
-}
+const NIGHT = { type: "#e7eef6" };
+const GOLDEN = { type: "#f3ead8" };
+const DAY = { type: "#eef4f8" };
 
 /**
- * Continuous lighting from Scripps solar altitude.
- * Golden warmth only near the real horizon; morning/day is cool and bright.
+ * One multiply gel over the noon plate, from real Scripps sun position.
+ * Midday (sun well up): identity — the photo as shot.
+ * Late day: slightly warmer and dimmer.
+ * Night: clearly dark.
  */
 export function skyPalette(date) {
   const { elevation: el, azimuth: az } = solarPosition(date);
-  const evening = smoothstep(155, 210, az);
-  const nightW = 1 - smoothstep(-16, -6, el);
-  const twilightW = smoothstep(-14, -6, el) * (1 - smoothstep(-3, 2, el));
-  const goldenHi = 8 + 8 * evening;
-  const goldenW = smoothstep(-5, 1, el) * (1 - smoothstep(goldenHi - 6, goldenHi, el));
-  const morningW = (1 - evening) * smoothstep(4, 10, el) * (1 - smoothstep(16, 26, el));
-  const dayW = smoothstep(12 + 4 * evening, 22 + 4 * evening, el);
-  const mixed = mixFive(
-    [nightW, twilightW, goldenW, morningW, dayW],
-    [NIGHT, TWILIGHT, GOLDEN, MORNING, DAY]
-  );
-  const warm = Math.min(1, goldenW + twilightW * 0.7);
-  const cool = Math.min(1, Math.max(0, morningW + dayW - warm * 0.35));
-  const facing = 258;
-  const sunAhead = Math.cos(((az - facing) * Math.PI) / 180);
-  const sunInFrame =
-    Math.max(0, sunAhead) * smoothstep(-6, 1, el) * (1 - smoothstep(20, 36, el) * 0.4);
+  const night = 1 - smoothstep(-14, -2, el);
+  const day = smoothstep(10, 32, el);
+  const lowSun = (1 - day) * (1 - night);
+  const evening = smoothstep(150, 220, az);
+  const warm = lowSun * evening;
+  const cool = day;
+
+  const gel = mix(mix([255, 255, 255], [255, 176, 110], evening), [16, 26, 48], night);
+  const overlayAlpha = (0.14 + 0.2 * evening) * lowSun + 0.82 * night;
 
   return {
     elevation: el,
     azimuth: az,
-    zenith: rgb(mixed.zenith),
-    horizon: rgb(mixed.horizon),
-    waterDeep: rgb(mix(mixed.water, [6, 16, 24], 0.55)),
-    water: rgb(mixed.water),
-    foam: rgb(mixed.foam),
-    sun: rgb(mixed.sun),
-    type: nightW > 0.5 ? "#e7eef6" : warm > 0.45 ? "#f3ead8" : "#eef4f8",
-    night: nightW,
+    overlayColor: rgb(gel),
+    overlayAlpha,
+    night,
     warm,
     cool,
-    sunInFrame,
-    gradeKey: `${(el * 4).toFixed(0)}:${(warm * 20).toFixed(0)}:${(cool * 20).toFixed(0)}:${(nightW * 20).toFixed(0)}`,
-    photo: {
-      hue: 0,
-      sat: 1 + 0.08 * cool - 0.45 * nightW,
-      bright: (1 - nightW) * (1.08 + 0.12 * cool) + 0.38 * nightW,
-      contrast: 1.06 + 0.08 * cool - 0.08 * nightW,
-    },
-    overlayAlpha: 0.8 * cool,
-    vignette: Math.min(1, 0.18 + 0.72 * (1 - cool) + 0.12 * nightW),
-    nightFill: rgb(NIGHT.zenith, 0.72 * nightW),
+    type: night > 0.5 ? NIGHT.type : warm > 0.45 ? GOLDEN.type : DAY.type,
+    vignette: 0.12 + 0.22 * lowSun + 0.36 * night,
+    gradeKey: `${(el * 4).toFixed(0)}:${(warm * 20).toFixed(0)}:${(cool * 20).toFixed(0)}:${(night * 20).toFixed(0)}`,
   };
 }

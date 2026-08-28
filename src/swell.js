@@ -2,16 +2,15 @@ import { skyPalette } from "./time.js";
 import coastUrl from "./assets/coast.png";
 
 function applyGrade(root, light) {
-  const { night, cool, overlayAlpha, vignette } = light;
-  root.style.setProperty("--grade-day", overlayAlpha.toFixed(3));
-  root.style.setProperty("--grade-night", (0.72 * night).toFixed(3));
-  root.style.setProperty("--vignette", vignette.toFixed(3));
+  root.style.setProperty("--grade-alpha", light.overlayAlpha.toFixed(3));
+  root.style.setProperty("--grade-color", light.overlayColor);
+  root.style.setProperty("--vignette", light.vignette.toFixed(3));
   root.style.setProperty("--type", light.type);
   root.style.setProperty("--cream", light.type);
-  root.dataset.light = cool > 0.4 ? "day" : night > 0.45 ? "night" : "gold";
+  root.dataset.light = light.cool > 0.4 ? "day" : light.night > 0.45 ? "night" : "gold";
 }
 
-/** Plate + one time-of-day grade. No swell canvas — it blurred the photo. */
+/** Plate + one sun-driven multiply gel. No swell canvas. */
 export function createSwell() {
   const root = document.documentElement;
   const plate = document.querySelector("#coast-plate");

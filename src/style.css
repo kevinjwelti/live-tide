@@ -67,16 +67,10 @@ body {
   pointer-events: none;
 }
 
-.grade-day {
-  mix-blend-mode: hue;
-  opacity: var(--grade-day, 0);
-  background: rgb(42, 128, 196);
-}
-
-.grade-night {
+.grade-light {
   mix-blend-mode: multiply;
-  opacity: var(--grade-night, 0);
-  background: rgb(8, 14, 32);
+  opacity: var(--grade-alpha, 0);
+  background: var(--grade-color, #ffffff);
 }
 
 .vignette {
