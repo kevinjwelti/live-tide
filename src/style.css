@@ -416,11 +416,11 @@ body {
   transform: translateX(-50%);
   text-align: center;
   min-width: 6.5rem;
-  padding: 0.32rem 0.62rem 0.4rem;
-  border-radius: 0.55rem;
+  padding: 0.38rem 0.7rem 0.45rem;
+  border-radius: 0.6rem;
   text-shadow: var(--type-halo-tight);
-  background: rgba(8, 12, 18, 0.55);
-  box-shadow: 0 0 18px 6px rgba(8, 12, 18, 0.2);
+  background: rgba(8, 12, 18, 0.72);
+  box-shadow: 0 0 16px 4px rgba(8, 12, 18, 0.28);
 }
 
 .extremum .t-time {
@@ -487,8 +487,9 @@ body {
   font-size: 0.58rem;
   letter-spacing: 0.22em;
   color: var(--cream-dim);
-  padding: 0.35rem 0 0.15rem;
+  padding: 0.45rem 1.2rem 0.25rem;
   text-shadow: var(--type-halo-tight);
+  background: radial-gradient(ellipse at 50% 40%, rgba(6, 10, 16, 0.5) 0%, transparent 72%);
 }
 
 @media (max-width: 900px), (orientation: portrait) {
