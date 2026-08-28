@@ -4,6 +4,7 @@ import coastUrl from "./assets/coast.png";
 function applyGrade(root, light) {
   root.style.setProperty("--grade-alpha", light.overlayAlpha.toFixed(3));
   root.style.setProperty("--grade-color", light.overlayColor);
+  root.style.setProperty("--read-scrim", light.scrim.toFixed(3));
   root.style.setProperty("--vignette", light.vignette.toFixed(3));
   root.style.setProperty("--type", light.type);
   root.style.setProperty("--cream", light.type);

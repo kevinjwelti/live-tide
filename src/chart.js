@@ -1,7 +1,7 @@
 import { formatClock, startOfZonedDay, startOfNextZonedDay } from "./time.js";
 import { sampleTide } from "./tide.js";
 
-const PAD = { top: 0.12, bottom: 0.22, left: 0.03, right: 0.04 };
+const PAD = { top: 0.2, bottom: 0.26, left: 0.03, right: 0.04 };
 
 function layout(w, h, series, rangeStart, rangeEnd) {
   const left = w * PAD.left;

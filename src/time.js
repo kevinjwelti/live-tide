@@ -177,6 +177,9 @@ export function skyPalette(date) {
 
   const gel = mix(mix([255, 255, 255], [255, 176, 110], evening), [16, 26, 48], night);
   const overlayAlpha = (0.14 + 0.2 * evening) * lowSun + 0.82 * night;
+  // Modest always-on dim so white type holds on the noon plate.
+  // Night gel already darkens the photo, so this eases off after sunset.
+  const scrim = 0.3 * (1 - night);
 
   return {
     elevation: el,
@@ -186,8 +189,9 @@ export function skyPalette(date) {
     night,
     warm,
     cool,
+    scrim,
     type: night > 0.5 ? NIGHT.type : warm > 0.45 ? GOLDEN.type : DAY.type,
-    vignette: 0.12 + 0.22 * lowSun + 0.36 * night,
+    vignette: 0.55 + 0.25 * night,
     gradeKey: `${(el * 4).toFixed(0)}:${(warm * 20).toFixed(0)}:${(cool * 20).toFixed(0)}:${(night * 20).toFixed(0)}`,
   };
 }
