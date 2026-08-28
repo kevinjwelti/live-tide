@@ -45,9 +45,11 @@ export function createChart(stage) {
   const canvas = stage.querySelector("#chart");
   const ctx = canvas.getContext("2d");
   const nowLine = stage.querySelector("#now-line");
+  const playLine = stage.querySelector("#playhead-line");
   const playhead = stage.querySelector("#playhead");
   const yAxis = stage.querySelector("#y-axis");
   const labelsEl = stage.querySelector("#extremum-labels");
+  const hit = stage.querySelector("#chart-hit") ?? stage;
 
   let series = [];
   let extrema = [];
@@ -171,10 +173,16 @@ export function createChart(stage) {
     if (!sample) return;
     const px = L.x(Math.min(rangeEnd, Math.max(rangeStart, timeMs)));
     const py = L.y(sample.height);
+    const exploring = scrubbing || Boolean(anim) || Math.abs(timeMs - now) > 8000;
     playhead.style.opacity = "1";
     playhead.style.left = `${px}px`;
     playhead.style.top = `${py}px`;
-    playhead.classList.toggle("live", Math.abs(timeMs - now) < 15000);
+    playhead.classList.toggle("live", !exploring);
+    playhead.classList.toggle("exploring", exploring);
+    if (playLine) {
+      playLine.style.opacity = exploring ? "1" : "0";
+      playLine.style.left = `${px}px`;
+    }
   };
 
   const emit = () => {
@@ -208,7 +216,7 @@ export function createChart(stage) {
     if (anim) cancelAnimationFrame(anim);
     anim = null;
     clearTimeout(idleTimer);
-    stage.setPointerCapture(event.pointerId);
+    hit.setPointerCapture(event.pointerId);
     viewTime = xToTime(event.clientX);
     emit();
     event.preventDefault();
@@ -233,12 +241,12 @@ export function createChart(stage) {
     if (event.cancelable) event.preventDefault();
   };
 
-  stage.addEventListener("pointerdown", onPointerDown);
-  stage.addEventListener("pointermove", onPointerMove);
-  stage.addEventListener("pointerup", onPointerUp);
-  stage.addEventListener("pointercancel", onPointerUp);
-  stage.addEventListener("touchstart", preventScroll, { passive: false });
-  stage.addEventListener("touchmove", preventScroll, { passive: false });
+  hit.addEventListener("pointerdown", onPointerDown);
+  hit.addEventListener("pointermove", onPointerMove);
+  hit.addEventListener("pointerup", onPointerUp);
+  hit.addEventListener("pointercancel", onPointerUp);
+  hit.addEventListener("touchstart", preventScroll, { passive: false });
+  hit.addEventListener("touchmove", preventScroll, { passive: false });
 
   window.addEventListener("resize", () => {
     paint();

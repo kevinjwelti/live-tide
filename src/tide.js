@@ -96,7 +96,10 @@ export async function fetchTide(station, now = new Date()) {
   const hiloUrl = endpoint({ station, begin, end, interval: "hilo" });
 
   try {
-    const [curveRes, hiloRes] = await Promise.all([fetch(curveUrl), fetch(hiloUrl)]);
+    const [curveRes, hiloRes] = await Promise.all([
+      fetch(curveUrl, { mode: "cors" }),
+      fetch(hiloUrl, { mode: "cors" }),
+    ]);
     if (!curveRes.ok || !hiloRes.ok) throw new Error("NOAA request failed");
     const [curveJson, hiloJson] = await Promise.all([curveRes.json(), hiloRes.json()]);
     if (!curveJson.predictions || curveJson.error) {

@@ -64,7 +64,7 @@ function renderTideReadout(timeMs, sample, exploring) {
   els.direction.textContent = rising ? "RISING" : "FALLING";
   els.dirMark.className = `dir-mark ${rising ? "rising" : "falling"}`;
   els.height.textContent = sample.height.toFixed(1);
-  if (exploring && Math.abs(timeMs - Date.now()) > 20000) {
+  if (exploring && Math.abs(timeMs - Date.now()) > 5000) {
     els.scrubNote.hidden = false;
     els.scrubNote.textContent = formatClock(new Date(timeMs));
   } else {
