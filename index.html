@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="LIVE TIDE" />
+    <meta name="theme-color" content="#15202b" />
+    <meta
+      name="description"
+      content="Living tide wall art for San Diego and La Jolla, drawn from NOAA CO-OPS predictions."
+    />
+    <title>LIVE TIDE</title>
+    <link rel="icon" href="/live-tide/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/live-tide/manifest.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <canvas id="swell" class="swell" aria-hidden="true"></canvas>
+    <div class="vignette" aria-hidden="true"></div>
+
+    <main class="frame">
+      <header class="mast">
+        <div class="mast-left">
+          <h1 class="wordmark">LIVE TIDE</h1>
+          <p class="tagline">THE OCEAN IS ALWAYS IN MOTION</p>
+          <div class="current">
+            <span class="eyebrow">CURRENT TIDE</span>
+            <div class="status-row">
+              <span id="direction">—</span>
+              <span id="dir-mark" class="dir-mark" aria-hidden="true"></span>
+            </div>
+            <div class="height-row">
+              <span id="height" class="height">—</span>
+              <span class="unit">ft</span>
+            </div>
+            <p id="scrub-note" class="scrub-note" hidden></p>
+          </div>
+        </div>
+
+        <div class="mast-right">
+          <button id="station-btn" class="place-btn" type="button" aria-label="Switch tide station">
+            <svg class="pin" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M12 2.2c-3.7 0-6.7 2.9-6.7 6.6 0 4.9 6.7 12.9 6.7 12.9s6.7-8 6.7-12.9c0-3.7-3-6.6-6.7-6.6zm0 9a2.4 2.4 0 1 1 0-4.8 2.4 2.4 0 0 1 0 4.8z"
+              />
+            </svg>
+            <span>
+              <span id="place-name" class="place-name">SAN DIEGO, CALIFORNIA</span>
+              <span id="place-sub" class="place-sub">Tap to switch · Scripps Pier, La Jolla</span>
+            </span>
+          </button>
+          <p id="date-line" class="date-line"></p>
+          <p id="clock-line" class="clock-line"></p>
+        </div>
+      </header>
+
+      <section class="chart-stage" id="chart-stage" aria-label="Today's tide curve">
+        <canvas id="chart" class="chart-canvas"></canvas>
+        <div id="now-line" class="now-line" aria-hidden="true"></div>
+        <div id="playhead" class="playhead" aria-hidden="true">
+          <span class="playhead-dot"></span>
+        </div>
+        <div id="y-axis" class="y-axis"></div>
+        <div id="extremum-labels" class="extremum-labels"></div>
+        <p id="status-msg" class="status-msg" hidden></p>
+      </section>
+
+      <footer class="glass">
+        <div class="glass-col moon-col">
+          <svg id="moon-icon" class="foot-icon moon-icon" viewBox="0 0 48 48" aria-hidden="true"></svg>
+          <div>
+            <span class="eyebrow">MOON PHASE</span>
+            <p id="moon-name" class="foot-title">—</p>
+            <p id="moon-pct" class="foot-sub"></p>
+          </div>
+        </div>
+        <div class="glass-col">
+          <svg class="foot-icon" viewBox="0 0 48 48" aria-hidden="true">
+            <path
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              d="M4 30c4-8 8-8 12 0s8 8 12 0 8-8 12 0 4 8 8 0"
+            />
+          </svg>
+          <div>
+            <span class="eyebrow">TIDE TIP</span>
+            <p class="foot-copy">
+              High water is the hour for swimming, surfing, and staying in the swell.
+            </p>
+          </div>
+        </div>
+        <div class="glass-col">
+          <svg class="foot-icon" viewBox="0 0 48 48" aria-hidden="true">
+            <path
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M24 8c2 6 8 10 8 16a8 8 0 1 1-16 0c0-6 6-10 8-16zM16 28c-4 2-8 8-8 8m24-8c4 2 8 8 8 8M24 40v-6"
+            />
+          </svg>
+          <div>
+            <span class="eyebrow">LOW TIDE TIP</span>
+            <p class="foot-copy">
+              Low water opens the beach for walking, tidepools, and shell hunting.
+            </p>
+          </div>
+        </div>
+        <div class="glass-col">
+          <svg class="foot-icon" viewBox="0 0 48 48" aria-hidden="true">
+            <circle cx="24" cy="24" r="8" fill="none" stroke="currentColor" stroke-width="1.6" />
+            <path
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              d="M24 6v4M24 38v4M6 24h4M38 24h4M11 11l3 3M34 34l3 3M11 37l3-3M34 14l3-3"
+            />
+          </svg>
+          <div>
+            <span class="eyebrow">REMEMBER</span>
+            <p class="foot-copy">Always check your local tide conditions before you go.</p>
+          </div>
+        </div>
+      </footer>
+
+      <p class="credit">
+        Tide predictions in feet, MLLW · NOAA NOS CO-OPS
+      </p>
+    </main>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
