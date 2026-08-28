@@ -9,8 +9,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -32,42 +30,3 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
           force_orphan: true
-
-  github-pages:
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Detect Pages
-        id: pages
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if gh api "repos/${GITHUB_REPOSITORY}/pages" >/tmp/pages.json 2>/dev/null; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-            echo "build_type=$(jq -r '.build_type' /tmp/pages.json)" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "build_type=none" >> "$GITHUB_OUTPUT"
-            echo "GitHub Pages is not enabled yet. The gh-pages branch is published; enable it in Settings → Pages."
-          fi
-      - if: steps.pages.outputs.enabled == 'true' && steps.pages.outputs.build_type == 'workflow'
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - if: steps.pages.outputs.enabled == 'true' && steps.pages.outputs.build_type == 'workflow'
-        run: npm ci
-      - if: steps.pages.outputs.enabled == 'true' && steps.pages.outputs.build_type == 'workflow'
-        run: npm run build
-      - if: steps.pages.outputs.enabled == 'true' && steps.pages.outputs.build_type == 'workflow'
-        uses: actions/configure-pages@v5
-      - if: steps.pages.outputs.enabled == 'true' && steps.pages.outputs.build_type == 'workflow'
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-      - if: steps.pages.outputs.enabled == 'true' && steps.pages.outputs.build_type == 'workflow'
-        id: deployment
-        uses: actions/deploy-pages@v4
