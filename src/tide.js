@@ -1,21 +1,24 @@
 import { gmtStamp, parseNoaaGmt } from "./time.js";
 
+// Default is Scripps Pier / La Jolla so highs/lows match Surfline Scripps.
+// San Diego Bay stays as the tap-to-switch other station.
 export const STATIONS = [
-  {
-    id: "9410170",
-    name: "SAN DIEGO, CALIFORNIA",
-    hint: "Tap to switch · Scripps Pier, La Jolla",
-  },
   {
     id: "9410230",
     name: "LA JOLLA, CALIFORNIA",
     hint: "Tap to switch · San Diego Bay",
+  },
+  {
+    id: "9410170",
+    name: "SAN DIEGO, CALIFORNIA",
+    hint: "Tap to switch · Scripps Pier, La Jolla",
   },
 ];
 
 export const DEFAULT_STATION = STATIONS[0].id;
 const APP = "sandiego-tide-art";
 const CACHE_KEY = "live-tide-cache-v1";
+const STATION_KEY = "live-tide-station-v2";
 export const REFRESH_MS = 30 * 60 * 1000;
 
 function stationById(id) {
@@ -24,7 +27,7 @@ function stationById(id) {
 
 export function loadSavedStation() {
   try {
-    const id = localStorage.getItem("live-tide-station");
+    const id = localStorage.getItem(STATION_KEY);
     return stationById(id);
   } catch {
     return stationById(DEFAULT_STATION);
@@ -33,7 +36,7 @@ export function loadSavedStation() {
 
 export function saveStation(id) {
   try {
-    localStorage.setItem("live-tide-station", id);
+    localStorage.setItem(STATION_KEY, id);
   } catch {
     /* ignore quota */
   }
