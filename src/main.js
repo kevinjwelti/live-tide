@@ -74,6 +74,7 @@ function renderTideReadout(timeMs, sample, exploring) {
 
 chart.onView((timeMs, sample, exploring) => {
   renderTideReadout(timeMs, sample, exploring);
+  swell.setTime(new Date(timeMs));
 });
 
 async function loadTide(reason = "refresh") {
@@ -136,4 +137,3 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") loadTide("visible");
 });
 
-void swell;

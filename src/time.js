@@ -175,8 +175,10 @@ export function skyPalette(date) {
   const warm = lowSun * evening;
   const cool = day;
 
-  const gel = mix(mix([255, 255, 255], [255, 176, 110], evening), [16, 26, 48], night);
-  const overlayAlpha = (0.14 + 0.2 * evening) * lowSun + 0.82 * night;
+  const morning = lowSun * (1 - evening);
+  const dayGel = mix([255, 255, 255], [255, 176, 110], evening);
+  const gel = mix(mix(dayGel, [206, 226, 255], morning * 0.32), [16, 26, 48], night);
+  const overlayAlpha = (0.1 + 0.06 * morning + 0.2 * evening) * lowSun + 0.82 * night;
   // Modest always-on dim so white type holds on the noon plate.
   // Night gel already darkens the photo, so this eases off after sunset.
   const scrim = 0.3 * (1 - night);

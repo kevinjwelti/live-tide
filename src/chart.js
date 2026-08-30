@@ -1,5 +1,6 @@
-import { formatClock, startOfZonedDay, startOfNextZonedDay } from "./time.js";
+import { formatClock, startOfZonedDay, startOfNextZonedDay, skyPalette, isNightScene } from "./time.js";
 import { sampleTide } from "./tide.js";
+import { moonState, renderMoon, renderSun } from "./moon.js";
 
 const PAD = { top: 0.2, bottom: 0.26, left: 0.03, right: 0.04 };
 
@@ -37,6 +38,7 @@ export function createChart(stage) {
   const nowLine = stage.querySelector("#now-line");
   const playLine = stage.querySelector("#playhead-line");
   const playhead = stage.querySelector("#playhead");
+  const orb = playhead?.querySelector("#playhead-orb");
   const yAxis = stage.querySelector("#y-axis");
   const labelsEl = stage.querySelector("#extremum-labels");
   const hit = stage.querySelector("#chart-hit") ?? stage;
@@ -51,6 +53,7 @@ export function createChart(stage) {
   let idleTimer = 0;
   let anim = null;
   let listeners = { onView: () => {} };
+  let orbKey = "";
 
   const size = () => {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -141,6 +144,27 @@ export function createChart(stage) {
     return rangeStart + clamped * (rangeEnd - rangeStart);
   };
 
+  const paintOrb = (timeMs) => {
+    if (!playhead || !orb) return;
+    const light = skyPalette(new Date(timeMs));
+    const night = isNightScene(light);
+    playhead.classList.toggle("is-sun", !night);
+    playhead.classList.toggle("is-moon", night);
+    const moon = moonState(new Date(timeMs));
+    const key = night ? `m:${moon.phase.toFixed(3)}` : "sun";
+    if (key === orbKey) return;
+    orbKey = key;
+    if (night) {
+      renderMoon(orb, moon, {
+        lit: "#eef3f8",
+        shade: "#141b26",
+        rim: "#c5d4e8",
+      });
+    } else {
+      renderSun(orb);
+    }
+  };
+
   const placeMarks = (timeMs) => {
     if (!L || !series.length) return;
     const sample = sampleTide(series, timeMs);
@@ -157,6 +181,7 @@ export function createChart(stage) {
     playhead.style.top = `${py}px`;
     playhead.classList.toggle("live", !exploring);
     playhead.classList.toggle("exploring", exploring);
+    paintOrb(timeMs);
     if (playLine) {
       playLine.style.opacity = exploring ? "1" : "0";
       playLine.style.left = `${px}px`;

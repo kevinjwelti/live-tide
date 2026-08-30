@@ -39,16 +39,11 @@ export function createSwell() {
 
   applyPlate(palette);
 
-  const tick = () => {
-    palette = skyPalette(new Date());
-    applyPlate(palette);
-  };
-  setInterval(tick, 1000);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "hidden") tick();
-  });
-
   return {
     palette: () => palette,
+    setTime(date) {
+      palette = skyPalette(date);
+      applyPlate(palette);
+    },
   };
 }
