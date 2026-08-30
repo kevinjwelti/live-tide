@@ -195,3 +195,8 @@ export function skyPalette(date) {
     gradeKey: `${(el * 4).toFixed(0)}:${(warm * 20).toFixed(0)}:${(cool * 20).toFixed(0)}:${(night * 20).toFixed(0)}`,
   };
 }
+
+/** After Scripps sunset, once the sun is well down — use the moonlit plate. */
+export function isNightScene(palette) {
+  return palette.night >= 0.5;
+}

@@ -1,29 +1,47 @@
-import { skyPalette } from "./time.js";
-import coastUrl from "./assets/coast.png";
+import { skyPalette, isNightScene } from "./time.js";
+import dayUrl from "./assets/coast.png";
+import nightUrl from "./assets/night.png";
 
-function applyGrade(root, light) {
-  root.style.setProperty("--grade-alpha", light.overlayAlpha.toFixed(3));
+function applyGrade(root, light, nightScene) {
+  // Night photo is already dark navy. Do not multiply another gel on top.
+  const overlayAlpha = nightScene ? 0 : light.overlayAlpha;
+  const scrim = nightScene ? 0 : light.scrim;
+  const vignette = nightScene ? 0.32 : light.vignette;
+  root.style.setProperty("--grade-alpha", overlayAlpha.toFixed(3));
   root.style.setProperty("--grade-color", light.overlayColor);
-  root.style.setProperty("--read-scrim", light.scrim.toFixed(3));
-  root.style.setProperty("--vignette", light.vignette.toFixed(3));
+  root.style.setProperty("--read-scrim", scrim.toFixed(3));
+  root.style.setProperty("--vignette", vignette.toFixed(3));
   root.style.setProperty("--type", light.type);
   root.style.setProperty("--cream", light.type);
-  root.dataset.light = light.cool > 0.4 ? "day" : light.night > 0.45 ? "night" : "gold";
+  root.dataset.light = nightScene ? "night" : light.cool > 0.4 ? "day" : "gold";
 }
 
 /** Plate + one sun-driven multiply gel. No swell canvas. */
 export function createSwell() {
   const root = document.documentElement;
   const plate = document.querySelector("#coast-plate");
-  plate.src = coastUrl;
   plate.decoding = "async";
 
+  const preload = new Image();
+  preload.src = nightUrl;
+
+  let nightOn = null;
   let palette = skyPalette(new Date());
-  applyGrade(root, palette);
+
+  const applyPlate = (light) => {
+    const nextNight = isNightScene(light);
+    if (nextNight !== nightOn) {
+      nightOn = nextNight;
+      plate.src = nextNight ? nightUrl : dayUrl;
+    }
+    applyGrade(root, light, nextNight);
+  };
+
+  applyPlate(palette);
 
   const tick = () => {
     palette = skyPalette(new Date());
-    applyGrade(root, palette);
+    applyPlate(palette);
   };
   setInterval(tick, 1000);
   document.addEventListener("visibilitychange", () => {

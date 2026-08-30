@@ -30,6 +30,10 @@
   padding: 0;
 }
 
+html[data-light="night"] {
+  --type: #f4f7fb;
+}
+
 html,
 body {
   height: 100%;
@@ -73,6 +77,15 @@ body {
   -webkit-user-select: none;
   user-select: none;
   pointer-events: none;
+}
+
+html[data-light="night"] body,
+html[data-light="night"] .scene {
+  background: #050810;
+}
+
+html[data-light="night"] .coast-plate {
+  object-position: center 42%;
 }
 
 .grade {
