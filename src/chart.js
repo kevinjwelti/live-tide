@@ -80,31 +80,21 @@ export function createChart(stage) {
     ctx.lineTo(L.x(rangeStart), L.bottom);
     ctx.closePath();
     const mist = ctx.createLinearGradient(0, L.top, 0, L.bottom);
-    mist.addColorStop(0, "rgba(243,234,216,0.16)");
-    mist.addColorStop(1, "rgba(243,234,216,0.02)");
+    mist.addColorStop(0, "rgba(252, 246, 238, 0.10)");
+    mist.addColorStop(1, "rgba(252, 246, 238, 0.02)");
     ctx.fillStyle = mist;
     ctx.fill();
     ctx.restore();
-
-    if (L.min < 0 && L.max > 0) {
-      const y0 = L.y(0);
-      ctx.beginPath();
-      ctx.moveTo(L.left, y0);
-      ctx.lineTo(L.right, y0);
-      ctx.strokeStyle = "rgba(243,234,216,0.1)";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
 
     ctx.save();
     curvePath(ctx, series, L, rangeStart, rangeEnd);
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
-    ctx.strokeStyle = "rgba(8, 14, 22, 0.55)";
-    ctx.lineWidth = 4.4;
+    ctx.strokeStyle = "rgba(44, 38, 34, 0.22)";
+    ctx.lineWidth = 3.2;
     ctx.stroke();
-    ctx.strokeStyle = "rgba(243,234,216,0.96)";
-    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = "rgba(252, 248, 242, 0.94)";
+    ctx.lineWidth = 1.55;
     ctx.stroke();
     ctx.restore();
 
@@ -126,10 +116,10 @@ export function createChart(stage) {
       labelsEl.append(node);
 
       ctx.beginPath();
-      ctx.arc(px, py, 4.2, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(243,234,216,0.96)";
-      ctx.strokeStyle = "rgba(8, 14, 22, 0.55)";
-      ctx.lineWidth = 2.4;
+      ctx.arc(px, py, 3.8, 0, Math.PI * 2);
+      ctx.fillStyle = "#c9a15c";
+      ctx.strokeStyle = "rgba(44, 38, 34, 0.35)";
+      ctx.lineWidth = 1.6;
       ctx.fill();
       ctx.stroke();
     });

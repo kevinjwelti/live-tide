@@ -1,27 +1,27 @@
 :root {
+  --ink: #2c2622;
+  --ink-soft: #5a524c;
   --cream: #f3ead8;
   --cream-dim: rgba(243, 234, 216, 0.96);
-  --cream-soft: rgba(243, 234, 216, 0.9);
-  --gold: #e0c070;
-  --gold-line: #d7b56a;
-  --type: var(--cream);
+  --gold: #c9a15c;
+  --gold-line: #d4b56a;
+  --type: var(--ink);
   --serif: "Playfair Display", "Iowan Old Style", Palatino, Georgia, serif;
   --sans: "Outfit", "Avenir Next", "Helvetica Neue", sans-serif;
-  --type-halo:
-    -1px 0 0 rgba(6, 12, 20, 0.88),
-    1px 0 0 rgba(6, 12, 20, 0.88),
-    0 -1px 0 rgba(6, 12, 20, 0.88),
-    0 1px 0 rgba(6, 12, 20, 0.88),
-    0 2px 10px rgba(6, 12, 20, 0.78),
-    0 0 26px rgba(6, 12, 20, 0.55);
-  --type-halo-tight:
-    -1px 0 0 rgba(6, 12, 20, 0.92),
-    1px 0 0 rgba(6, 12, 20, 0.92),
-    0 -1px 0 rgba(6, 12, 20, 0.92),
-    0 1px 0 rgba(6, 12, 20, 0.92),
-    0 0 4px rgba(6, 12, 20, 0.85),
-    0 2px 12px rgba(6, 12, 20, 0.7);
-  color-scheme: dark;
+  --wash:
+    linear-gradient(
+      180deg,
+      #f4eadc 0%,
+      #eedcc8 12%,
+      #e2c4b0 26%,
+      #cda494 40%,
+      #b08e84 52%,
+      #8a8c90 64%,
+      #6e7c86 76%,
+      #4a545c 88%,
+      #2c3238 100%
+    );
+  color-scheme: light;
 }
 
 * {
@@ -30,17 +30,13 @@
   padding: 0;
 }
 
-html[data-light="night"] {
-  --type: #f4f7fb;
-}
-
 html,
 body {
   height: 100%;
   width: 100%;
   overflow: hidden;
   overscroll-behavior: none;
-  background: #101820;
+  background: #2c3238;
   color: var(--type);
   font-family: var(--sans);
   -webkit-font-smoothing: antialiased;
@@ -61,76 +57,8 @@ body {
   position: fixed;
   inset: 0;
   z-index: 0;
-  isolation: isolate;
   pointer-events: none;
-  background: #101820;
-}
-
-.coast-plate {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 38%;
-  image-rendering: auto;
-  -webkit-user-select: none;
-  user-select: none;
-  pointer-events: none;
-}
-
-html[data-light="night"] body,
-html[data-light="night"] .scene {
-  background: #050810;
-}
-
-html[data-light="night"] .coast-plate {
-  object-position: center 42%;
-}
-
-.grade {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.grade-light {
-  mix-blend-mode: multiply;
-  opacity: var(--grade-alpha, 0);
-  background: var(--grade-color, #ffffff);
-}
-
-.read-scrim {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: rgba(6, 10, 16, var(--read-scrim, 0.3));
-}
-
-.vignette {
-  position: fixed;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  opacity: var(--vignette, 0.55);
-  background: radial-gradient(125% 95% at 50% 36%, transparent 52%, rgba(6, 10, 16, 0.38) 100%);
-}
-
-.label-band {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 34%;
-  z-index: 1;
-  pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(6, 10, 16, 0.22) 38%,
-    rgba(6, 10, 16, 0.48) 78%,
-    rgba(6, 10, 16, 0.58) 100%
-  );
+  background: var(--wash);
 }
 
 .frame {
@@ -153,7 +81,7 @@ html[data-light="night"] .coast-plate {
   justify-content: space-between;
   align-items: flex-start;
   gap: 1.5rem;
-  text-shadow: var(--type-halo);
+  color: var(--ink);
 }
 
 .mast-left,
@@ -162,38 +90,13 @@ html[data-light="night"] .coast-plate {
   z-index: 1;
 }
 
-.mast-left::before,
-.mast-right::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  pointer-events: none;
-}
-
-.mast-left::before {
-  inset: -0.9rem -1.7rem -0.95rem -1.25rem;
-  background: rgba(6, 10, 16, 0.52);
-  border-radius: 1.15rem;
-  box-shadow: 0 0 34px 14px rgba(6, 10, 16, 0.28);
-}
-
-.mast-right::before {
-  inset: -1rem -1.3rem -0.35rem -2.2rem;
-  background: radial-gradient(
-    112% 86% at 86% 18%,
-    rgba(6, 10, 16, 0.58) 0%,
-    rgba(6, 10, 16, 0.28) 42%,
-    transparent 76%
-  );
-}
-
 .wordmark {
   font-family: var(--serif);
   font-weight: 500;
   font-size: clamp(2.4rem, 5.4vw, 4.4rem);
   letter-spacing: 0.12em;
   line-height: 0.95;
-  text-shadow: var(--type-halo);
+  color: var(--ink);
 }
 
 .tagline {
@@ -201,8 +104,7 @@ html[data-light="night"] .coast-plate {
   font-size: clamp(0.72rem, 1.15vw, 0.88rem);
   letter-spacing: 0.28em;
   font-weight: 500;
-  color: #fff;
-  text-shadow: var(--type-halo);
+  color: var(--ink-soft);
 }
 
 .current {
@@ -214,8 +116,7 @@ html[data-light="night"] .coast-plate {
   font-size: 0.78rem;
   letter-spacing: 0.26em;
   font-weight: 500;
-  color: #fff;
-  text-shadow: var(--type-halo);
+  color: var(--ink-soft);
 }
 
 .status-row {
@@ -226,19 +127,18 @@ html[data-light="night"] .coast-plate {
   font-size: clamp(0.95rem, 1.6vw, 1.15rem);
   letter-spacing: 0.28em;
   font-weight: 400;
-  text-shadow: var(--type-halo-tight);
+  color: var(--ink);
 }
 
 .dir-mark {
   width: 1.35rem;
   height: 1.35rem;
-  border: 1px solid var(--cream-dim);
+  border: 1px solid rgba(44, 38, 34, 0.45);
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  box-shadow: 0 0 0 1px rgba(6, 12, 20, 0.35), 0 1px 8px rgba(6, 12, 20, 0.45);
 }
 
 .dir-mark::after {
@@ -250,12 +150,12 @@ html[data-light="night"] .coast-plate {
 }
 
 .dir-mark.rising::after {
-  border-bottom: 7px solid var(--cream);
+  border-bottom: 7px solid var(--ink);
   transform: translateY(-1px);
 }
 
 .dir-mark.falling::after {
-  border-top: 7px solid var(--cream);
+  border-top: 7px solid var(--ink);
   transform: translateY(1px);
 }
 
@@ -273,14 +173,13 @@ html[data-light="night"] .coast-plate {
   letter-spacing: -0.02em;
   line-height: 0.92;
   font-variant-numeric: lining-nums;
-  text-shadow: var(--type-halo);
+  color: var(--ink);
 }
 
 .unit {
   font-family: var(--serif);
   font-size: clamp(1.1rem, 2vw, 1.6rem);
-  opacity: 0.95;
-  text-shadow: var(--type-halo-tight);
+  color: var(--ink-soft);
 }
 
 .scrub-note {
@@ -289,7 +188,6 @@ html[data-light="night"] .coast-plate {
   letter-spacing: 0.18em;
   color: var(--gold);
   font-weight: 400;
-  text-shadow: var(--type-halo-tight);
 }
 
 .mast-right {
@@ -301,7 +199,7 @@ html[data-light="night"] .coast-plate {
   appearance: none;
   background: none;
   border: 0;
-  color: #fff;
+  color: var(--ink);
   cursor: pointer;
   display: inline-flex;
   align-items: flex-start;
@@ -309,16 +207,14 @@ html[data-light="night"] .coast-plate {
   text-align: right;
   font: inherit;
   padding: 0.2rem 0 0.2rem 0.4rem;
-  text-shadow: var(--type-halo);
 }
 
 .place-btn .pin {
   width: 0.95rem;
   height: 0.95rem;
   margin-top: 0.12rem;
-  opacity: 0.85;
+  opacity: 0.7;
   flex: 0 0 auto;
-  filter: drop-shadow(0 1px 2px rgba(6, 12, 20, 0.8));
 }
 
 .place-name {
@@ -333,9 +229,8 @@ html[data-light="night"] .coast-plate {
   margin-top: 0.28rem;
   font-size: 0.74rem;
   letter-spacing: 0.14em;
-  color: #fff;
+  color: var(--ink-soft);
   font-weight: 500;
-  text-shadow: var(--type-halo);
 }
 
 .date-line {
@@ -344,8 +239,7 @@ html[data-light="night"] .coast-plate {
   font-size: clamp(1rem, 1.8vw, 1.25rem);
   font-weight: 400;
   font-style: italic;
-  color: var(--cream-dim);
-  text-shadow: var(--type-halo);
+  color: var(--ink-soft);
 }
 
 .clock-line {
@@ -355,7 +249,7 @@ html[data-light="night"] .coast-plate {
   letter-spacing: 0.02em;
   line-height: 1;
   margin-top: 0.1rem;
-  text-shadow: var(--type-halo);
+  color: var(--ink);
 }
 
 .chart-stage {
@@ -381,15 +275,10 @@ html[data-light="night"] .coast-plate {
   width: 2px;
   margin-left: -1px;
   background: linear-gradient(180deg, transparent, var(--gold-line) 12%, var(--gold-line) 88%, transparent);
-  box-shadow: 0 0 12px rgba(215, 181, 106, 0.45);
+  box-shadow: 0 0 12px rgba(201, 161, 92, 0.4);
   pointer-events: none;
   opacity: 0;
   z-index: 3;
-}
-
-html[data-light="night"] .now-line {
-  background: linear-gradient(180deg, transparent, #c5d4e8 12%, #c5d4e8 88%, transparent);
-  box-shadow: 0 0 12px rgba(180, 200, 230, 0.4);
 }
 
 .playhead-line {
@@ -398,14 +287,10 @@ html[data-light="night"] .now-line {
   bottom: 26%;
   width: 1px;
   margin-left: -0.5px;
-  background: rgba(243, 234, 216, 0.55);
+  background: rgba(201, 161, 92, 0.55);
   pointer-events: none;
   opacity: 0;
   z-index: 4;
-}
-
-html[data-light="night"] .playhead-line {
-  background: rgba(197, 212, 232, 0.55);
 }
 
 .playhead {
@@ -488,9 +373,9 @@ html[data-light="night"] .playhead-line {
   min-width: 6.5rem;
   padding: 0.38rem 0.7rem 0.45rem;
   border-radius: 0.6rem;
-  text-shadow: var(--type-halo-tight);
-  background: rgba(8, 12, 18, 0.72);
-  box-shadow: 0 0 16px 4px rgba(8, 12, 18, 0.28);
+  color: var(--cream);
+  background: rgba(24, 22, 20, 0.62);
+  box-shadow: 0 0 14px 3px rgba(24, 22, 20, 0.22);
 }
 
 .extremum .t-time {
@@ -520,8 +405,7 @@ html[data-light="night"] .playhead-line {
   font-family: var(--serif);
   font-style: italic;
   letter-spacing: 0.06em;
-  color: var(--cream-dim);
-  text-shadow: var(--type-halo);
+  color: var(--cream);
 }
 
 .moon {
@@ -529,6 +413,7 @@ html[data-light="night"] .playhead-line {
   align-items: flex-start;
   gap: 0.7rem;
   margin-top: 1.1rem;
+  color: var(--ink);
 }
 
 .moon-icon {
@@ -536,8 +421,7 @@ html[data-light="night"] .playhead-line {
   height: 2.1rem;
   flex: 0 0 auto;
   margin-top: 0.1rem;
-  opacity: 0.9;
-  filter: drop-shadow(0 1px 2px rgba(6, 12, 20, 0.8)) drop-shadow(0 0 8px rgba(6, 12, 20, 0.45));
+  opacity: 0.85;
 }
 
 .moon-name {
@@ -545,8 +429,7 @@ html[data-light="night"] .playhead-line {
   font-size: 0.86rem;
   letter-spacing: 0.18em;
   font-weight: 500;
-  color: #fff;
-  text-shadow: var(--type-halo);
+  color: var(--ink);
 }
 
 .moon-pct {
@@ -554,8 +437,7 @@ html[data-light="night"] .playhead-line {
   font-family: var(--serif);
   font-size: 1.15rem;
   font-weight: 500;
-  color: #fff;
-  text-shadow: var(--type-halo);
+  color: var(--ink-soft);
 }
 
 .credit {
@@ -568,12 +450,11 @@ html[data-light="night"] .playhead-line {
   font-size: 0.72rem;
   letter-spacing: 0.18em;
   font-weight: 500;
-  color: #fff;
+  color: var(--cream);
   padding: 0.42rem 0.95rem 0.4rem;
   border-radius: 0.55rem;
-  background: rgba(8, 12, 18, 0.72);
-  box-shadow: 0 0 16px 4px rgba(8, 12, 18, 0.28);
-  text-shadow: var(--type-halo);
+  background: rgba(24, 22, 20, 0.62);
+  box-shadow: 0 0 14px 3px rgba(24, 22, 20, 0.22);
 }
 
 @media (max-width: 900px), (orientation: portrait) {
