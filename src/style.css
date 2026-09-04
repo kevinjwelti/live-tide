@@ -8,6 +8,7 @@
   --type: var(--ink);
   --serif: "Playfair Display", "Iowan Old Style", Palatino, Georgia, serif;
   --sans: "Outfit", "Avenir Next", "Helvetica Neue", sans-serif;
+  /* Night default — JS swaps --wash toward a brighter day cream when the sun is up. */
   --wash:
     linear-gradient(
       180deg,
