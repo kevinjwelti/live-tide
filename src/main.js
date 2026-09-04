@@ -9,7 +9,7 @@ import {
   REFRESH_MS,
 } from "./tide.js";
 import { moonState, renderMoon } from "./moon.js";
-import { formatClock, formatDate } from "./time.js";
+import { formatClock, formatDate, setPlace } from "./time.js";
 
 const els = {
   direction: document.querySelector("#direction"),
@@ -25,9 +25,11 @@ const els = {
   moonName: document.querySelector("#moon-name"),
   moonPct: document.querySelector("#moon-pct"),
   moonIcon: document.querySelector("#moon-icon"),
+  credit: document.querySelector("#credit"),
 };
 
 let station = loadSavedStation();
+setPlace(station);
 const swell = createSwell();
 const chart = createChart(document.querySelector("#chart-stage"));
 
@@ -36,9 +38,11 @@ function setStatus(text) {
   els.statusMsg.textContent = text ?? "";
 }
 
-function renderStation() {
+function applyPlace() {
+  setPlace(station);
   els.placeName.textContent = station.name;
   els.placeSub.textContent = station.hint;
+  if (els.credit) els.credit.textContent = station.credit;
 }
 
 function renderMoonPanel(now) {
@@ -80,7 +84,7 @@ chart.onView((timeMs, sample, exploring) => {
 async function loadTide(reason = "refresh") {
   setStatus(reason === "init" ? "Gathering the tide…" : "");
   try {
-    const data = await fetchTide(station.id);
+    const data = await fetchTide(station);
     chart.setData({ series: data.series, extrema: data.extrema, now: new Date() });
     setStatus("");
   } catch (error) {
@@ -92,7 +96,7 @@ async function loadTide(reason = "refresh") {
 els.stationBtn.addEventListener("click", async () => {
   station = nextStation(station.id);
   saveStation(station.id);
-  renderStation();
+  applyPlace();
   setStatus("Shifting waters…");
   await loadTide("switch");
 });
@@ -117,7 +121,7 @@ document.addEventListener(
   { passive: false }
 );
 
-renderStation();
+applyPlace();
 renderMoonPanel(new Date());
 renderClock(new Date());
 loadTide("init");

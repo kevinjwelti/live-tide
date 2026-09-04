@@ -1,4 +1,4 @@
-import { formatClock, startOfZonedDay, startOfNextZonedDay, skyPalette, isNightScene } from "./time.js";
+import { formatClock, startOfZonedDay, startOfNextZonedDay, skyPalette, isNightScene, getPlace } from "./time.js";
 import { sampleTide } from "./tide.js";
 import { moonState, renderMoon, renderSun } from "./moon.js";
 
@@ -141,7 +141,7 @@ export function createChart(stage) {
     playhead.classList.toggle("is-sun", !night);
     playhead.classList.toggle("is-moon", night);
     const moon = moonState(new Date(timeMs));
-    const key = night ? `m:${moon.phase.toFixed(3)}` : "sun";
+    const key = `${getPlace().tz}:${night ? `m:${moon.phase.toFixed(3)}` : "sun"}`;
     if (key === orbKey) return;
     orbKey = key;
     if (night) {

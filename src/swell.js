@@ -7,7 +7,9 @@ export function createSwell() {
 
   const apply = (light) => {
     palette = light;
-    root.dataset.light = isNightScene(light) ? "night" : light.cool > 0.4 ? "day" : "gold";
+    const night = isNightScene(light);
+    root.dataset.light = night ? "night" : light.cool > 0.4 ? "day" : "gold";
+    root.style.setProperty("--night-veil", (0.4 * light.night).toFixed(3));
   };
 
   apply(palette);

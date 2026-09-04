@@ -32,34 +32,35 @@ function add(parent, name, attrs) {
   return el;
 }
 
-/** Draw a simple lit moon disk into an SVG element. */
+/** Draw a lit moon disk — the terminator is the real phase silhouette. */
 export function renderMoon(svg, state, opts = {}) {
   svg.replaceChildren();
   const {
     lit = "currentColor",
-    shade = "rgba(243,234,216,0.14)",
+    shade = "rgba(20, 24, 30, 0.92)",
     rim = "currentColor",
   } = opts;
   const uid = `m${++svgSeq}`;
+  const r = 14;
   const defs = add(svg, "defs", {});
   const clip = add(defs, "clipPath", { id: `${uid}-disk` });
-  add(clip, "circle", { cx: "24", cy: "24", r: "13" });
+  add(clip, "circle", { cx: "24", cy: "24", r: String(r) });
   add(svg, "circle", {
     cx: "24",
     cy: "24",
-    r: "13",
+    r: String(r),
     fill: shade,
     stroke: rim,
-    "stroke-width": "1.2",
+    "stroke-width": "0.9",
   });
-  const offset = Math.cos(2 * Math.PI * state.phase) * 13;
+  const offset = Math.cos(2 * Math.PI * state.phase) * r;
   add(svg, "circle", {
     cx: String(24 + offset),
     cy: "24",
-    r: "13",
+    r: String(r),
     fill: lit,
     "clip-path": `url(#${uid}-disk)`,
-    opacity: "0.96",
+    opacity: "0.98",
   });
 }
 

@@ -66,6 +66,15 @@ body {
   background: var(--wash);
 }
 
+.scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #1a1614;
+  opacity: var(--night-veil, 0);
+  pointer-events: none;
+}
+
 .frame {
   position: relative;
   z-index: 2;
@@ -284,6 +293,15 @@ body {
   pointer-events: none;
   opacity: 0;
   z-index: 3;
+}
+
+html[data-light="night"] .now-line {
+  background: linear-gradient(180deg, transparent, #c5d4e8 12%, #c5d4e8 88%, transparent);
+  box-shadow: 0 0 12px rgba(180, 200, 230, 0.4);
+}
+
+html[data-light="night"] .playhead-line {
+  background: rgba(197, 212, 232, 0.55);
 }
 
 .playhead-line {

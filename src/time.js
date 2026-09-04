@@ -1,42 +1,75 @@
-/** America/Los_Angeles clock helpers and solar tint. */
+/** Place-aware clock helpers and solar tint. */
 
-export const TZ = "America/Los_Angeles";
-/** Scripps Pier / La Jolla — drive the sky from this station. */
-export const LJ_LAT = 32.8669;
-export const LJ_LON = -117.2571;
-export const SD_LAT = LJ_LAT;
-export const SD_LON = LJ_LON;
+export const BOOM = {
+  tz: "America/Managua",
+  lat: 12.635,
+  lon: -87.361,
+};
 
-const timeFmt = new Intl.DateTimeFormat("en-US", {
-  timeZone: TZ,
-  hour: "numeric",
-  minute: "2-digit",
-});
+export const SCRIPPS = {
+  tz: "America/Los_Angeles",
+  lat: 32.8669,
+  lon: -117.2571,
+};
 
-const timeSecFmt = new Intl.DateTimeFormat("en-US", {
-  timeZone: TZ,
-  hour: "numeric",
-  minute: "2-digit",
-  second: "2-digit",
-});
+let place = { ...BOOM };
 
-const dateFmt = new Intl.DateTimeFormat("en-US", {
-  timeZone: TZ,
-  month: "long",
-  day: "numeric",
-  year: "numeric",
-});
+let timeFmt = makeTimeFmt();
+let timeSecFmt = makeTimeSecFmt();
+let dateFmt = makeDateFmt();
+let partsFmt = makePartsFmt();
 
-const partsFmt = new Intl.DateTimeFormat("en-US", {
-  timeZone: TZ,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-  hourCycle: "h23",
-});
+function makeTimeFmt() {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: place.tz,
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function makeTimeSecFmt() {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: place.tz,
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function makeDateFmt() {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: place.tz,
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function makePartsFmt() {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: place.tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  });
+}
+
+export function setPlace(next) {
+  if (!next?.tz) return;
+  place = { tz: next.tz, lat: next.lat, lon: next.lon };
+  timeFmt = makeTimeFmt();
+  timeSecFmt = makeTimeSecFmt();
+  dateFmt = makeDateFmt();
+  partsFmt = makePartsFmt();
+}
+
+export function getPlace() {
+  return place;
+}
 
 export function formatClock(date, withSeconds = false) {
   return (withSeconds ? timeSecFmt : timeFmt).format(date);
@@ -61,7 +94,7 @@ export function zonedParts(date) {
   };
 }
 
-/** Local calendar day as YYYYMMDD for NOAA queries that use GMT dates. */
+/** UTC calendar day as YYYYMMDD for NOAA queries. */
 export function gmtStamp(date) {
   const y = date.getUTCFullYear();
   const m = String(date.getUTCMonth() + 1).padStart(2, "0");
@@ -86,11 +119,11 @@ export function endOfZonedDay(date) {
 }
 
 /**
- * Construct a Date for a civil time in America/Los_Angeles.
+ * Construct a Date for a civil time in the active place timezone.
  * Iterates from a UTC guess so DST is handled by the formatter.
  */
 export function zonedDate(year, month, day, hour = 0, minute = 0, second = 0, ms = 0) {
-  let guess = Date.UTC(year, month - 1, day, hour + 8, minute, second, ms);
+  let guess = Date.UTC(year, month - 1, day, hour + 6, minute, second, ms);
   for (let i = 0; i < 4; i += 1) {
     const p = zonedParts(new Date(guess));
     const got = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
@@ -106,7 +139,7 @@ export function parseNoaaGmt(stamp) {
 }
 
 /** Solar altitude and azimuth (degrees, azimuth clockwise from north). */
-export function solarPosition(date, lat = LJ_LAT, lon = LJ_LON) {
+export function solarPosition(date, lat = place.lat, lon = place.lon) {
   const rad = Math.PI / 180;
   const jd = date.getTime() / 86400000 + 2440587.5;
   const T = (jd - 2451545) / 36525;
@@ -137,7 +170,7 @@ export function solarPosition(date, lat = LJ_LAT, lon = LJ_LON) {
   };
 }
 
-export function solarElevation(date, lat = LJ_LAT, lon = LJ_LON) {
+export function solarElevation(date, lat = place.lat, lon = place.lon) {
   return solarPosition(date, lat, lon).elevation;
 }
 
@@ -160,12 +193,7 @@ const NIGHT = { type: "#e7eef6" };
 const GOLDEN = { type: "#f3ead8" };
 const DAY = { type: "#eef4f8" };
 
-/**
- * One multiply gel over the noon plate, from real Scripps sun position.
- * Midday (sun well up): identity — the photo as shot.
- * Late day: slightly warmer and dimmer.
- * Night: clearly dark.
- */
+/** Sun-driven night factor from the active place (The Boom or Scripps). */
 export function skyPalette(date) {
   const { elevation: el, azimuth: az } = solarPosition(date);
   const night = 1 - smoothstep(-14, -2, el);
@@ -179,8 +207,6 @@ export function skyPalette(date) {
   const dayGel = mix([255, 255, 255], [255, 176, 110], evening);
   const gel = mix(mix(dayGel, [206, 226, 255], morning * 0.32), [16, 26, 48], night);
   const overlayAlpha = (0.1 + 0.06 * morning + 0.2 * evening) * lowSun + 0.82 * night;
-  // Modest always-on dim so white type holds on the noon plate.
-  // Night gel already darkens the photo, so this eases off after sunset.
   const scrim = 0.3 * (1 - night);
 
   return {
@@ -198,7 +224,7 @@ export function skyPalette(date) {
   };
 }
 
-/** After Scripps sunset, once the sun is well down — use the moonlit plate. */
+/** True once the sun is well down at the active place. */
 export function isNightScene(palette) {
   return palette.night >= 0.5;
 }
