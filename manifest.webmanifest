@@ -1,0 +1,18 @@
+{
+  "name": "LIVE TIDE",
+  "short_name": "LIVE TIDE",
+  "description": "Living tide wall art for San Diego and La Jolla.",
+  "start_url": "/live-tide/",
+  "scope": "/live-tide/",
+  "display": "fullscreen",
+  "background_color": "#15202b",
+  "theme_color": "#15202b",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
