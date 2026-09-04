@@ -127,24 +127,36 @@ function parseSurfline(json) {
   return { series, extrema };
 }
 
-async function fetchSurfline(station, now) {
-  const url = `${SURFLINE_TIDES}?${new URLSearchParams({
+async function fetchSurfline(station) {
+  const params = new URLSearchParams({
     spotId: station.spotId,
     days: "3",
     intervalHours: "1",
-  })}`;
-  const res = await fetch(url, { mode: "cors" });
-  if (!res.ok) throw new Error("Surfline request failed");
-  const json = await res.json();
-  const parsed = parseSurfline(json);
-  if (!parsed.series.length) throw new Error("Surfline returned no tide curve");
-  return {
-    station: station.id,
-    fetchedAt: Date.now(),
-    series: parsed.series,
-    extrema: parsed.extrema,
-    source: "surfline",
-  };
+  });
+  const urls = [
+    `${SURFLINE_TIDES}?${params}`,
+    `https://services.surfline.com/kbyg/spots/forecasts?${params}`,
+  ];
+  let lastError;
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`Surfline request failed (${res.status})`);
+      const json = await res.json();
+      const parsed = parseSurfline(json);
+      if (!parsed.series.length) throw new Error("Surfline returned no tide curve");
+      return {
+        station: station.id,
+        fetchedAt: Date.now(),
+        series: parsed.series,
+        extrema: parsed.extrema,
+        source: "surfline",
+      };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError ?? new Error("Surfline request failed");
 }
 
 async function fetchNoaa(station, now) {
@@ -178,7 +190,7 @@ export async function fetchTide(station, now = new Date()) {
 
   try {
     const payload =
-      station.source === "surfline" ? await fetchSurfline(station, now) : await fetchNoaa(station, now);
+      station.source === "surfline" ? await fetchSurfline(station) : await fetchNoaa(station, now);
     writeCache(payload);
     return { ...payload, fromCache: false, stale: false };
   } catch (error) {
