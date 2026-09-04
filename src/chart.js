@@ -24,12 +24,20 @@ function curvePath(ctx, series, L, from, to) {
   const pts = series.filter((p) => p.t >= from - 400000 && p.t <= to + 400000);
   if (pts.length < 2) return;
   ctx.beginPath();
-  pts.forEach((p, i) => {
-    const px = L.x(p.t);
-    const py = L.y(p.v);
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  });
+  ctx.moveTo(L.x(pts[0].t), L.y(pts[0].v));
+  for (let i = 0; i < pts.length - 1; i += 1) {
+    const p0 = pts[Math.max(0, i - 1)];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const x1 = L.x(p1.t);
+    const x2 = L.x(p2.t);
+    const c1x = x1 + (x2 - x1) / 3;
+    const c2x = x1 + (2 * (x2 - x1)) / 3;
+    const c1y = L.y(p1.v + (p2.v - p0.v) / 6);
+    const c2y = L.y(p2.v - (p3.v - p1.v) / 6);
+    ctx.bezierCurveTo(c1x, c1y, c2x, c2y, x2, L.y(p2.v));
+  }
 }
 
 export function createChart(stage) {

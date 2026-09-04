@@ -189,6 +189,31 @@ export async function fetchTide(station, now = new Date()) {
   }
 }
 
+function pointAt(series, i) {
+  if (i < 0) return series[0];
+  if (i >= series.length) return series[series.length - 1];
+  return series[i];
+}
+
+/** Catmull-Rom height on u in [0,1] between p1 and p2. */
+export function crSegment(p0, p1, p2, p3, u) {
+  const u2 = u * u;
+  const u3 = u2 * u;
+  const height =
+    0.5 *
+    (2 * p1.v +
+      (-p0.v + p2.v) * u +
+      (2 * p0.v - 5 * p1.v + 4 * p2.v - p3.v) * u2 +
+      (-p0.v + 3 * p1.v - 3 * p2.v + p3.v) * u3);
+  const dudu =
+    0.5 *
+    (-p0.v +
+      p2.v +
+      2 * (2 * p0.v - 5 * p1.v + 4 * p2.v - p3.v) * u +
+      3 * (-p0.v + 3 * p1.v - 3 * p2.v + p3.v) * u2);
+  return { height, dudu };
+}
+
 export function sampleTide(series, timeMs) {
   if (!series?.length) return null;
   if (timeMs <= series[0].t) {
@@ -205,12 +230,14 @@ export function sampleTide(series, timeMs) {
     if (series[mid].t <= timeMs) lo = mid;
     else hi = mid;
   }
-  const a = series[lo];
-  const b = series[hi];
-  const span = b.t - a.t || 1;
-  const u = (timeMs - a.t) / span;
-  const height = a.v + (b.v - a.v) * u;
-  const slope = ((b.v - a.v) / span) * 3600000;
+  const p0 = pointAt(series, lo - 1);
+  const p1 = series[lo];
+  const p2 = series[hi];
+  const p3 = pointAt(series, hi + 1);
+  const span = p2.t - p1.t || 1;
+  const u = (timeMs - p1.t) / span;
+  const { height, dudu } = crSegment(p0, p1, p2, p3, u);
+  const slope = (dudu / span) * 3600000;
   return { height, slope };
 }
 
