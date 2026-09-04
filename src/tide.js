@@ -5,7 +5,7 @@ export const STATIONS = [
     id: "boom-corinto",
     name: "THE BOOM, NICARAGUA",
     hint: "Tap to switch · La Jolla, Scripps",
-    source: "surfline",
+    source: "surfline-file",
     spotId: "61d4d151c15a827dc58364ec",
     credit: "Tide predictions in feet · Surfline · Corinto, Isla Cardon",
     tz: "America/Managua",
@@ -30,8 +30,7 @@ const CACHE_KEY = "live-tide-cache-v2";
 const STATION_KEY = "live-tide-station-v3";
 export const REFRESH_MS = 30 * 60 * 1000;
 
-const SURFLINE_TIDES =
-  "https://services.surfline.com/kbyg/spots/forecasts/tides";
+const BOOM_TIDES_URL = `${import.meta.env.BASE_URL}data/boom-tides.json`;
 
 function stationById(id) {
   return STATIONS.find((s) => s.id === id) ?? STATIONS[0];
@@ -127,36 +126,24 @@ function parseSurfline(json) {
   return { series, extrema };
 }
 
-async function fetchSurfline(station) {
-  const params = new URLSearchParams({
-    spotId: station.spotId,
-    days: "3",
-    intervalHours: "1",
-  });
-  const urls = [
-    `${SURFLINE_TIDES}?${params}`,
-    `https://services.surfline.com/kbyg/spots/forecasts?${params}`,
-  ];
-  let lastError;
-  for (const url of urls) {
-    try {
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) throw new Error(`Surfline request failed (${res.status})`);
-      const json = await res.json();
-      const parsed = parseSurfline(json);
-      if (!parsed.series.length) throw new Error("Surfline returned no tide curve");
-      return {
-        station: station.id,
-        fetchedAt: Date.now(),
-        series: parsed.series,
-        extrema: parsed.extrema,
-        source: "surfline",
-      };
-    } catch (error) {
-      lastError = error;
-    }
+async function fetchBoomFile(station) {
+  const res = await fetch(`${BOOM_TIDES_URL}?v=${Date.now()}`, { cache: "no-store" });
+  if (res.status === 404) {
+    throw new Error("The Boom tide file has not landed yet.");
   }
-  throw lastError ?? new Error("Surfline request failed");
+  if (!res.ok) throw new Error(`Boom tide file failed (${res.status})`);
+  const json = await res.json();
+  const parsed = json.series?.length ? json : parseSurfline(json);
+  if (!parsed.series?.length) {
+    throw new Error("The Boom tide file has not landed yet.");
+  }
+  return {
+    station: station.id,
+    fetchedAt: json.fetchedAt ?? Date.now(),
+    series: parsed.series,
+    extrema: parsed.extrema ?? [],
+    source: "surfline",
+  };
 }
 
 async function fetchNoaa(station, now) {
@@ -183,14 +170,17 @@ async function fetchNoaa(station, now) {
 }
 
 export async function fetchTide(station, now = new Date()) {
+  if (station.source === "surfline-file") {
+    return fetchBoomFile(station);
+  }
+
   const cached = readCache(station.id);
   if (cached && now.getTime() - cached.fetchedAt < REFRESH_MS) {
     return { ...cached, fromCache: true, stale: false };
   }
 
   try {
-    const payload =
-      station.source === "surfline" ? await fetchSurfline(station) : await fetchNoaa(station, now);
+    const payload = await fetchNoaa(station, now);
     writeCache(payload);
     return { ...payload, fromCache: false, stale: false };
   } catch (error) {

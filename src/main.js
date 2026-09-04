@@ -89,7 +89,9 @@ async function loadTide(reason = "refresh") {
     setStatus("");
   } catch (error) {
     console.warn(error);
-    if (!chart.hasData()) setStatus("The tide is out of reach just now.");
+    if (!chart.hasData()) {
+      setStatus(error?.message || "The Boom tide file has not landed yet.");
+    }
   }
 }
 

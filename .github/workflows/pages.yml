@@ -5,6 +5,9 @@ on:
     branches:
       - main
       - "cursor/**"
+  schedule:
+    # Refresh The Boom / Corinto tides about once an hour.
+    - cron: "7 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -24,6 +27,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Fetch Surfline Corinto tides (no browser Origin)
+        run: npm run fetch-boom
       - run: npm run build
       - uses: peaceiris/actions-gh-pages@v4
         with:
