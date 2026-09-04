@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="LIVE TIDE" />
+    <meta name="theme-color" content="#efe3d2" />
+    <meta http-equiv="Cache-Control" content="no-cache" />
+    <meta name="live-tide-build" content="day-wash-v37" />
+    <meta
+      name="description"
+      content="Living tide wall art for The Boom, Nicaragua and La Jolla, drawn from Surfline and NOAA."
+    />
+    <title>LIVE TIDE</title>
+    <link rel="icon" href="/live-tide/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/live-tide/manifest.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="scene" aria-hidden="true"></div>
+
+    <main class="frame">
+      <header class="mast">
+        <div class="mast-left">
+          <h1 class="wordmark">LIVE TIDE</h1>
+          <p class="tagline">THE OCEAN IS ALWAYS IN MOTION</p>
+          <div class="current">
+            <span class="eyebrow">CURRENT TIDE</span>
+            <div class="status-row">
+              <span id="direction">—</span>
+              <span id="dir-mark" class="dir-mark" aria-hidden="true"></span>
+            </div>
+            <div class="height-row">
+              <span id="height" class="height">—</span>
+              <span class="unit">ft</span>
+            </div>
+            <p id="scrub-note" class="scrub-note" hidden></p>
+            <div class="moon">
+              <svg id="moon-icon" class="moon-icon" viewBox="0 0 48 48" aria-hidden="true"></svg>
+              <div>
+                <span class="eyebrow">MOON PHASE</span>
+                <p id="moon-name" class="moon-name">—</p>
+                <p id="moon-pct" class="moon-pct"></p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mast-right">
+          <button id="station-btn" class="place-btn" type="button" aria-label="Switch tide station">
+            <svg class="pin" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M12 2.2c-3.7 0-6.7 2.9-6.7 6.6 0 4.9 6.7 12.9 6.7 12.9s6.7-8 6.7-12.9c0-3.7-3-6.6-6.7-6.6zm0 9a2.4 2.4 0 1 1 0-4.8 2.4 2.4 0 0 1 0 4.8z"
+              />
+            </svg>
+            <span>
+              <span id="place-name" class="place-name">THE BOOM, NICARAGUA</span>
+              <span id="place-sub" class="place-sub">Tap to switch · La Jolla, Scripps</span>
+            </span>
+          </button>
+          <p id="date-line" class="date-line"></p>
+          <p id="clock-line" class="clock-line"></p>
+        </div>
+      </header>
+
+      <section class="chart-stage" id="chart-stage" aria-label="Today's tide curve">
+        <canvas id="chart" class="chart-canvas"></canvas>
+        <div id="now-line" class="now-line" aria-hidden="true"></div>
+        <div id="playhead-line" class="playhead-line" aria-hidden="true"></div>
+        <div id="playhead" class="playhead" aria-hidden="true">
+          <span class="orb-glow"></span>
+          <svg id="playhead-orb" class="orb" viewBox="0 0 48 48"></svg>
+        </div>
+        <div id="y-axis" class="y-axis"></div>
+        <div id="extremum-labels" class="extremum-labels"></div>
+        <p id="status-msg" class="status-msg" hidden></p>
+        <div id="chart-hit" class="chart-hit"></div>
+      </section>
+
+      <p id="credit" class="credit">
+        Tide predictions in feet · Surfline · Corinto, Isla Cardon
+      </p>
+    </main>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
