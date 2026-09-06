@@ -75,13 +75,13 @@ export function renderSun(svg) {
     cy: "34%",
     r: "62%",
   });
-  add(grad, "stop", { offset: "0%", "stop-color": "#fff6c4" });
-  add(grad, "stop", { offset: "42%", "stop-color": "#ffd056" });
-  add(grad, "stop", { offset: "100%", "stop-color": "#e8941c" });
+  add(grad, "stop", { offset: "0%", "stop-color": "#fffce6" });
+  add(grad, "stop", { offset: "38%", "stop-color": "#ffe066" });
+  add(grad, "stop", { offset: "100%", "stop-color": "#f0a020" });
   add(svg, "circle", {
     cx: "24",
     cy: "24",
-    r: "14.5",
+    r: "16",
     fill: `url(#${uid}-core)`,
   });
 }

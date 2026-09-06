@@ -26,6 +26,14 @@ html[data-light="night"] {
   color-scheme: dark;
 }
 
+html[data-light="day"] {
+  --ink: #142033;
+  --ink-soft: #3d5270;
+  --dir-ring: rgba(20, 32, 51, 0.42);
+  --page-ground: #2a6fa3;
+  --type: #142033;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -61,6 +69,25 @@ body {
   z-index: 0;
   pointer-events: none;
   background: var(--wash);
+}
+
+.scene::before {
+  content: "";
+  position: absolute;
+  width: 70vmax;
+  height: 70vmax;
+  left: var(--sun-x, 50%);
+  top: var(--sun-y, 16%);
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle,
+    rgba(255, 244, 200, 0.7) 0%,
+    rgba(255, 220, 130, 0.28) 22%,
+    rgba(255, 200, 90, 0.08) 42%,
+    transparent 68%
+  );
+  opacity: var(--sun-glow, 0);
+  pointer-events: none;
 }
 
 .stars {
@@ -339,11 +366,13 @@ html[data-light="night"] .playhead-line {
 }
 
 .playhead.is-sun .orb-glow {
+  inset: -18px;
   background: radial-gradient(
     circle,
-    rgba(255, 210, 90, 0.62) 0%,
-    rgba(255, 168, 40, 0.22) 42%,
-    transparent 72%
+    rgba(255, 236, 170, 0.95) 0%,
+    rgba(255, 196, 70, 0.45) 36%,
+    rgba(255, 170, 40, 0.12) 58%,
+    transparent 74%
   );
 }
 
@@ -365,7 +394,7 @@ html[data-light="night"] .playhead-line {
 }
 
 .playhead.is-sun .orb {
-  filter: drop-shadow(0 0 6px rgba(255, 200, 80, 0.85));
+  filter: drop-shadow(0 0 10px rgba(255, 220, 100, 0.95));
 }
 
 .playhead.is-moon .orb {

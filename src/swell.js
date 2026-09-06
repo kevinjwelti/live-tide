@@ -38,22 +38,22 @@ const EARTH = [
   [42, 48, 54],
 ];
 
-/** Midday — brighter cream / warm pastel. */
+/** Midday — clear bright blue sky. Top stays light so dark type reads. */
 const DAY = [
-  [255, 251, 245],
-  [255, 244, 230],
-  [255, 232, 210],
-  [252, 217, 188],
-  [245, 200, 168],
-  [238, 184, 152],
-  [228, 176, 156],
-  [208, 192, 184],
-  [190, 200, 208],
-  [168, 184, 196],
-  [148, 168, 180],
-  [124, 144, 156],
-  [100, 116, 126],
-  [78, 88, 94],
+  [210, 232, 248],
+  [176, 216, 242],
+  [132, 198, 236],
+  [92, 180, 228],
+  [62, 164, 220],
+  [42, 148, 210],
+  [32, 134, 198],
+  [28, 122, 186],
+  [26, 110, 172],
+  [24, 98, 156],
+  [22, 86, 140],
+  [20, 74, 124],
+  [16, 64, 110],
+  [14, 54, 96],
 ];
 
 function smoothstep(a, b, x) {
@@ -70,16 +70,23 @@ function mix3(a, b, c, wa, wb, wc) {
 }
 
 /**
- * Solar-altitude blend. Same curve at dawn and dusk (no azimuth jump).
- *   el ≳ 26°  → bright day
- *   low sun   → muted earth
- *   after set → earth dissolves into starry black
+ * Solar-altitude blend (same curve at dawn and dusk).
+ *   sun well up     → bright blue sky
+ *   around horizon  → muted earth (sunrise / sunset only)
+ *   after sunset    → earth dissolves into starry black
  */
 export function washWeights(el) {
   const starry = 1 - smoothstep(-16, 1, el);
-  const day = smoothstep(10, 26, el);
+  const day = smoothstep(3, 12, el);
   const earth = Math.max(0, 1 - starry - day);
   return { starry, earth, day };
+}
+
+function sunSkyPosition(el, az) {
+  const u = Math.min(1, Math.max(0, (az - 80) / 200));
+  const x = 12 + u * 76;
+  const y = 36 - (Math.min(90, Math.max(0, el)) / 90) * 26;
+  return { x, y };
 }
 
 export function washGradient(weights) {
@@ -155,13 +162,17 @@ export function createSwell() {
     const w = washWeights(light.elevation);
     root.dataset.light = night ? "night" : w.earth > 0.45 ? "gold" : "day";
     root.style.setProperty("--star-opacity", w.starry.toFixed(3));
+    const sun = sunSkyPosition(light.elevation, light.azimuth);
+    root.style.setProperty("--sun-x", `${sun.x.toFixed(1)}%`);
+    root.style.setProperty("--sun-y", `${sun.y.toFixed(1)}%`);
+    root.style.setProperty("--sun-glow", w.day.toFixed(3));
     const key = `${w.starry.toFixed(3)}:${w.earth.toFixed(3)}:${w.day.toFixed(3)}`;
     if (key !== washKey) {
       washKey = key;
       root.style.setProperty("--wash", washGradient(w));
     }
     if (theme) {
-      const top = night ? "#07080c" : w.earth > 0.45 ? "#efe3d2" : "#fff6ea";
+      const top = night ? "#07080c" : w.earth > 0.45 ? "#efe3d2" : "#8ec8ea";
       theme.setAttribute("content", top);
     }
     layoutStars();
