@@ -14,17 +14,17 @@ function chartPad(w, h) {
 }
 
 function layout(w, h, series, rangeStart, rangeEnd) {
-  const pad = chartPad(w, h);
-  const left = w * pad.left;
-  const right = w * (1 - pad.right);
-  const top = h * pad.top;
-  const bottom = h * (1 - pad.bottom);
+  const inset = chartPad(w, h);
+  const left = w * inset.left;
+  const right = w * (1 - inset.right);
+  const top = h * inset.top;
+  const bottom = h * (1 - inset.bottom);
   const values = series.map((p) => p.v);
   let min = Math.min(0, ...values);
   let max = Math.max(3, ...values);
-  const pad = Math.max(0.4, (max - min) * 0.12);
-  min -= pad;
-  max += pad;
+  const vPad = Math.max(0.4, (max - min) * 0.12);
+  min -= vPad;
+  max += vPad;
   const x = (t) => left + ((t - rangeStart) / (rangeEnd - rangeStart)) * (right - left);
   const y = (v) => bottom - ((v - min) / (max - min)) * (bottom - top);
   return { left, right, top, bottom, min, max, x, y };
