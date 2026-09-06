@@ -2,13 +2,23 @@ import { formatClock, startOfZonedDay, startOfNextZonedDay, skyPalette, isNightS
 import { sampleTide } from "./tide.js";
 import { moonState, renderMoon, renderSun } from "./moon.js";
 
-const PAD = { top: 0.2, bottom: 0.26, left: 0.03, right: 0.04 };
+function chartPad(w, h) {
+  const phone = Math.min(w, h) < 640;
+  const portrait = h > w;
+  return {
+    top: phone && !portrait ? 0.1 : phone ? 0.14 : 0.2,
+    bottom: phone ? (portrait ? 0.32 : 0.36) : 0.26,
+    left: phone ? 0.045 : 0.03,
+    right: phone ? 0.045 : 0.04,
+  };
+}
 
 function layout(w, h, series, rangeStart, rangeEnd) {
-  const left = w * PAD.left;
-  const right = w * (1 - PAD.right);
-  const top = h * PAD.top;
-  const bottom = h * (1 - PAD.bottom);
+  const pad = chartPad(w, h);
+  const left = w * pad.left;
+  const right = w * (1 - pad.right);
+  const top = h * pad.top;
+  const bottom = h * (1 - pad.bottom);
   const values = series.map((p) => p.v);
   let min = Math.min(0, ...values);
   let max = Math.max(3, ...values);
@@ -115,13 +125,15 @@ export function createChart(stage) {
       node.className = "extremum";
       const px = L.x(e.t);
       const py = L.y(e.v);
-      node.style.left = `${px}px`;
       node.style.top = `${L.bottom + 8}px`;
       const kind = e.type === "H" ? "HIGH TIDE" : "LOW TIDE";
       node.innerHTML = `<div class="t-time">${formatClock(new Date(e.t))}</div>
         <div class="t-kind">${kind}</div>
         <div class="t-ht">${e.v.toFixed(1)} ft</div>`;
       labelsEl.append(node);
+      const hw = node.offsetWidth / 2;
+      const left = Math.min(w - hw - 4, Math.max(hw + 4, px));
+      node.style.left = `${left}px`;
 
       ctx.beginPath();
       ctx.arc(px, py, 3.8, 0, Math.PI * 2);

@@ -115,14 +115,6 @@ document.querySelector(".wordmark").addEventListener("click", async () => {
   }
 });
 
-document.addEventListener(
-  "touchmove",
-  (event) => {
-    if (event.cancelable) event.preventDefault();
-  },
-  { passive: false }
-);
-
 applyPlace();
 renderMoonPanel(new Date());
 renderClock(new Date());
