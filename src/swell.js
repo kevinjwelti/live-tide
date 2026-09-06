@@ -2,7 +2,7 @@ import { skyPalette, isNightScene } from "./time.js";
 
 const PCTS = [0, 8, 16, 25, 33, 41, 49, 57, 64, 72, 80, 88, 94, 100];
 
-/** Full-night test plate: deep near-black, not the muted earth wash. */
+/** Deep night — starry near-black. */
 const STARRY = [
   [8, 10, 16],
   [7, 9, 15],
@@ -20,25 +20,25 @@ const STARRY = [
   [2, 3, 6],
 ];
 
-/** Cool morning cream — brief lift out of night. */
-const DAWN = [
-  [244, 242, 248],
-  [236, 232, 240],
-  [226, 218, 228],
-  [214, 202, 212],
-  [200, 186, 196],
-  [184, 170, 180],
-  [166, 158, 170],
-  [148, 150, 164],
-  [130, 142, 158],
-  [112, 128, 146],
-  [94, 114, 132],
-  [74, 92, 110],
-  [56, 70, 86],
-  [42, 52, 64],
+/** Late day / dusk / dawn — the muted earth wash Kevin already liked. */
+const EARTH = [
+  [246, 238, 226],
+  [240, 226, 208],
+  [232, 210, 192],
+  [221, 192, 174],
+  [208, 174, 156],
+  [196, 156, 140],
+  [180, 144, 136],
+  [154, 142, 140],
+  [132, 136, 144],
+  [114, 124, 136],
+  [94, 108, 120],
+  [72, 84, 92],
+  [56, 62, 68],
+  [42, 48, 54],
 ];
 
-/** Brighter daytime cream / warm pastel (day-wash-v37). */
+/** Midday — brighter cream / warm pastel. */
 const DAY = [
   [255, 251, 245],
   [255, 244, 230],
@@ -56,54 +56,36 @@ const DAY = [
   [78, 88, 94],
 ];
 
-/** Brief golden-hour rose / peach. */
-const GOLDEN = [
-  [255, 236, 220],
-  [255, 220, 196],
-  [248, 200, 172],
-  [236, 176, 148],
-  [220, 152, 128],
-  [204, 132, 116],
-  [184, 118, 110],
-  [158, 112, 114],
-  [134, 112, 118],
-  [112, 108, 118],
-  [90, 98, 110],
-  [70, 84, 96],
-  [54, 66, 76],
-  [42, 50, 58],
-];
-
 function smoothstep(a, b, x) {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
 }
 
-function mix4(a, b, c, d, w) {
+function mix3(a, b, c, wa, wb, wc) {
   return [
-    Math.round(a[0] * w.night + b[0] * w.dawn + c[0] * w.day + d[0] * w.gold),
-    Math.round(a[1] * w.night + b[1] * w.dawn + c[1] * w.day + d[1] * w.gold),
-    Math.round(a[2] * w.night + b[2] * w.dawn + c[2] * w.day + d[2] * w.gold),
+    Math.round(a[0] * wa + b[0] * wb + c[0] * wc),
+    Math.round(a[1] * wa + b[1] * wb + c[1] * wc),
+    Math.round(a[2] * wa + b[2] * wb + c[2] * wc),
   ];
 }
 
-/** Elevation + azimuth weights. Night is the starry-black plate. */
-export function washWeights(el, az) {
-  const night = 1 - smoothstep(-16, -1, el);
-  const day = smoothstep(4, 18, el);
-  const twilight = Math.max(0, 1 - night - day);
-  const evening = smoothstep(145, 215, az);
-  return {
-    night,
-    dawn: twilight * (1 - evening),
-    day,
-    gold: twilight * evening,
-  };
+/**
+ * Solar-altitude blend. Same curve at dawn and dusk (no azimuth jump).
+ *   el ≳ 26°  → bright day
+ *   low sun   → muted earth
+ *   after set → earth dissolves into starry black
+ */
+export function washWeights(el) {
+  const starry = 1 - smoothstep(-16, 1, el);
+  const day = smoothstep(10, 26, el);
+  const earth = Math.max(0, 1 - starry - day);
+  return { starry, earth, day };
 }
 
 export function washGradient(weights) {
+  const { starry, earth, day } = weights;
   const stops = STARRY.map((night, i) => {
-    const [r, g, b] = mix4(night, DAWN[i], DAY[i], GOLDEN[i], weights);
+    const [r, g, b] = mix3(night, EARTH[i], DAY[i], starry, earth, day);
     return `rgb(${r}, ${g}, ${b}) ${PCTS[i]}%`;
   });
   return `linear-gradient(180deg, ${stops.join(", ")})`;
@@ -151,7 +133,6 @@ function paintStars(canvas) {
   }
 }
 
-/** Sun-driven wash + star field. Full night is the starry black test plate. */
 export function createSwell() {
   const root = document.documentElement;
   const theme = document.querySelector('meta[name="theme-color"]');
@@ -171,17 +152,17 @@ export function createSwell() {
   const apply = (light) => {
     palette = light;
     const night = isNightScene(light);
-    const w = washWeights(light.elevation, light.azimuth);
-    root.dataset.light = night ? "night" : w.gold > 0.4 ? "gold" : "day";
-    root.style.setProperty("--night-veil", "0");
-    root.style.setProperty("--star-opacity", w.night.toFixed(3));
-    const key = `${w.night.toFixed(3)}:${w.dawn.toFixed(3)}:${w.day.toFixed(3)}:${w.gold.toFixed(3)}`;
+    const w = washWeights(light.elevation);
+    root.dataset.light = night ? "night" : w.earth > 0.45 ? "gold" : "day";
+    root.style.setProperty("--star-opacity", w.starry.toFixed(3));
+    const key = `${w.starry.toFixed(3)}:${w.earth.toFixed(3)}:${w.day.toFixed(3)}`;
     if (key !== washKey) {
       washKey = key;
       root.style.setProperty("--wash", washGradient(w));
     }
     if (theme) {
-      theme.setAttribute("content", night ? "#07080c" : "#fff6ea");
+      const top = night ? "#07080c" : w.earth > 0.45 ? "#efe3d2" : "#fff6ea";
+      theme.setAttribute("content", top);
     }
     layoutStars();
   };
