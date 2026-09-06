@@ -1,6 +1,8 @@
 :root {
   --ink: #2c2622;
   --ink-soft: #5a524c;
+  --dir-ring: rgba(44, 38, 34, 0.45);
+  --page-ground: #2c3238;
   --cream: #f3ead8;
   --cream-dim: rgba(243, 234, 216, 0.96);
   --gold: #c9a15c;
@@ -8,26 +10,20 @@
   --type: var(--ink);
   --serif: "Playfair Display", "Iowan Old Style", Palatino, Georgia, serif;
   --sans: "Outfit", "Avenir Next", "Helvetica Neue", sans-serif;
-  /* Night default — JS swaps --wash toward a brighter day cream when the sun is up. */
-  --wash:
-    linear-gradient(
-      180deg,
-      #f6eee2 0%,
-      #f0e2d0 8%,
-      #e8d2c0 16%,
-      #ddc0ae 25%,
-      #d0ae9c 33%,
-      #c49c8c 41%,
-      #b49088 49%,
-      #9a8e8c 57%,
-      #848890 64%,
-      #727c88 72%,
-      #5e6c78 80%,
-      #48545c 88%,
-      #383e44 94%,
-      #2a3036 100%
-    );
+  --star-opacity: 0;
+  --night-veil: 0;
+  /* First paint: starry-night test plate. JS retints from the real sun. */
+  --wash: linear-gradient(180deg, #0a0c10 0%, #07080c 46%, #040508 100%);
   color-scheme: light;
+}
+
+html[data-light="night"] {
+  --ink: #f4efe6;
+  --ink-soft: rgba(244, 239, 230, 0.7);
+  --dir-ring: rgba(244, 239, 230, 0.42);
+  --page-ground: #05060a;
+  --type: #f4efe6;
+  color-scheme: dark;
 }
 
 * {
@@ -42,7 +38,7 @@ body {
   width: 100%;
   overflow: hidden;
   overscroll-behavior: none;
-  background: #2c3238;
+  background: var(--page-ground);
   color: var(--type);
   font-family: var(--sans);
   -webkit-font-smoothing: antialiased;
@@ -67,12 +63,13 @@ body {
   background: var(--wash);
 }
 
-.scene::after {
-  content: "";
+.stars {
   position: absolute;
   inset: 0;
-  background: #1a1614;
-  opacity: var(--night-veil, 0);
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: var(--star-opacity, 0);
   pointer-events: none;
 }
 
@@ -148,7 +145,7 @@ body {
 .dir-mark {
   width: 1.35rem;
   height: 1.35rem;
-  border: 1px solid rgba(44, 38, 34, 0.45);
+  border: 1px solid var(--dir-ring);
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
