@@ -73,14 +73,6 @@ export function formatDate(date) {
   return dateFmt.format(date);
 }
 
-export function formatShortDate(date) {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: place.tz,
-    month: "short",
-    day: "numeric",
-  }).format(date);
-}
-
 /** Start of the local calendar day `days` after `date`'s local day. */
 export function addZonedDays(date, days) {
   let start = startOfZonedDay(date);
@@ -94,14 +86,11 @@ export function addZonedDays(date, days) {
   return start;
 }
 
-/** Quiet label when `time` is on a different local day than `now`. */
-export function viewDayLabel(time, now = new Date()) {
-  const viewStart = startOfZonedDay(new Date(time)).getTime();
-  const todayStart = startOfZonedDay(now).getTime();
-  if (viewStart === todayStart) return "";
-  const tomorrowStart = startOfNextZonedDay(now).getTime();
-  if (viewStart === tomorrowStart) return "Tomorrow";
-  return formatShortDate(new Date(time));
+/** Same local clock time as `now`, placed on `dayDate`'s local calendar day. */
+export function clockOnZonedDay(dayDate, now = new Date()) {
+  const day = zonedParts(startOfZonedDay(dayDate));
+  const clock = zonedParts(now);
+  return zonedDate(day.year, day.month, day.day, clock.hour, clock.minute, clock.second);
 }
 
 export function zonedParts(date) {

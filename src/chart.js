@@ -1,4 +1,13 @@
-import { formatClock, startOfZonedDay, startOfNextZonedDay, addZonedDays, formatShortDate, skyPalette, isNightScene, getPlace } from "./time.js";
+import {
+  formatClock,
+  startOfZonedDay,
+  startOfNextZonedDay,
+  addZonedDays,
+  clockOnZonedDay,
+  skyPalette,
+  isNightScene,
+  getPlace,
+} from "./time.js";
 import { sampleTide } from "./tide.js";
 import { moonState, renderMoon, renderSun } from "./moon.js";
 
@@ -9,7 +18,7 @@ function chartPad(w, h) {
     top: phone && !portrait ? 0.1 : phone ? 0.14 : 0.2,
     bottom: phone ? (portrait ? 0.32 : 0.36) : 0.26,
     left: phone ? 0.045 : 0.03,
-    right: phone ? 0.045 : 0.04,
+    right: phone ? 0.09 : 0.07,
   };
 }
 
@@ -51,6 +60,11 @@ function curvePath(ctx, series, L, from, to) {
   }
 }
 
+function pointsInDay(series, startMs, endMs) {
+  const pad = 3 * 3600000;
+  return series.filter((p) => p.t >= startMs - pad && p.t <= endMs + pad);
+}
+
 export function createChart(stage) {
   const canvas = stage.querySelector("#chart");
   const ctx = canvas.getContext("2d");
@@ -60,8 +74,6 @@ export function createChart(stage) {
   const orb = playhead?.querySelector("#playhead-orb");
   const yAxis = stage.querySelector("#y-axis");
   const labelsEl = stage.querySelector("#extremum-labels");
-  const dayMark = stage.querySelector("#day-mark");
-  const dayMarkLabel = stage.querySelector("#day-mark-label");
   const hit = stage.querySelector("#chart-hit") ?? stage;
 
   let series = [];
@@ -70,9 +82,9 @@ export function createChart(stage) {
   let rangeStart = 0;
   let rangeEnd = 1;
   let viewTime = Date.now();
-  let horizonAt = 0;
-  let horizonText = "TOMORROW";
-  let chipDay = "";
+  let dayOffset = 0;
+  let originMs = Date.now();
+  let chipKey = "";
   let scrubbing = false;
   let idleTimer = 0;
   let anim = null;
@@ -91,11 +103,15 @@ export function createChart(stage) {
     return { w, h };
   };
 
+  const liveCursor = (now = new Date()) => {
+    if (dayOffset === 0) return now.getTime();
+    return clockOnZonedDay(new Date(rangeStart), now).getTime();
+  };
+
   const paint = () => {
     const { w, h } = size();
     ctx.clearRect(0, 0, w, h);
     if (series.length < 2) {
-      if (dayMark) dayMark.hidden = true;
       labelsEl?.replaceChildren();
       return;
     }
@@ -128,26 +144,9 @@ export function createChart(stage) {
     ctx.restore();
 
     yAxis.replaceChildren();
-    placeHorizon(h);
     paintDots();
-    chipDay = "";
+    chipKey = "";
     paintChips();
-  };
-
-  const placeHorizon = (h) => {
-    if (!dayMark || !L) return;
-    const inRange = horizonAt > rangeStart + 20 * 60000 && horizonAt < rangeEnd - 20 * 60000;
-    dayMark.hidden = !inRange;
-    if (!inRange) return;
-    const px = L.x(horizonAt);
-    dayMark.style.left = `${px}px`;
-    dayMark.style.top = `${L.top}px`;
-    dayMark.style.bottom = `${h - L.bottom}px`;
-    if (dayMarkLabel) {
-      dayMarkLabel.textContent = horizonText;
-      const nearRight = px > (L.left + L.right) * 0.72;
-      dayMarkLabel.classList.toggle("is-left", nearRight);
-    }
   };
 
   const paintDots = () => {
@@ -167,14 +166,12 @@ export function createChart(stage) {
 
   const paintChips = () => {
     if (!L || !labelsEl) return;
-    const dayStart = startOfZonedDay(new Date(viewTime)).getTime();
-    const dayEnd = startOfNextZonedDay(new Date(viewTime)).getTime();
-    const key = `${dayStart}:${rangeStart}:${rangeEnd}`;
-    if (key === chipDay && labelsEl.childNodes.length) return;
-    chipDay = key;
+    const key = `${rangeStart}:${rangeEnd}`;
+    if (key === chipKey && labelsEl.childNodes.length) return;
+    chipKey = key;
     labelsEl.replaceChildren();
     const w = stage.clientWidth;
-    const dayExtrema = extrema.filter((e) => e.t >= dayStart && e.t <= dayEnd && e.t >= rangeStart && e.t <= rangeEnd);
+    const dayExtrema = extrema.filter((e) => e.t >= rangeStart && e.t <= rangeEnd);
     const placed = [];
     dayExtrema.forEach((e) => {
       const node = document.createElement("div");
@@ -187,7 +184,7 @@ export function createChart(stage) {
         <div class="t-ht">${e.v.toFixed(1)} ft</div>`;
       labelsEl.append(node);
       const hw = node.offsetWidth / 2;
-      let left = Math.min(w - hw - 4, Math.max(hw + 4, px));
+      const left = Math.min(w - hw - 4, Math.max(hw + 4, px));
       const overlap = placed.some((p) => Math.abs(left - p.left) < hw + p.hw + 8);
       if (overlap) {
         node.remove();
@@ -199,7 +196,7 @@ export function createChart(stage) {
   };
 
   const xToTime = (clientX) => {
-    if (!L) return Date.now();
+    if (!L) return liveCursor();
     const rect = stage.getBoundingClientRect();
     const x = clientX - rect.left;
     const u = (x - L.left) / (L.right - L.left);
@@ -232,13 +229,13 @@ export function createChart(stage) {
     if (!L || !series.length) return;
     const sample = sampleTide(series, timeMs);
     const now = Date.now();
-    const nx = L.x(Math.min(rangeEnd, Math.max(rangeStart, now)));
-    nowLine.style.opacity = "1";
-    nowLine.style.left = `${nx}px`;
+    const nowInRange = now >= rangeStart && now <= rangeEnd;
+    nowLine.style.opacity = nowInRange ? "1" : "0";
+    if (nowInRange) nowLine.style.left = `${L.x(now)}px`;
     if (!sample) return;
     const px = L.x(Math.min(rangeEnd, Math.max(rangeStart, timeMs)));
     const py = L.y(sample.height);
-    const exploring = scrubbing || Boolean(anim) || Math.abs(timeMs - now) > 8000;
+    const exploring = scrubbing || Boolean(anim) || Math.abs(timeMs - liveCursor()) > 8000;
     playhead.style.opacity = "1";
     playhead.style.left = `${px}px`;
     playhead.style.top = `${py}px`;
@@ -252,24 +249,26 @@ export function createChart(stage) {
   };
 
   const emit = () => {
-    listeners.onView(viewTime, sampleTide(series, viewTime), scrubbing || Boolean(anim));
+    listeners.onView(viewTime, sampleTide(series, viewTime), scrubbing || Boolean(anim), {
+      dayOffset,
+    });
     paintChips();
     placeMarks(viewTime);
   };
 
-  const easeToNow = () => {
+  const easeToLive = () => {
     const from = viewTime;
     const t0 = performance.now();
     const dur = 1100;
     const step = (now) => {
       const u = Math.min(1, (now - t0) / dur);
       const e = 1 - Math.pow(1 - u, 3);
-      viewTime = from + (Date.now() - from) * e;
+      viewTime = from + (liveCursor() - from) * e;
       if (u < 1 && !scrubbing) {
         anim = requestAnimationFrame(step);
       } else {
         anim = null;
-        viewTime = Date.now();
+        viewTime = liveCursor();
       }
       emit();
     };
@@ -279,6 +278,7 @@ export function createChart(stage) {
 
   const onPointerDown = (event) => {
     if (!series.length) return;
+    if (event.target?.closest?.(".day-flip")) return;
     scrubbing = true;
     if (anim) cancelAnimationFrame(anim);
     anim = null;
@@ -300,7 +300,7 @@ export function createChart(stage) {
     if (!scrubbing) return;
     scrubbing = false;
     clearTimeout(idleTimer);
-    idleTimer = window.setTimeout(easeToNow, 2000);
+    idleTimer = window.setTimeout(easeToLive, 2000);
     event.preventDefault();
   };
 
@@ -320,49 +320,73 @@ export function createChart(stage) {
     placeMarks(viewTime);
   });
 
+  const applyRange = (origin) => {
+    const liveStart = startOfZonedDay(origin);
+    const viewDay = addZonedDays(liveStart, dayOffset);
+    const viewEnd = startOfNextZonedDay(viewDay);
+    const inDay = pointsInDay(series, viewDay.getTime(), viewEnd.getTime());
+    const lastT = series.length ? series[series.length - 1].t : 0;
+    let stale = false;
+    if (inDay.length >= 2) {
+      rangeStart = viewDay.getTime();
+      rangeEnd = viewEnd.getTime();
+      stale = dayOffset === 0 && lastT < origin.getTime() - 90 * 60000;
+    } else if (dayOffset === 0 && series.length >= 2) {
+      const fallback = new Date(lastT);
+      rangeStart = startOfZonedDay(fallback).getTime();
+      rangeEnd = startOfNextZonedDay(fallback).getTime();
+      stale = true;
+    } else {
+      rangeStart = viewDay.getTime();
+      rangeEnd = viewEnd.getTime();
+      stale = true;
+    }
+    return { stale, lastT, empty: inDay.length < 2 && series.length < 2 };
+  };
+
   return {
     setData({ series: nextSeries, extrema: nextExtrema, now }) {
       series = nextSeries ?? [];
       extrema = nextExtrema ?? [];
       const origin = now ?? new Date();
-      const todayStart = startOfZonedDay(origin).getTime();
-      const windowEnd = addZonedDays(origin, 2).getTime();
-      const pad = 3 * 3600000;
-      const inWindow = series.filter((p) => p.t >= todayStart - pad && p.t <= windowEnd + pad);
-      const lastT = series.length ? series[series.length - 1].t : 0;
-      let stale = false;
-      if (inWindow.length >= 2) {
-        rangeStart = todayStart;
-        rangeEnd = windowEnd;
-        stale = lastT < origin.getTime() - 90 * 60000;
-      } else if (series.length >= 2) {
-        const fallback = new Date(lastT);
-        rangeEnd = startOfNextZonedDay(fallback).getTime();
-        rangeStart = addZonedDays(fallback, -1).getTime();
-        stale = true;
-      } else {
-        rangeStart = todayStart;
-        rangeEnd = windowEnd;
-        stale = true;
-      }
-      horizonAt = startOfNextZonedDay(new Date(rangeStart)).getTime();
-      const liveTomorrow = startOfNextZonedDay(origin).getTime();
-      horizonText =
-        Math.abs(horizonAt - liveTomorrow) < 12 * 3600000
-          ? "TOMORROW"
-          : formatShortDate(new Date(horizonAt)).toUpperCase();
+      originMs = origin.getTime();
+      const view = applyRange(origin);
       if (!scrubbing && !anim) {
-        viewTime = stale && lastT
-          ? Math.min(origin.getTime(), Math.max(rangeStart, lastT))
-          : origin.getTime();
+        viewTime = view.stale && view.lastT && dayOffset === 0
+          ? Math.min(origin.getTime(), Math.max(rangeStart, view.lastT))
+          : liveCursor(origin);
       }
-      chipDay = "";
+      chipKey = "";
       paint();
       emit();
-      return { stale, lastT, empty: series.length < 2 };
+      return view;
+    },
+    setDayOffset(nextOffset) {
+      const next = nextOffset ? 1 : 0;
+      if (next === dayOffset) return { dayOffset };
+      dayOffset = next;
+      if (anim) cancelAnimationFrame(anim);
+      anim = null;
+      scrubbing = false;
+      clearTimeout(idleTimer);
+      applyRange(new Date(originMs));
+      viewTime = liveCursor();
+      chipKey = "";
+      paint();
+      emit();
+      return { dayOffset };
+    },
+    dayOffset() {
+      return dayOffset;
+    },
+    hasDay(offset) {
+      const origin = new Date(originMs);
+      const start = addZonedDays(startOfZonedDay(origin), offset).getTime();
+      const end = addZonedDays(startOfZonedDay(origin), offset + 1).getTime();
+      return pointsInDay(series, start, end).length >= 2;
     },
     tick(now) {
-      if (!scrubbing && !anim) viewTime = now.getTime();
+      if (!scrubbing && !anim) viewTime = liveCursor(now);
       emit();
     },
     onView(fn) {
