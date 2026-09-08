@@ -50,7 +50,8 @@ function syncDayFlip() {
     );
   }
   if (els.dayFlip) {
-    els.dayFlip.hidden = !tomorrow && !chart.hasDay(1);
+    const show = tomorrow || chart.hasDay(1) || !chart.hasData();
+    els.dayFlip.hidden = !show;
     els.dayFlip.textContent = tomorrow ? "Today" : "Tomorrow";
     els.dayFlip.setAttribute("aria-pressed", tomorrow ? "true" : "false");
     els.dayFlip.setAttribute(
