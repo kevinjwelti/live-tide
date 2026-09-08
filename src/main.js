@@ -1,13 +1,7 @@
 import "./style.css";
 import { createSwell } from "./swell.js";
 import { createChart } from "./chart.js";
-import {
-  fetchTide,
-  loadSavedStation,
-  saveStation,
-  nextStation,
-  REFRESH_MS,
-} from "./tide.js";
+import { fetchTide, STATION, REFRESH_MS } from "./tide.js";
 import { moonState, renderMoon } from "./moon.js";
 import { formatClock, formatDate, setPlace } from "./time.js";
 
@@ -17,10 +11,8 @@ const els = {
   height: document.querySelector("#height"),
   scrubNote: document.querySelector("#scrub-note"),
   placeName: document.querySelector("#place-name"),
-  placeSub: document.querySelector("#place-sub"),
   dateLine: document.querySelector("#date-line"),
   clockLine: document.querySelector("#clock-line"),
-  stationBtn: document.querySelector("#station-btn"),
   statusMsg: document.querySelector("#status-msg"),
   moonName: document.querySelector("#moon-name"),
   moonPct: document.querySelector("#moon-pct"),
@@ -28,8 +20,7 @@ const els = {
   credit: document.querySelector("#credit"),
 };
 
-let station = loadSavedStation();
-setPlace(station);
+setPlace(STATION);
 const swell = createSwell();
 const chart = createChart(document.querySelector("#chart-stage"));
 
@@ -39,10 +30,8 @@ function setStatus(text) {
 }
 
 function applyPlace() {
-  setPlace(station);
-  els.placeName.textContent = station.name;
-  els.placeSub.textContent = station.hint;
-  if (els.credit) els.credit.textContent = station.credit;
+  els.placeName.textContent = STATION.name;
+  if (els.credit) els.credit.textContent = STATION.credit;
 }
 
 function renderMoonPanel(now) {
@@ -84,12 +73,12 @@ chart.onView((timeMs, sample, exploring) => {
 async function loadTide(reason = "refresh") {
   setStatus(reason === "init" ? "Gathering the tide…" : "");
   try {
-    const data = await fetchTide(station);
+    const data = await fetchTide();
     if (els.credit) {
       els.credit.textContent =
         data.source === "harmonics"
           ? "Tide predictions in feet · NOAA harmonics · Puerto Corinto"
-          : station.credit;
+          : STATION.credit;
     }
     const view = chart.setData({
       series: data.series,
@@ -110,14 +99,6 @@ async function loadTide(reason = "refresh") {
     }
   }
 }
-
-els.stationBtn.addEventListener("click", async () => {
-  station = nextStation(station.id);
-  saveStation(station.id);
-  applyPlace();
-  setStatus("Shifting waters…");
-  await loadTide("switch");
-});
 
 document.querySelector(".wordmark").addEventListener("click", async () => {
   const root = document.documentElement;
@@ -150,4 +131,3 @@ setInterval(() => {
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") loadTide("visible");
 });
-

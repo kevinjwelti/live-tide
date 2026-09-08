@@ -239,12 +239,9 @@ body {
   padding-top: 0.2rem;
 }
 
-.place-btn {
-  appearance: none;
-  background: none;
-  border: 0;
+.place {
+  margin: 0;
   color: var(--ink);
-  cursor: pointer;
   display: inline-flex;
   align-items: flex-start;
   gap: 0.45rem;
@@ -255,7 +252,7 @@ body {
   min-width: 0;
 }
 
-.place-btn .pin {
+.place .pin {
   width: 0.95rem;
   height: 0.95rem;
   margin-top: 0.12rem;
@@ -269,15 +266,6 @@ body {
   letter-spacing: 0.28em;
   font-weight: 400;
   overflow-wrap: anywhere;
-}
-
-.place-sub {
-  display: block;
-  margin-top: 0.28rem;
-  font-size: 0.74rem;
-  letter-spacing: 0.14em;
-  color: var(--ink-soft);
-  font-weight: 500;
 }
 
 .date-line {
@@ -566,7 +554,7 @@ html[data-light="night"] .playhead-line {
     width: 100%;
   }
 
-  .place-btn {
+  .place {
     width: 100%;
     text-align: left;
     padding: 0.15rem 0;
@@ -732,11 +720,6 @@ html[data-light="night"] .playhead-line {
   .place-name {
     font-size: 0.62rem;
     letter-spacing: 0.1em;
-  }
-
-  .place-sub {
-    font-size: 0.6rem;
-    letter-spacing: 0.06em;
   }
 
   .date-line {

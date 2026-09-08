@@ -6,12 +6,6 @@ export const BOOM = {
   lon: -87.361,
 };
 
-export const SCRIPPS = {
-  tz: "America/Los_Angeles",
-  lat: 32.8669,
-  lon: -117.2571,
-};
-
 let place = { ...BOOM };
 
 let timeFmt = makeTimeFmt();
@@ -94,14 +88,6 @@ export function zonedParts(date) {
   };
 }
 
-/** UTC calendar day as YYYYMMDD for NOAA queries. */
-export function gmtStamp(date) {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  return `${y}${m}${d}`;
-}
-
 export function startOfZonedDay(date) {
   const p = zonedParts(date);
   return zonedDate(p.year, p.month, p.day, 0, 0, 0);
@@ -131,11 +117,6 @@ export function zonedDate(year, month, day, hour = 0, minute = 0, second = 0, ms
     guess += want - got;
   }
   return new Date(guess);
-}
-
-export function parseNoaaGmt(stamp) {
-  const [day, time] = stamp.split(" ");
-  return Date.parse(`${day}T${time}:00Z`);
 }
 
 /** Solar altitude and azimuth (degrees, azimuth clockwise from north). */
@@ -193,7 +174,7 @@ const NIGHT = { type: "#e7eef6" };
 const GOLDEN = { type: "#f3ead8" };
 const DAY = { type: "#eef4f8" };
 
-/** Sun-driven night factor from the active place (The Boom or Scripps). */
+/** Sun-driven night factor from The Boom. */
 export function skyPalette(date) {
   const { elevation: el, azimuth: az } = solarPosition(date);
   const night = 1 - smoothstep(-14, -2, el);

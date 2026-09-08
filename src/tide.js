@@ -1,102 +1,17 @@
-import { gmtStamp, parseNoaaGmt } from "./time.js";
+export const STATION = {
+  id: "boom-corinto",
+  name: "THE BOOM, NICARAGUA",
+  source: "surfline-file",
+  spotId: "61d4d151c15a827dc58364ec",
+  credit: "Tide predictions in feet · Surfline · Corinto, Isla Cardon",
+  tz: "America/Managua",
+  lat: 12.635,
+  lon: -87.361,
+};
 
-export const STATIONS = [
-  {
-    id: "boom-corinto",
-    name: "THE BOOM, NICARAGUA",
-    hint: "Tap to switch · La Jolla, Scripps",
-    source: "surfline-file",
-    spotId: "61d4d151c15a827dc58364ec",
-    credit: "Tide predictions in feet · Surfline · Corinto, Isla Cardon",
-    tz: "America/Managua",
-    lat: 12.635,
-    lon: -87.361,
-  },
-  {
-    id: "9410230",
-    name: "LA JOLLA, CALIFORNIA",
-    hint: "Tap to switch · The Boom, Nicaragua",
-    source: "noaa",
-    credit: "Tide predictions in feet, MLLW · NOAA NOS CO-OPS",
-    tz: "America/Los_Angeles",
-    lat: 32.8669,
-    lon: -117.2571,
-  },
-];
-
-export const DEFAULT_STATION = STATIONS[0].id;
-const APP = "sandiego-tide-art";
-const CACHE_KEY = "live-tide-cache-v2";
-const STATION_KEY = "live-tide-station-v3";
 export const REFRESH_MS = 30 * 60 * 1000;
 
 const BOOM_TIDES_URL = `${import.meta.env.BASE_URL}data/boom-tides.json`;
-
-function stationById(id) {
-  return STATIONS.find((s) => s.id === id) ?? STATIONS[0];
-}
-
-export function loadSavedStation() {
-  try {
-    const id = localStorage.getItem(STATION_KEY);
-    return stationById(id);
-  } catch {
-    return stationById(DEFAULT_STATION);
-  }
-}
-
-export function saveStation(id) {
-  try {
-    localStorage.setItem(STATION_KEY, id);
-  } catch {
-    /* ignore quota */
-  }
-}
-
-function endpoint({ station, begin, end, interval }) {
-  const params = new URLSearchParams({
-    product: "predictions",
-    application: APP,
-    begin_date: begin,
-    end_date: end,
-    datum: "MLLW",
-    station,
-    time_zone: "gmt",
-    units: "english",
-    interval,
-    format: "json",
-  });
-  return `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?${params}`;
-}
-
-function readCache(station) {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed.station !== station || !parsed.series?.length) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function writeCache(payload) {
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
-  } catch {
-    /* ignore quota */
-  }
-}
-
-function parsePredictions(json, withType = false) {
-  const rows = json?.predictions ?? [];
-  return rows.map((row) => ({
-    t: parseNoaaGmt(row.t),
-    v: Number(row.v),
-    type: withType ? row.type : undefined,
-  }));
-}
 
 function toMs(timestamp) {
   const n = Number(timestamp);
@@ -126,7 +41,7 @@ function parseSurfline(json) {
   return { series, extrema };
 }
 
-async function fetchBoomFile(station) {
+async function fetchBoomFile() {
   const res = await fetch(`${BOOM_TIDES_URL}?v=${Date.now()}`, { cache: "no-store" });
   if (res.status === 404) {
     throw new Error("The Boom tide file has not landed yet.");
@@ -139,7 +54,7 @@ async function fetchBoomFile(station) {
   }
   const lastT = parsed.series[parsed.series.length - 1]?.t ?? 0;
   return {
-    station: station.id,
+    station: STATION.id,
     fetchedAt: json.fetchedAt ?? Date.now(),
     series: parsed.series,
     extrema: parsed.extrema ?? [],
@@ -149,47 +64,8 @@ async function fetchBoomFile(station) {
   };
 }
 
-async function fetchNoaa(station, now) {
-  const begin = gmtStamp(new Date(now.getTime() - 36 * 3600000));
-  const end = gmtStamp(new Date(now.getTime() + 36 * 3600000));
-  const curveUrl = endpoint({ station: station.id, begin, end, interval: "6" });
-  const hiloUrl = endpoint({ station: station.id, begin, end, interval: "hilo" });
-  const [curveRes, hiloRes] = await Promise.all([
-    fetch(curveUrl, { mode: "cors" }),
-    fetch(hiloUrl, { mode: "cors" }),
-  ]);
-  if (!curveRes.ok || !hiloRes.ok) throw new Error("NOAA request failed");
-  const [curveJson, hiloJson] = await Promise.all([curveRes.json(), hiloRes.json()]);
-  if (!curveJson.predictions || curveJson.error) {
-    throw new Error(curveJson.error?.message || "NOAA returned no predictions");
-  }
-  return {
-    station: station.id,
-    fetchedAt: Date.now(),
-    series: parsePredictions(curveJson),
-    extrema: parsePredictions(hiloJson, true),
-    source: "noaa",
-  };
-}
-
-export async function fetchTide(station, now = new Date()) {
-  if (station.source === "surfline-file") {
-    return fetchBoomFile(station);
-  }
-
-  const cached = readCache(station.id);
-  if (cached && now.getTime() - cached.fetchedAt < REFRESH_MS) {
-    return { ...cached, fromCache: true, stale: false };
-  }
-
-  try {
-    const payload = await fetchNoaa(station, now);
-    writeCache(payload);
-    return { ...payload, fromCache: false, stale: false };
-  } catch (error) {
-    if (cached) return { ...cached, fromCache: true, stale: true, error };
-    throw error;
-  }
+export async function fetchTide() {
+  return fetchBoomFile();
 }
 
 function pointAt(series, i) {
@@ -242,9 +118,4 @@ export function sampleTide(series, timeMs) {
   const { height, dudu } = crSegment(p0, p1, p2, p3, u);
   const slope = (dudu / span) * 3600000;
   return { height, slope };
-}
-
-export function nextStation(id) {
-  const index = STATIONS.findIndex((s) => s.id === id);
-  return STATIONS[(index + 1) % STATIONS.length];
 }
