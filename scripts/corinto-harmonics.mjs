@@ -62,10 +62,10 @@ function extremaFromHourly(series) {
   return extrema;
 }
 
-/** Hourly curve + HIGH/LOW for [now-36h, now+96h]. */
+/** Hourly curve + HIGH/LOW for [now-36h, now+120h] so today + tomorrow always fit. */
 export function fromHarmonics(now = Date.now()) {
   const start = now - 36 * 3600000;
-  const end = now + 96 * 3600000;
+  const end = now + 120 * 3600000;
   const series = [];
   for (let t = start; t <= end; t += 3600000) {
     series.push({ t, v: Number(harmonicHeight(t).toFixed(3)) });

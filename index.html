@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-title" content="LIVE TIDE" />
     <meta name="theme-color" content="#07080c" />
     <meta http-equiv="Cache-Control" content="no-cache" />
-    <meta name="live-tide-build" content="boom-only-v43" />
+    <meta name="live-tide-build" content="forecast-v44" />
     <meta
       name="description"
       content="Living tide wall art for The Boom, Nicaragua, drawn from Surfline Corinto / Isla Cardon."
@@ -74,8 +74,11 @@
         </div>
       </header>
 
-      <section class="chart-stage" id="chart-stage" aria-label="Today's tide curve">
+      <section class="chart-stage" id="chart-stage" aria-label="Tide curve for today and tomorrow">
         <canvas id="chart" class="chart-canvas"></canvas>
+        <div id="day-mark" class="day-mark" hidden aria-hidden="true">
+          <span id="day-mark-label" class="day-mark-label">TOMORROW</span>
+        </div>
         <div id="now-line" class="now-line" aria-hidden="true"></div>
         <div id="playhead-line" class="playhead-line" aria-hidden="true"></div>
         <div id="playhead" class="playhead" aria-hidden="true">

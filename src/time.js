@@ -73,6 +73,37 @@ export function formatDate(date) {
   return dateFmt.format(date);
 }
 
+export function formatShortDate(date) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: place.tz,
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
+/** Start of the local calendar day `days` after `date`'s local day. */
+export function addZonedDays(date, days) {
+  let start = startOfZonedDay(date);
+  if (days > 0) {
+    for (let i = 0; i < days; i += 1) start = startOfNextZonedDay(start);
+    return start;
+  }
+  for (let i = 0; i > days; i -= 1) {
+    start = startOfZonedDay(new Date(start.getTime() - 12 * 3600000));
+  }
+  return start;
+}
+
+/** Quiet label when `time` is on a different local day than `now`. */
+export function viewDayLabel(time, now = new Date()) {
+  const viewStart = startOfZonedDay(new Date(time)).getTime();
+  const todayStart = startOfZonedDay(now).getTime();
+  if (viewStart === todayStart) return "";
+  const tomorrowStart = startOfNextZonedDay(now).getTime();
+  if (viewStart === tomorrowStart) return "Tomorrow";
+  return formatShortDate(new Date(time));
+}
+
 export function zonedParts(date) {
   const bag = {};
   for (const part of partsFmt.formatToParts(date)) {

@@ -3,7 +3,7 @@ import { createSwell } from "./swell.js";
 import { createChart } from "./chart.js";
 import { fetchTide, STATION, REFRESH_MS } from "./tide.js";
 import { moonState, renderMoon } from "./moon.js";
-import { formatClock, formatDate, setPlace } from "./time.js";
+import { formatClock, formatDate, setPlace, viewDayLabel } from "./time.js";
 
 const els = {
   direction: document.querySelector("#direction"),
@@ -58,8 +58,11 @@ function renderTideReadout(timeMs, sample, exploring) {
   els.dirMark.className = `dir-mark ${rising ? "rising" : "falling"}`;
   els.height.textContent = sample.height.toFixed(1);
   if (exploring && Math.abs(timeMs - Date.now()) > 5000) {
+    const day = viewDayLabel(timeMs);
     els.scrubNote.hidden = false;
-    els.scrubNote.textContent = formatClock(new Date(timeMs));
+    els.scrubNote.textContent = day
+      ? `${day} · ${formatClock(new Date(timeMs))}`
+      : formatClock(new Date(timeMs));
   } else {
     els.scrubNote.hidden = true;
   }

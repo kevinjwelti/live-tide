@@ -12,7 +12,7 @@ import { fromHarmonics } from "./corinto-harmonics.mjs";
 
 const SPOT_ID = "61d4d151c15a827dc58364ec";
 const SURFLINE =
-  `https://services.surfline.com/kbyg/spots/forecasts/tides?spotId=${SPOT_ID}&days=3&intervalHours=1`;
+  `https://services.surfline.com/kbyg/spots/forecasts/tides?spotId=${SPOT_ID}&days=5&intervalHours=1`;
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = resolve(ROOT, "public/data/boom-tides.json");
 const M_TO_FT = 3.28084;

@@ -316,6 +316,48 @@ body {
   z-index: 3;
 }
 
+.day-mark {
+  position: absolute;
+  width: 1px;
+  margin-left: -0.5px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(201, 161, 92, 0.28) 14%,
+    rgba(201, 161, 92, 0.28) 86%,
+    transparent
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+.day-mark-label {
+  position: absolute;
+  top: 0.15rem;
+  left: 0.5rem;
+  font-size: 0.58rem;
+  letter-spacing: 0.22em;
+  font-weight: 400;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  opacity: 0.78;
+}
+
+.day-mark-label.is-left {
+  left: auto;
+  right: 0.5rem;
+}
+
+html[data-light="night"] .day-mark {
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(197, 212, 232, 0.28) 14%,
+    rgba(197, 212, 232, 0.28) 86%,
+    transparent
+  );
+}
+
 html[data-light="night"] .now-line {
   background: linear-gradient(180deg, transparent, #c5d4e8 12%, #c5d4e8 88%, transparent);
   box-shadow: 0 0 12px rgba(180, 200, 230, 0.4);
@@ -650,6 +692,12 @@ html[data-light="night"] .playhead-line {
     letter-spacing: 0.08em;
     padding: 0.32rem 0.55rem;
     max-width: calc(100% - 0.4rem);
+  }
+
+  .day-mark-label {
+    font-size: 0.5rem;
+    letter-spacing: 0.16em;
+    top: 0.05rem;
   }
 }
 

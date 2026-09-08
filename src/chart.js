@@ -1,4 +1,4 @@
-import { formatClock, startOfZonedDay, startOfNextZonedDay, skyPalette, isNightScene, getPlace } from "./time.js";
+import { formatClock, startOfZonedDay, startOfNextZonedDay, addZonedDays, formatShortDate, skyPalette, isNightScene, getPlace } from "./time.js";
 import { sampleTide } from "./tide.js";
 import { moonState, renderMoon, renderSun } from "./moon.js";
 
@@ -19,7 +19,8 @@ function layout(w, h, series, rangeStart, rangeEnd) {
   const right = w * (1 - inset.right);
   const top = h * inset.top;
   const bottom = h * (1 - inset.bottom);
-  const values = series.map((p) => p.v);
+  const visible = series.filter((p) => p.t >= rangeStart && p.t <= rangeEnd);
+  const values = (visible.length ? visible : series).map((p) => p.v);
   let min = Math.min(0, ...values);
   let max = Math.max(3, ...values);
   const vPad = Math.max(0.4, (max - min) * 0.12);
@@ -59,6 +60,8 @@ export function createChart(stage) {
   const orb = playhead?.querySelector("#playhead-orb");
   const yAxis = stage.querySelector("#y-axis");
   const labelsEl = stage.querySelector("#extremum-labels");
+  const dayMark = stage.querySelector("#day-mark");
+  const dayMarkLabel = stage.querySelector("#day-mark-label");
   const hit = stage.querySelector("#chart-hit") ?? stage;
 
   let series = [];
@@ -67,6 +70,9 @@ export function createChart(stage) {
   let rangeStart = 0;
   let rangeEnd = 1;
   let viewTime = Date.now();
+  let horizonAt = 0;
+  let horizonText = "TOMORROW";
+  let chipDay = "";
   let scrubbing = false;
   let idleTimer = 0;
   let anim = null;
@@ -88,7 +94,11 @@ export function createChart(stage) {
   const paint = () => {
     const { w, h } = size();
     ctx.clearRect(0, 0, w, h);
-    if (series.length < 2) return;
+    if (series.length < 2) {
+      if (dayMark) dayMark.hidden = true;
+      labelsEl?.replaceChildren();
+      return;
+    }
     L = layout(w, h, series, rangeStart, rangeEnd);
 
     ctx.save();
@@ -118,14 +128,58 @@ export function createChart(stage) {
     ctx.restore();
 
     yAxis.replaceChildren();
+    placeHorizon(h);
+    paintDots();
+    chipDay = "";
+    paintChips();
+  };
 
+  const placeHorizon = (h) => {
+    if (!dayMark || !L) return;
+    const inRange = horizonAt > rangeStart + 20 * 60000 && horizonAt < rangeEnd - 20 * 60000;
+    dayMark.hidden = !inRange;
+    if (!inRange) return;
+    const px = L.x(horizonAt);
+    dayMark.style.left = `${px}px`;
+    dayMark.style.top = `${L.top}px`;
+    dayMark.style.bottom = `${h - L.bottom}px`;
+    if (dayMarkLabel) {
+      dayMarkLabel.textContent = horizonText;
+      const nearRight = px > (L.left + L.right) * 0.72;
+      dayMarkLabel.classList.toggle("is-left", nearRight);
+    }
+  };
+
+  const paintDots = () => {
+    if (!L) return;
+    extrema
+      .filter((e) => e.t >= rangeStart && e.t <= rangeEnd)
+      .forEach((e) => {
+        ctx.beginPath();
+        ctx.arc(L.x(e.t), L.y(e.v), 3.8, 0, Math.PI * 2);
+        ctx.fillStyle = "#c9a15c";
+        ctx.strokeStyle = "rgba(44, 38, 34, 0.35)";
+        ctx.lineWidth = 1.6;
+        ctx.fill();
+        ctx.stroke();
+      });
+  };
+
+  const paintChips = () => {
+    if (!L || !labelsEl) return;
+    const dayStart = startOfZonedDay(new Date(viewTime)).getTime();
+    const dayEnd = startOfNextZonedDay(new Date(viewTime)).getTime();
+    const key = `${dayStart}:${rangeStart}:${rangeEnd}`;
+    if (key === chipDay && labelsEl.childNodes.length) return;
+    chipDay = key;
     labelsEl.replaceChildren();
-    const todayExtrema = extrema.filter((e) => e.t >= rangeStart && e.t <= rangeEnd);
-    todayExtrema.forEach((e) => {
+    const w = stage.clientWidth;
+    const dayExtrema = extrema.filter((e) => e.t >= dayStart && e.t <= dayEnd && e.t >= rangeStart && e.t <= rangeEnd);
+    const placed = [];
+    dayExtrema.forEach((e) => {
       const node = document.createElement("div");
       node.className = "extremum";
       const px = L.x(e.t);
-      const py = L.y(e.v);
       node.style.top = `${L.bottom + 8}px`;
       const kind = e.type === "H" ? "HIGH TIDE" : "LOW TIDE";
       node.innerHTML = `<div class="t-time">${formatClock(new Date(e.t))}</div>
@@ -133,16 +187,14 @@ export function createChart(stage) {
         <div class="t-ht">${e.v.toFixed(1)} ft</div>`;
       labelsEl.append(node);
       const hw = node.offsetWidth / 2;
-      const left = Math.min(w - hw - 4, Math.max(hw + 4, px));
+      let left = Math.min(w - hw - 4, Math.max(hw + 4, px));
+      const overlap = placed.some((p) => Math.abs(left - p.left) < hw + p.hw + 8);
+      if (overlap) {
+        node.remove();
+        return;
+      }
       node.style.left = `${left}px`;
-
-      ctx.beginPath();
-      ctx.arc(px, py, 3.8, 0, Math.PI * 2);
-      ctx.fillStyle = "#c9a15c";
-      ctx.strokeStyle = "rgba(44, 38, 34, 0.35)";
-      ctx.lineWidth = 1.6;
-      ctx.fill();
-      ctx.stroke();
+      placed.push({ left, hw });
     });
   };
 
@@ -201,6 +253,7 @@ export function createChart(stage) {
 
   const emit = () => {
     listeners.onView(viewTime, sampleTide(series, viewTime), scrubbing || Boolean(anim));
+    paintChips();
     placeMarks(viewTime);
   };
 
@@ -273,30 +326,37 @@ export function createChart(stage) {
       extrema = nextExtrema ?? [];
       const origin = now ?? new Date();
       const todayStart = startOfZonedDay(origin).getTime();
-      const todayEnd = startOfNextZonedDay(origin).getTime();
+      const windowEnd = addZonedDays(origin, 2).getTime();
       const pad = 3 * 3600000;
-      const inToday = series.filter((p) => p.t >= todayStart - pad && p.t <= todayEnd + pad);
+      const inWindow = series.filter((p) => p.t >= todayStart - pad && p.t <= windowEnd + pad);
       const lastT = series.length ? series[series.length - 1].t : 0;
       let stale = false;
-      if (inToday.length >= 2) {
+      if (inWindow.length >= 2) {
         rangeStart = todayStart;
-        rangeEnd = todayEnd;
+        rangeEnd = windowEnd;
         stale = lastT < origin.getTime() - 90 * 60000;
       } else if (series.length >= 2) {
         const fallback = new Date(lastT);
-        rangeStart = startOfZonedDay(fallback).getTime();
         rangeEnd = startOfNextZonedDay(fallback).getTime();
+        rangeStart = addZonedDays(fallback, -1).getTime();
         stale = true;
       } else {
         rangeStart = todayStart;
-        rangeEnd = todayEnd;
+        rangeEnd = windowEnd;
         stale = true;
       }
+      horizonAt = startOfNextZonedDay(new Date(rangeStart)).getTime();
+      const liveTomorrow = startOfNextZonedDay(origin).getTime();
+      horizonText =
+        Math.abs(horizonAt - liveTomorrow) < 12 * 3600000
+          ? "TOMORROW"
+          : formatShortDate(new Date(horizonAt)).toUpperCase();
       if (!scrubbing && !anim) {
         viewTime = stale && lastT
           ? Math.min(origin.getTime(), Math.max(rangeStart, lastT))
           : origin.getTime();
       }
+      chipDay = "";
       paint();
       emit();
       return { stale, lastT, empty: series.length < 2 };
