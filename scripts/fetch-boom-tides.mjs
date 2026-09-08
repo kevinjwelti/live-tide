@@ -8,6 +8,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CORINTO_EXTREMA } from "./corinto-extrema.mjs";
+import { fromHarmonics } from "./corinto-harmonics.mjs";
 
 const SPOT_ID = "61d4d151c15a827dc58364ec";
 const SURFLINE =
@@ -113,8 +114,13 @@ try {
   payload = envelope(await trySurfline(), "surfline");
   console.log("Using live Surfline Corinto tides");
 } catch (error) {
-  console.warn(`Surfline blocked (${error.message}); writing Corinto HIGH/LOW curve`);
-  payload = envelope(fromCorintoTable(), "surfline");
+  console.warn(`Surfline blocked (${error.message}); synthesizing Puerto Corinto harmonics`);
+  try {
+    payload = envelope(fromHarmonics(Date.now()), "harmonics");
+  } catch (harmonicError) {
+    console.warn(`Harmonics failed (${harmonicError.message}); using published HIGH/LOW table`);
+    payload = envelope(fromCorintoTable(), "table");
+  }
 }
 
 await mkdir(dirname(OUT), { recursive: true });

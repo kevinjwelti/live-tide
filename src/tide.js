@@ -137,12 +137,15 @@ async function fetchBoomFile(station) {
   if (!parsed.series?.length) {
     throw new Error("The Boom tide file has not landed yet.");
   }
+  const lastT = parsed.series[parsed.series.length - 1]?.t ?? 0;
   return {
     station: station.id,
     fetchedAt: json.fetchedAt ?? Date.now(),
     series: parsed.series,
     extrema: parsed.extrema ?? [],
-    source: "surfline",
+    source: json.source ?? "surfline",
+    lastT,
+    stale: lastT > 0 && lastT < Date.now() - 90 * 60000,
   };
 }
 

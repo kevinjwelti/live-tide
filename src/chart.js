@@ -31,7 +31,7 @@ function layout(w, h, series, rangeStart, rangeEnd) {
 }
 
 function curvePath(ctx, series, L, from, to) {
-  const pts = series.filter((p) => p.t >= from - 400000 && p.t <= to + 400000);
+  const pts = series.filter((p) => p.t >= from - 12 * 3600000 && p.t <= to + 12 * 3600000);
   if (pts.length < 2) return;
   ctx.beginPath();
   ctx.moveTo(L.x(pts[0].t), L.y(pts[0].v));
@@ -108,11 +108,12 @@ export function createChart(stage) {
     curvePath(ctx, series, L, rangeStart, rangeEnd);
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
-    ctx.strokeStyle = "rgba(44, 38, 34, 0.22)";
-    ctx.lineWidth = 3.2;
+    const night = document.documentElement.dataset.light === "night";
+    ctx.strokeStyle = night ? "rgba(8, 10, 16, 0.7)" : "rgba(44, 38, 34, 0.22)";
+    ctx.lineWidth = night ? 4.4 : 3.2;
     ctx.stroke();
-    ctx.strokeStyle = "rgba(252, 248, 242, 0.94)";
-    ctx.lineWidth = 1.55;
+    ctx.strokeStyle = night ? "rgba(255, 252, 246, 0.98)" : "rgba(252, 248, 242, 0.94)";
+    ctx.lineWidth = night ? 2.2 : 1.55;
     ctx.stroke();
     ctx.restore();
 
@@ -268,14 +269,37 @@ export function createChart(stage) {
 
   return {
     setData({ series: nextSeries, extrema: nextExtrema, now }) {
-      series = nextSeries;
-      extrema = nextExtrema;
+      series = nextSeries ?? [];
+      extrema = nextExtrema ?? [];
       const origin = now ?? new Date();
-      rangeStart = startOfZonedDay(origin).getTime();
-      rangeEnd = startOfNextZonedDay(origin).getTime();
-      if (!scrubbing && !anim) viewTime = origin.getTime();
+      const todayStart = startOfZonedDay(origin).getTime();
+      const todayEnd = startOfNextZonedDay(origin).getTime();
+      const pad = 3 * 3600000;
+      const inToday = series.filter((p) => p.t >= todayStart - pad && p.t <= todayEnd + pad);
+      const lastT = series.length ? series[series.length - 1].t : 0;
+      let stale = false;
+      if (inToday.length >= 2) {
+        rangeStart = todayStart;
+        rangeEnd = todayEnd;
+        stale = lastT < origin.getTime() - 90 * 60000;
+      } else if (series.length >= 2) {
+        const fallback = new Date(lastT);
+        rangeStart = startOfZonedDay(fallback).getTime();
+        rangeEnd = startOfNextZonedDay(fallback).getTime();
+        stale = true;
+      } else {
+        rangeStart = todayStart;
+        rangeEnd = todayEnd;
+        stale = true;
+      }
+      if (!scrubbing && !anim) {
+        viewTime = stale && lastT
+          ? Math.min(origin.getTime(), Math.max(rangeStart, lastT))
+          : origin.getTime();
+      }
       paint();
       emit();
+      return { stale, lastT, empty: series.length < 2 };
     },
     tick(now) {
       if (!scrubbing && !anim) viewTime = now.getTime();

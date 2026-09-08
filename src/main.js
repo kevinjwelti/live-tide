@@ -85,8 +85,24 @@ async function loadTide(reason = "refresh") {
   setStatus(reason === "init" ? "Gathering the tide…" : "");
   try {
     const data = await fetchTide(station);
-    chart.setData({ series: data.series, extrema: data.extrema, now: new Date() });
-    setStatus("");
+    if (els.credit) {
+      els.credit.textContent =
+        data.source === "harmonics"
+          ? "Tide predictions in feet · NOAA harmonics · Puerto Corinto"
+          : station.credit;
+    }
+    const view = chart.setData({
+      series: data.series,
+      extrema: data.extrema,
+      now: new Date(),
+    });
+    if (view?.empty) {
+      setStatus("No tide curve in the file yet.");
+    } else if (view?.stale && view.lastT) {
+      setStatus(`Tide file ends ${formatClock(new Date(view.lastT))} · showing last available curve`);
+    } else {
+      setStatus("");
+    }
   } catch (error) {
     console.warn(error);
     if (!chart.hasData()) {
