@@ -41,6 +41,8 @@ function layout(w, h, series, rangeStart, rangeEnd) {
 }
 
 function curvePath(ctx, series, L, from, to) {
+  // Neighbor points outside the day keep the spline smooth at midnight.
+  // Never cap at "now" / the playhead — the full local day must stay visible.
   const pts = series.filter((p) => p.t >= from - 12 * 3600000 && p.t <= to + 12 * 3600000);
   if (pts.length < 2) return;
   ctx.beginPath();
@@ -383,7 +385,9 @@ export function createChart(stage) {
       const origin = new Date(originMs);
       const start = addZonedDays(startOfZonedDay(origin), offset).getTime();
       const end = addZonedDays(startOfZonedDay(origin), offset + 1).getTime();
-      return pointsInDay(series, start, end).length >= 2;
+      const pts = series.filter((p) => p.t >= start - 3600000 && p.t <= end + 3600000);
+      if (pts.length < 8) return false;
+      return pts[0].t <= start + 4 * 3600000 && pts[pts.length - 1].t >= end - 4 * 3600000;
     },
     tick(now) {
       if (!scrubbing && !anim) viewTime = liveCursor(now);

@@ -6,7 +6,7 @@ on:
       - main
       - "cursor/**"
   schedule:
-    # Refresh The Boom / Corinto tides about once an hour.
+    # Hourly refresh. GitHub only runs `schedule` from the default branch (main).
     - cron: "7 * * * *"
   workflow_dispatch:
 
@@ -27,8 +27,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Fetch Surfline Corinto tides (no browser Origin)
+      - run: npm test
+      - name: Fetch Boom tides (several days ahead; fail if short of end-of-tomorrow)
         run: npm run fetch-boom
+      - name: Assert tide file covers through end of tomorrow
+        run: npm run check-coverage
       - run: npm run build
       - uses: peaceiris/actions-gh-pages@v4
         with:

@@ -1,18 +1,28 @@
 #!/usr/bin/env node
 /**
  * Server-side only. Prefer live Surfline Corinto tides (no Origin header).
- * If Cloudflare blocks the fetch (browser AND some CI IPs), write a Corinto
- * HIGH/LOW curve so The Boom still has a same-origin JSON file.
+ * Always request several days ahead. If Cloudflare blocks the fetch, synthesize
+ * Puerto Corinto harmonics for yesterday through the next week. Fail the job
+ * unless the written file reaches end-of-tomorrow in America/Managua.
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CORINTO_EXTREMA } from "./corinto-extrema.mjs";
-import { fromHarmonics } from "./corinto-harmonics.mjs";
+import { fromHarmonics } from "../src/corinto-harmonics.js";
+import {
+  assertForecastCoverage,
+  coverageReport,
+  ensureForecastCoverage,
+} from "../src/tide-coverage.js";
+import { setPlace } from "../src/time.js";
+
+setPlace({ tz: "America/Managua", lat: 12.635, lon: -87.361 });
 
 const SPOT_ID = "61d4d151c15a827dc58364ec";
+const SURFLINE_DAYS = 10;
 const SURFLINE =
-  `https://services.surfline.com/kbyg/spots/forecasts/tides?spotId=${SPOT_ID}&days=5&intervalHours=1`;
+  `https://services.surfline.com/kbyg/spots/forecasts/tides?spotId=${SPOT_ID}&days=${SURFLINE_DAYS}&intervalHours=1`;
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = resolve(ROOT, "public/data/boom-tides.json");
 const M_TO_FT = 3.28084;
@@ -40,7 +50,7 @@ function parseSurfline(json) {
     const mixed = [...series, ...extrema.map((e) => ({ t: e.t, v: e.v }))].sort(
       (a, b) => a.t - b.t
     );
-    return { series: mixed, extrema };
+    return { series, extrema };
   }
   return { series, extrema };
 }
@@ -97,6 +107,7 @@ function envelope(parsed, via) {
   return {
     station: "boom-corinto",
     source: via,
+    extended: Boolean(parsed.filled),
     spotId: SPOT_ID,
     location: {
       name: "Corinto, Isla Cardon",
@@ -109,20 +120,38 @@ function envelope(parsed, via) {
   };
 }
 
+function finalize(parsed, via) {
+  const covered = ensureForecastCoverage(parsed, Date.now());
+  assertForecastCoverage(covered.series, Date.now());
+  const source = via === "surfline" ? "surfline" : "harmonics";
+  return envelope(covered, source);
+}
+
 let payload;
 try {
-  payload = envelope(await trySurfline(), "surfline");
+  payload = finalize(await trySurfline(), "surfline");
   console.log("Using live Surfline Corinto tides");
 } catch (error) {
   console.warn(`Surfline blocked (${error.message}); synthesizing Puerto Corinto harmonics`);
   try {
-    payload = envelope(fromHarmonics(Date.now()), "harmonics");
+    payload = finalize(fromHarmonics(Date.now()), "harmonics");
   } catch (harmonicError) {
     console.warn(`Harmonics failed (${harmonicError.message}); using published HIGH/LOW table`);
-    payload = envelope(fromCorintoTable(), "table");
+    payload = finalize(fromCorintoTable(), "table");
   }
+}
+
+const report = coverageReport(payload.series, Date.now());
+if (!report.ok) {
+  console.error(
+    `Refusing to write short tide file (last ${new Date(report.last).toISOString()}, need ${new Date(report.tomorrowEnd).toISOString()})`
+  );
+  process.exit(1);
 }
 
 await mkdir(dirname(OUT), { recursive: true });
 await writeFile(OUT, `${JSON.stringify(payload)}\n`);
-console.log(`Wrote ${OUT} (${payload.series.length} pts, ${payload.extrema.length} extrema)`);
+console.log(
+  `Wrote ${OUT} (${payload.series.length} pts, ${payload.extrema.length} extrema, ${payload.source}` +
+    `${payload.extended ? "+extended" : ""}; through ${new Date(report.last).toISOString()})`
+);

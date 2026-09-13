@@ -1,3 +1,6 @@
+import { ensureForecastCoverage } from "./tide-coverage.js";
+import { setPlace } from "./time.js";
+
 export const STATION = {
   id: "boom-corinto",
   name: "THE BOOM, NICARAGUA",
@@ -9,9 +12,11 @@ export const STATION = {
   lon: -87.361,
 };
 
+setPlace(STATION);
+
 export const REFRESH_MS = 30 * 60 * 1000;
 
-const BOOM_TIDES_URL = `${import.meta.env.BASE_URL}data/boom-tides.json`;
+const BOOM_TIDES_URL = `${import.meta.env?.BASE_URL ?? "/"}data/boom-tides.json`;
 
 function toMs(timestamp) {
   const n = Number(timestamp);
@@ -52,12 +57,13 @@ async function fetchBoomFile() {
   if (!parsed.series?.length) {
     throw new Error("The Boom tide file has not landed yet.");
   }
-  const lastT = parsed.series[parsed.series.length - 1]?.t ?? 0;
+  const covered = ensureForecastCoverage(parsed, Date.now());
+  const lastT = covered.series[covered.series.length - 1]?.t ?? 0;
   return {
     station: STATION.id,
     fetchedAt: json.fetchedAt ?? Date.now(),
-    series: parsed.series,
-    extrema: parsed.extrema ?? [],
+    series: covered.series,
+    extrema: covered.extrema ?? [],
     source: json.source ?? "surfline",
     lastT,
     stale: lastT > 0 && lastT < Date.now() - 90 * 60000,

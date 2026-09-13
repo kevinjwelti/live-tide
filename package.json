@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "fetch-boom": "node scripts/fetch-boom-tides.mjs",
+    "check-coverage": "node scripts/check-boom-coverage.mjs",
+    "test": "node scripts/test-tide-coverage.mjs",
     "build": "vite build",
     "preview": "vite preview --host --port 4173"
   },
