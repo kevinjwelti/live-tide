@@ -43,6 +43,8 @@ body {
   font-family: "Playfair Display", Georgia, serif;
   font-weight: 500;
   font-size: clamp(1.6rem, 3vw, 2.2rem);
+  letter-spacing: 0.02em;
+  word-spacing: 0.12em;
 }
 
 .sky-controls {
@@ -56,9 +58,9 @@ body {
   background: transparent;
   color: #f4efe6;
   font: inherit;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   padding: 0.55rem 0.75rem;
   cursor: pointer;
 }
