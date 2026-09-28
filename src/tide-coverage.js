@@ -65,18 +65,30 @@ function extendSeries(existing = [], extra = []) {
   return [...before, ...existing, ...after];
 }
 
-/** Keep existing (Surfline) points; synthesize only the missing ends. */
+/**
+ * Prefer a fresh file when it already covers today→tomorrow.
+ * If the file is short or entirely in the past, replace it with a new
+ * rolling harmonics window so the chart cannot go stale.
+ */
 export function ensureForecastCoverage(parsed = {}, now = Date.now()) {
   const series = parsed.series ?? [];
   const extrema = parsed.extrema ?? [];
   const report = coverageReport(series, now);
-  const { yesterdayStart, generateEnd } = boomDayBounds(now);
+  const { todayStart, yesterdayStart, generateEnd } = boomDayBounds(now);
+  const last = series[series.length - 1]?.t ?? 0;
+  const fileIsPast = last > 0 && last < todayStart;
   const spansWindow =
     report.ok &&
+    !fileIsPast &&
     (series[0]?.t ?? Infinity) <= yesterdayStart + 3600000 &&
-    (series[series.length - 1]?.t ?? 0) >= generateEnd - 3600000;
+    last >= generateEnd - 3600000;
   if (spansWindow) {
     return { ...parsed, series, extrema, filled: false };
+  }
+  if (fileIsPast || !series.length) {
+    const fresh = fromHarmonics(now);
+    assertForecastCoverage(fresh.series, now);
+    return { ...parsed, ...fresh, filled: true, source: "harmonics" };
   }
   const extra = fromHarmonics(now, { start: yesterdayStart, end: generateEnd });
   const merged = {
@@ -87,4 +99,9 @@ export function ensureForecastCoverage(parsed = {}, now = Date.now()) {
   };
   assertForecastCoverage(merged.series, now);
   return merged;
+}
+
+/** Always-valid Boom curve for the current local calendar window. */
+export function rollingTide(now = Date.now(), overlay = null) {
+  return ensureForecastCoverage(overlay ?? fromHarmonics(now), now);
 }

@@ -10,6 +10,7 @@ import {
 } from "./time.js";
 import { sampleTide } from "./tide.js";
 import { moonState, renderMoon, renderSun } from "./moon.js";
+import { canvasStyle } from "./moods.js";
 
 function chartPad(w, h) {
   const phone = Math.min(w, h) < 640;
@@ -67,6 +68,79 @@ function pointsInDay(series, startMs, endMs) {
   return series.filter((p) => p.t >= startMs - pad && p.t <= endMs + pad);
 }
 
+function paintGrid(ctx, L) {
+  ctx.save();
+  ctx.strokeStyle = "rgba(160, 210, 255, 0.18)";
+  ctx.lineWidth = 1;
+  const stepX = Math.max(28, (L.right - L.left) / 16);
+  const stepY = Math.max(22, (L.bottom - L.top) / 8);
+  for (let x = L.left; x <= L.right + 0.5; x += stepX) {
+    ctx.beginPath();
+    ctx.moveTo(x, L.top);
+    ctx.lineTo(x, L.bottom);
+    ctx.stroke();
+  }
+  for (let y = L.top; y <= L.bottom + 0.5; y += stepY) {
+    ctx.beginPath();
+    ctx.moveTo(L.left, y);
+    ctx.lineTo(L.right, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function paintTicks(ctx, L) {
+  ctx.save();
+  ctx.strokeStyle = "rgba(230, 244, 255, 0.45)";
+  ctx.lineWidth = 1;
+  const mid = (L.top + L.bottom) / 2;
+  for (let x = L.left; x <= L.right; x += Math.max(36, (L.right - L.left) / 12)) {
+    ctx.beginPath();
+    ctx.moveTo(x, mid - 5);
+    ctx.lineTo(x, mid + 5);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function paintBleed(ctx, series, L, from, to) {
+  ctx.save();
+  ctx.filter = "blur(10px)";
+  curvePath(ctx, series, L, from, to);
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "rgba(70, 140, 190, 0.28)";
+  ctx.lineWidth = 18;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function paintTwin(ctx, series, L, from, to, twin) {
+  for (const layer of [twin.a, twin.b]) {
+    ctx.save();
+    ctx.translate(layer.dx, layer.dy);
+    curvePath(ctx, series, L, from, to);
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.strokeStyle = layer.color;
+    ctx.lineWidth = layer.width;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function paintTorn(ctx, series, L, from, to, night) {
+  ctx.save();
+  curvePath(ctx, series, L, from, to);
+  const lastX = L.x(Math.min(to, series[series.length - 1].t));
+  ctx.lineTo(lastX, L.bottom + 10);
+  ctx.lineTo(L.x(from), L.bottom + 10);
+  ctx.closePath();
+  ctx.fillStyle = night ? "rgba(18, 18, 18, 0.55)" : "rgba(246, 238, 220, 0.72)";
+  ctx.fill();
+  ctx.restore();
+}
+
 export function createChart(stage) {
   const canvas = stage.querySelector("#chart");
   const ctx = canvas.getContext("2d");
@@ -92,6 +166,7 @@ export function createChart(stage) {
   let anim = null;
   let listeners = { onView: () => {} };
   let orbKey = "";
+  let clockMs = Date.now();
 
   const size = () => {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -118,6 +193,11 @@ export function createChart(stage) {
       return;
     }
     L = layout(w, h, series, rangeStart, rangeEnd);
+    const style = canvasStyle();
+    const night = document.documentElement.dataset.light === "night";
+
+    if (style.grid) paintGrid(ctx, L);
+    if (style.bleed) paintBleed(ctx, series, L, rangeStart, rangeEnd);
 
     ctx.save();
     curvePath(ctx, series, L, rangeStart, rangeEnd);
@@ -125,25 +205,37 @@ export function createChart(stage) {
     ctx.lineTo(lastX, L.bottom);
     ctx.lineTo(L.x(rangeStart), L.bottom);
     ctx.closePath();
-    const mist = ctx.createLinearGradient(0, L.top, 0, L.bottom);
-    mist.addColorStop(0, "rgba(252, 246, 238, 0.10)");
-    mist.addColorStop(1, "rgba(252, 246, 238, 0.02)");
-    ctx.fillStyle = mist;
-    ctx.fill();
+    if (style.showMist !== false) {
+      const mist = ctx.createLinearGradient(0, L.top, 0, L.bottom);
+      mist.addColorStop(0, style.mistTop);
+      mist.addColorStop(1, style.mistBottom);
+      ctx.fillStyle = mist;
+      ctx.fill();
+    }
     ctx.restore();
+
+    if (style.torn) paintTorn(ctx, series, L, rangeStart, rangeEnd, night);
+    if (style.twin) paintTwin(ctx, series, L, rangeStart, rangeEnd, style.twin);
 
     ctx.save();
     curvePath(ctx, series, L, rangeStart, rangeEnd);
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
-    const night = document.documentElement.dataset.light === "night";
-    ctx.strokeStyle = night ? "rgba(8, 10, 16, 0.7)" : "rgba(44, 38, 34, 0.22)";
-    ctx.lineWidth = night ? 4.4 : 3.2;
-    ctx.stroke();
-    ctx.strokeStyle = night ? "rgba(255, 252, 246, 0.98)" : "rgba(252, 248, 242, 0.94)";
-    ctx.lineWidth = night ? 2.2 : 1.55;
-    ctx.stroke();
+    const outerW = night ? style.outerWidth.night : style.outerWidth.day;
+    const innerW = night ? style.innerWidth.night : style.innerWidth.day;
+    if (outerW) {
+      ctx.strokeStyle = night ? style.outer.night : style.outer.day;
+      ctx.lineWidth = outerW;
+      ctx.stroke();
+    }
+    if (innerW) {
+      ctx.strokeStyle = night ? style.inner.night : style.inner.day;
+      ctx.lineWidth = innerW;
+      ctx.stroke();
+    }
     ctx.restore();
+
+    if (style.ticks) paintTicks(ctx, L);
 
     yAxis.replaceChildren();
     paintDots();
@@ -153,14 +245,16 @@ export function createChart(stage) {
 
   const paintDots = () => {
     if (!L) return;
+    const style = canvasStyle();
+    if (style.showDots === false) return;
     extrema
       .filter((e) => e.t >= rangeStart && e.t <= rangeEnd)
       .forEach((e) => {
         ctx.beginPath();
-        ctx.arc(L.x(e.t), L.y(e.v), 3.8, 0, Math.PI * 2);
-        ctx.fillStyle = "#c9a15c";
-        ctx.strokeStyle = "rgba(44, 38, 34, 0.35)";
-        ctx.lineWidth = 1.6;
+        ctx.arc(L.x(e.t), L.y(e.v), style.dotRadius, 0, Math.PI * 2);
+        ctx.fillStyle = style.dotFill;
+        ctx.strokeStyle = style.dotStroke;
+        ctx.lineWidth = style.dotWidth;
         ctx.fill();
         ctx.stroke();
       });
@@ -230,7 +324,7 @@ export function createChart(stage) {
   const placeMarks = (timeMs) => {
     if (!L || !series.length) return;
     const sample = sampleTide(series, timeMs);
-    const now = Date.now();
+    const now = clockMs;
     const nowInRange = now >= rangeStart && now <= rangeEnd;
     nowLine.style.opacity = nowInRange ? "1" : "0";
     if (nowInRange) nowLine.style.left = `${L.x(now)}px`;
@@ -321,6 +415,11 @@ export function createChart(stage) {
     paint();
     placeMarks(viewTime);
   });
+  window.addEventListener("livetide-mood", () => {
+    chipKey = "";
+    paint();
+    placeMarks(viewTime);
+  });
 
   const applyRange = (origin) => {
     const liveStart = startOfZonedDay(origin);
@@ -352,6 +451,7 @@ export function createChart(stage) {
       extrema = nextExtrema ?? [];
       const origin = now ?? new Date();
       originMs = origin.getTime();
+      clockMs = originMs;
       const view = applyRange(origin);
       if (!scrubbing && !anim) {
         viewTime = view.stale && view.lastT && dayOffset === 0
@@ -390,7 +490,8 @@ export function createChart(stage) {
       return pts[0].t <= start + 4 * 3600000 && pts[pts.length - 1].t >= end - 4 * 3600000;
     },
     tick(now) {
-      if (!scrubbing && !anim) viewTime = liveCursor(now);
+      clockMs = (now ?? new Date()).getTime();
+      if (!scrubbing && !anim) viewTime = liveCursor(now ?? new Date(clockMs));
       emit();
     },
     onView(fn) {

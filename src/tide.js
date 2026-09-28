@@ -1,4 +1,5 @@
-import { ensureForecastCoverage } from "./tide-coverage.js";
+import { rollingTide } from "./tide-coverage.js";
+import { fromHarmonics } from "./corinto-harmonics.js";
 import { setPlace } from "./time.js";
 
 export const STATION = {
@@ -57,21 +58,37 @@ async function fetchBoomFile() {
   if (!parsed.series?.length) {
     throw new Error("The Boom tide file has not landed yet.");
   }
-  const covered = ensureForecastCoverage(parsed, Date.now());
-  const lastT = covered.series[covered.series.length - 1]?.t ?? 0;
-  return {
-    station: STATION.id,
-    fetchedAt: json.fetchedAt ?? Date.now(),
-    series: covered.series,
-    extrema: covered.extrema ?? [],
-    source: json.source ?? "surfline",
-    lastT,
-    stale: lastT > 0 && lastT < Date.now() - 90 * 60000,
-  };
+  return parsed;
 }
 
 export async function fetchTide() {
-  return fetchBoomFile();
+  const generated = fromHarmonics(Date.now());
+  try {
+    const file = await fetchBoomFile();
+    const covered = rollingTide(Date.now(), file);
+    const lastT = covered.series[covered.series.length - 1]?.t ?? 0;
+    return {
+      station: STATION.id,
+      fetchedAt: file.fetchedAt ?? Date.now(),
+      series: covered.series,
+      extrema: covered.extrema ?? [],
+      source: covered.source ?? file.source ?? "harmonics",
+      lastT,
+      stale: false,
+    };
+  } catch (error) {
+    console.warn(error);
+    const lastT = generated.series[generated.series.length - 1]?.t ?? 0;
+    return {
+      station: STATION.id,
+      fetchedAt: Date.now(),
+      series: generated.series,
+      extrema: generated.extrema,
+      source: "harmonics",
+      lastT,
+      stale: false,
+    };
+  }
 }
 
 function pointAt(series, i) {

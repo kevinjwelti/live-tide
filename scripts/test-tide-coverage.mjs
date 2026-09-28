@@ -75,4 +75,17 @@ assert(
 );
 
 assertForecastCoverage(live.series, midday);
+
+const late = Date.parse("2026-09-28T17:11:00-06:00");
+const replaced = ensureForecastCoverage({ series: staleSeries, extrema: [] }, late);
+assert(replaced.filled, "a file that ended last week must be replaced");
+assert(
+  coverageReport(replaced.series, late).ok,
+  "replaced harmonics must cover Sep 28–29"
+);
+assert(
+  replaced.series[0].t >= Date.parse("2026-09-26T00:00:00-06:00"),
+  "past-file replace should not keep the week-old leading points"
+);
+
 console.log("tide coverage tests passed");

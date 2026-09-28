@@ -4,6 +4,18 @@ import { createChart } from "./chart.js";
 import { fetchTide, STATION, REFRESH_MS } from "./tide.js";
 import { moonState, renderMoon } from "./moon.js";
 import { formatClock, formatDate, setPlace } from "./time.js";
+import { applyMood, pickMood } from "./moods.js";
+import { initSkyMode, listenForSkyMessages, resolveNow } from "./now.js";
+
+const params = new URLSearchParams(location.search);
+if (params.get("embed") === "1") {
+  document.documentElement.dataset.embed = "1";
+}
+
+initSkyMode();
+listenForSkyMessages();
+setPlace(STATION);
+const mood = applyMood(pickMood(resolveNow()));
 
 const els = {
   direction: document.querySelector("#direction"),
@@ -21,9 +33,9 @@ const els = {
   dayFlip: document.querySelector("#day-flip"),
   tideEyebrow: document.querySelector("#tide-eyebrow"),
   chartStage: document.querySelector("#chart-stage"),
+  moodCaption: document.querySelector("#mood-caption"),
 };
 
-setPlace(STATION);
 const swell = createSwell();
 const chart = createChart(els.chartStage);
 
@@ -35,6 +47,12 @@ function setStatus(text) {
 function applyPlace() {
   els.placeName.textContent = STATION.name;
   if (els.credit) els.credit.textContent = STATION.credit;
+}
+
+function applyCaption() {
+  if (!els.moodCaption) return;
+  const forced = params.get("mood");
+  els.moodCaption.textContent = forced ? `Preview: ${mood.name}` : `Today: ${mood.name}`;
 }
 
 function syncDayFlip() {
@@ -84,7 +102,7 @@ function renderTideReadout(timeMs, sample, exploring) {
   els.direction.textContent = rising ? "RISING" : "FALLING";
   els.dirMark.className = `dir-mark ${rising ? "rising" : "falling"}`;
   els.height.textContent = sample.height.toFixed(1);
-  if (exploring && Math.abs(timeMs - Date.now()) > 5000) {
+  if (exploring && Math.abs(timeMs - resolveNow().getTime()) > 5000) {
     els.scrubNote.hidden = false;
     els.scrubNote.textContent = formatClock(new Date(timeMs));
   } else {
@@ -94,7 +112,7 @@ function renderTideReadout(timeMs, sample, exploring) {
 
 chart.onView((timeMs, sample, exploring, meta) => {
   renderTideReadout(timeMs, sample, exploring);
-  const washTime = meta?.dayOffset === 1 ? new Date() : new Date(timeMs);
+  const washTime = meta?.dayOffset === 1 ? resolveNow() : new Date(timeMs);
   swell.setTime(washTime);
 });
 
@@ -111,15 +129,13 @@ async function loadTide(reason = "refresh") {
     const view = chart.setData({
       series: data.series,
       extrema: data.extrema,
-      now: new Date(),
+      now: resolveNow(),
     });
     syncDayFlip();
     if (view?.empty) {
-      setStatus("No tide curve in the file yet.");
+      setStatus("No tide curve yet.");
     } else if (chart.dayOffset() === 1 && !chart.hasDay(1)) {
-      setStatus("Tomorrow’s curve is not in the file yet.");
-    } else if (view?.stale && view.lastT) {
-      setStatus(`Tide file ends ${formatClock(new Date(view.lastT))} · showing last available curve`);
+      setStatus("Tomorrow’s curve is not ready yet.");
     } else {
       setStatus("");
     }
@@ -131,13 +147,19 @@ async function loadTide(reason = "refresh") {
   }
 }
 
+function pulse(now = resolveNow()) {
+  renderClock(now);
+  renderMoonPanel(now);
+  chart.tick(now);
+}
+
 els.dayFlip?.addEventListener("click", (event) => {
   event.stopPropagation();
   const next = chart.dayOffset() === 1 ? 0 : 1;
   chart.setDayOffset(next);
   syncDayFlip();
   if (next === 1 && !chart.hasDay(1)) {
-    setStatus("Tomorrow’s curve is not in the file yet.");
+    setStatus("Tomorrow’s curve is not ready yet.");
   } else {
     setStatus("");
   }
@@ -155,17 +177,18 @@ document.querySelector(".wordmark").addEventListener("click", async () => {
   }
 });
 
+window.addEventListener("livetide-sky", () => {
+  pulse(resolveNow());
+});
+
 applyPlace();
+applyCaption();
 syncDayFlip();
-renderMoonPanel(new Date());
-renderClock(new Date());
+pulse(resolveNow());
 loadTide("init");
 
 setInterval(() => {
-  const now = new Date();
-  renderClock(now);
-  renderMoonPanel(now);
-  chart.tick(now);
+  pulse(resolveNow());
 }, 1000);
 
 setInterval(() => {

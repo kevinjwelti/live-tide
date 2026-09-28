@@ -93,6 +93,12 @@ export function clockOnZonedDay(dayDate, now = new Date()) {
   return zonedDate(day.year, day.month, day.day, clock.hour, clock.minute, clock.second);
 }
 
+/** Civil clock on `dayDate`'s local calendar day. */
+export function civilTimeOnZonedDay(dayDate, hour, minute = 0, second = 0) {
+  const day = zonedParts(startOfZonedDay(dayDate));
+  return zonedDate(day.year, day.month, day.day, hour, minute, second);
+}
+
 export function zonedParts(date) {
   const bag = {};
   for (const part of partsFmt.formatToParts(date)) {

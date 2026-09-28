@@ -10,6 +10,17 @@
   --type: var(--ink);
   --serif: "Playfair Display", "Iowan Old Style", Palatino, Georgia, serif;
   --sans: "Outfit", "Avenir Next", "Helvetica Neue", sans-serif;
+  --mono: "IBM Plex Mono", "SFMono-Regular", ui-monospace, monospace;
+  --condensed: "Oswald", "Arial Narrow", sans-serif;
+  --display-font: var(--serif);
+  --numeral-font: var(--serif);
+  --label-font: var(--sans);
+  --chip-bg: rgba(24, 22, 20, 0.62);
+  --chip-shadow: 0 0 14px 3px rgba(24, 22, 20, 0.22);
+  --mood-overlay: transparent;
+  --mood-strength: 0;
+  --mood-blend: soft-light;
+  --mood-night-scale: 0.45;
   --star-opacity: 0;
   --night-veil: 0;
   /* First paint: starry-night test plate. JS retints from the real sun. */
@@ -101,6 +112,20 @@ body {
   pointer-events: none;
 }
 
+.scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--mood-overlay);
+  mix-blend-mode: var(--mood-blend);
+  opacity: var(--mood-strength);
+  pointer-events: none;
+}
+
+html[data-light="night"] .scene::after {
+  opacity: calc(var(--mood-strength) * var(--mood-night-scale));
+}
+
 .frame {
   position: relative;
   z-index: 2;
@@ -135,7 +160,7 @@ body {
 }
 
 .wordmark {
-  font-family: var(--serif);
+  font-family: var(--display-font);
   font-weight: 500;
   font-size: clamp(2.4rem, 5.4vw, 4.4rem);
   letter-spacing: 0.12em;
@@ -211,7 +236,7 @@ body {
 }
 
 .height {
-  font-family: var(--serif);
+  font-family: var(--numeral-font);
   font-weight: 500;
   font-size: clamp(3rem, 8vw, 5.6rem);
   letter-spacing: -0.02em;
@@ -221,7 +246,7 @@ body {
 }
 
 .unit {
-  font-family: var(--serif);
+  font-family: var(--numeral-font);
   font-size: clamp(1.1rem, 2vw, 1.6rem);
   color: var(--ink-soft);
 }
@@ -270,7 +295,7 @@ body {
 
 .date-line {
   margin-top: 0.85rem;
-  font-family: var(--serif);
+  font-family: var(--display-font);
   font-size: clamp(1rem, 1.8vw, 1.25rem);
   font-weight: 400;
   font-style: italic;
@@ -278,7 +303,7 @@ body {
 }
 
 .clock-line {
-  font-family: var(--serif);
+  font-family: var(--display-font);
   font-size: clamp(2.4rem, 6.2vw, 4.6rem);
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -449,8 +474,8 @@ html[data-light="night"] .playhead-line {
   padding: 0.38rem 0.7rem 0.45rem;
   border-radius: 0.6rem;
   color: var(--cream);
-  background: rgba(24, 22, 20, 0.62);
-  box-shadow: 0 0 14px 3px rgba(24, 22, 20, 0.22);
+  background: var(--chip-bg);
+  box-shadow: var(--chip-shadow);
 }
 
 .extremum .t-time {
@@ -467,7 +492,7 @@ html[data-light="night"] .playhead-line {
 }
 
 .extremum .t-ht {
-  font-family: var(--serif);
+  font-family: var(--numeral-font);
   font-size: 1.05rem;
   margin-top: 0.08rem;
 }
@@ -509,7 +534,7 @@ html[data-light="night"] .playhead-line {
 
 .moon-pct {
   margin-top: 0.12rem;
-  font-family: var(--serif);
+  font-family: var(--numeral-font);
   font-size: 1.15rem;
   font-weight: 500;
   color: var(--ink-soft);
@@ -528,8 +553,8 @@ html[data-light="night"] .playhead-line {
   color: var(--cream);
   padding: 0.42rem 0.95rem 0.4rem;
   border-radius: 0.55rem;
-  background: rgba(24, 22, 20, 0.62);
-  box-shadow: 0 0 14px 3px rgba(24, 22, 20, 0.22);
+  background: var(--chip-bg);
+  box-shadow: var(--chip-shadow);
   overflow-wrap: anywhere;
 }
 
@@ -813,4 +838,131 @@ html[data-light="night"] .playhead-line {
   .clock-line {
     font-size: clamp(1.8rem, 5vh, 3rem);
   }
+}
+
+.mood-caption {
+  position: fixed;
+  left: max(0.7rem, env(safe-area-inset-left));
+  bottom: max(0.55rem, env(safe-area-inset-bottom));
+  z-index: 9;
+  margin: 0;
+  font-family: var(--label-font);
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.35);
+}
+
+html[data-light="night"] .mood-caption {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+html[data-embed="1"] .credit,
+html[data-embed="1"] .mood-caption,
+html[data-embed="1"] .day-flip {
+  display: none;
+}
+
+html[data-embed="1"] .chart-hit {
+  pointer-events: none;
+}
+
+html[data-mood="ink"] {
+  --display-font: var(--serif);
+  --numeral-font: var(--serif);
+  --label-font: var(--serif);
+  --sans: var(--serif);
+}
+
+html[data-mood="ink"] .scene {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(70, 52, 32, 0.035) 0 1px,
+      transparent 1px 3px
+    ),
+    var(--wash);
+}
+
+html[data-mood="swiss"] {
+  --display-font: var(--sans);
+  --numeral-font: var(--sans);
+  --label-font: var(--sans);
+}
+
+html[data-mood="swiss"] .height {
+  font-weight: 600;
+  letter-spacing: -0.06em;
+  font-size: clamp(3.6rem, 10vw, 7.2rem);
+}
+
+html[data-mood="swiss"] .tagline,
+html[data-mood="swiss"] .moon,
+html[data-mood="swiss"] .extremum,
+html[data-mood="swiss"] .pin {
+  display: none;
+}
+
+html[data-mood="noir"] {
+  --ink: #111214;
+  --ink-soft: #3a3d42;
+  --type: #111214;
+  --gold: #c8ccd2;
+  --gold-line: #d6dae0;
+  --cream: #eceef1;
+  --chip-bg: rgba(8, 8, 10, 0.78);
+}
+
+html[data-light="night"][data-mood="noir"] {
+  --ink: #eef0f3;
+  --ink-soft: rgba(238, 240, 243, 0.72);
+  --type: #eef0f3;
+}
+
+html[data-mood="noir"] .scene {
+  filter: grayscale(0.35);
+}
+
+html[data-mood="risograph"] {
+  --display-font: "Archivo", var(--sans);
+  --numeral-font: "Archivo", var(--sans);
+  --label-font: "Archivo", var(--sans);
+  --ink: #1a3d3c;
+}
+
+html[data-mood="blueprint"] {
+  --display-font: var(--mono);
+  --numeral-font: var(--mono);
+  --label-font: var(--mono);
+}
+
+html[data-light="night"][data-mood="blueprint"] {
+  --ink: #e8f4ff;
+  --ink-soft: rgba(210, 232, 255, 0.78);
+  --type: #e8f4ff;
+}
+
+html[data-mood="fiesta"] {
+  --display-font: "Fraunces", var(--serif);
+  --numeral-font: "Fraunces", var(--serif);
+  --ink: #5c2418;
+  --ink-soft: #8a4030;
+}
+
+html[data-mood="watercolor"] {
+  --display-font: var(--serif);
+  --numeral-font: var(--serif);
+}
+
+html[data-mood="zine"] {
+  --display-font: var(--condensed);
+  --numeral-font: var(--condensed);
+  --label-font: var(--condensed);
+}
+
+html[data-mood="zine"] .wordmark,
+html[data-mood="zine"] .clock-line {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
