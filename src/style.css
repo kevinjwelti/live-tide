@@ -23,8 +23,8 @@
   --mood-night-scale: 0.45;
   --star-opacity: 0;
   --night-veil: 0;
-  /* First paint: starry-night test plate. JS retints from the real sun. */
-  --wash: linear-gradient(180deg, #0a0c10 0%, #07080c 46%, #040508 100%);
+  /* First paint: starry-night plate. JS retints from the real sun. */
+  --wash: #000000;
   color-scheme: light;
 }
 
@@ -32,7 +32,7 @@ html[data-light="night"] {
   --ink: #f4efe6;
   --ink-soft: rgba(244, 239, 230, 0.7);
   --dir-ring: rgba(244, 239, 230, 0.42);
-  --page-ground: #05060a;
+  --page-ground: #000000;
   --type: #f4efe6;
   color-scheme: dark;
 }
@@ -123,7 +123,7 @@ body {
 }
 
 html[data-light="night"] .scene::after {
-  opacity: calc(var(--mood-strength) * var(--mood-night-scale));
+  opacity: 0;
 }
 
 .frame {
@@ -884,6 +884,10 @@ html[data-mood="ink"] .scene {
     var(--wash);
 }
 
+html[data-light="night"][data-mood="ink"] .scene {
+  background: var(--wash);
+}
+
 html[data-mood="swiss"] {
   --display-font: var(--sans);
   --numeral-font: var(--sans);
@@ -930,6 +934,12 @@ html[data-mood="risograph"] {
   --ink: #1a3d3c;
 }
 
+html[data-light="night"][data-mood="risograph"] {
+  --ink: #f3f6f2;
+  --ink-soft: rgba(243, 246, 242, 0.78);
+  --type: #f3f6f2;
+}
+
 html[data-mood="blueprint"] {
   --display-font: var(--mono);
   --numeral-font: var(--mono);
@@ -947,6 +957,12 @@ html[data-mood="fiesta"] {
   --numeral-font: "Fraunces", var(--serif);
   --ink: #5c2418;
   --ink-soft: #8a4030;
+}
+
+html[data-light="night"][data-mood="fiesta"] {
+  --ink: #f8ead8;
+  --ink-soft: rgba(248, 234, 216, 0.8);
+  --type: #f8ead8;
 }
 
 html[data-mood="watercolor"] {

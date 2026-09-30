@@ -117,24 +117,24 @@ function paintStars(canvas) {
     return seed / 2147483647;
   };
 
-  const count = Math.round((w * h) / 2400);
+  const count = Math.round((w * h) / 5200);
   for (let i = 0; i < count; i += 1) {
     const x = rnd() * w;
     const y = rnd() * h * (0.55 + rnd() * 0.4);
     const bright = rnd();
-    const r = bright > 0.92 ? 1.15 + rnd() * 0.7 : 0.35 + rnd() * 0.75;
-    const a = 0.22 + bright * 0.7;
-    if (r > 1.1) {
-      const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 4);
-      glow.addColorStop(0, `rgba(230, 236, 255, ${a * 0.45})`);
-      glow.addColorStop(1, "rgba(230, 236, 255, 0)");
+    const r = bright > 0.96 ? 0.85 + rnd() * 0.35 : 0.22 + rnd() * 0.4;
+    const a = 0.06 + bright * 0.2;
+    if (r > 0.95) {
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 3);
+      glow.addColorStop(0, `rgba(255, 255, 255, ${a * 0.28})`);
+      glow.addColorStop(1, "rgba(255, 255, 255, 0)");
       ctx.fillStyle = glow;
       ctx.beginPath();
-      ctx.arc(x, y, r * 4, 0, Math.PI * 2);
+      ctx.arc(x, y, r * 3, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.beginPath();
-    ctx.fillStyle = `rgba(236, 240, 255, ${a})`;
+    ctx.fillStyle = `rgba(255, 255, 255, ${a})`;
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
   }
@@ -166,13 +166,14 @@ export function createSwell() {
     root.style.setProperty("--sun-x", `${sun.x.toFixed(1)}%`);
     root.style.setProperty("--sun-y", `${sun.y.toFixed(1)}%`);
     root.style.setProperty("--sun-glow", w.day.toFixed(3));
-    const key = `${w.starry.toFixed(3)}:${w.earth.toFixed(3)}:${w.day.toFixed(3)}`;
+    const key = `${night ? "night" : "sky"}:${w.starry.toFixed(3)}:${w.earth.toFixed(3)}:${w.day.toFixed(3)}`;
     if (key !== washKey) {
       washKey = key;
-      root.style.setProperty("--wash", washGradient(w));
+      // Full night (existing isNightScene) is solid black; dusk/dawn/day keep the wash.
+      root.style.setProperty("--wash", night ? "#000000" : washGradient(w));
     }
     if (theme) {
-      const top = night ? "#07080c" : w.earth > 0.45 ? "#efe3d2" : "#8ec8ea";
+      const top = night ? "#000000" : w.earth > 0.45 ? "#efe3d2" : "#8ec8ea";
       theme.setAttribute("content", top);
     }
     layoutStars();
