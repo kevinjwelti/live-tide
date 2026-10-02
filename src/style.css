@@ -902,7 +902,6 @@ html[data-mood="swiss"] .height {
 
 html[data-mood="swiss"] .tagline,
 html[data-mood="swiss"] .moon,
-html[data-mood="swiss"] .extremum,
 html[data-mood="swiss"] .pin {
   display: none;
 }
