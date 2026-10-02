@@ -1,0 +1,17 @@
+{
+  "name": "live-tide",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "fetch-boom": "node scripts/fetch-boom-tides.mjs",
+    "check-coverage": "node scripts/check-boom-coverage.mjs",
+    "test": "node scripts/test-tide-coverage.mjs && node scripts/test-moods.mjs",
+    "build": "vite build",
+    "preview": "vite preview --host --port 4173"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5"
+  }
+}
