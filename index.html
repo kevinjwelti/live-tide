@@ -12,7 +12,40 @@
     <meta name="apple-mobile-web-app-title" content="LIVE TIDE" />
     <meta name="theme-color" content="#000000" />
     <meta http-equiv="Cache-Control" content="no-cache" />
-    <meta name="live-tide-build" content="moods-v51" />
+    <meta name="live-tide-build" content="moods-v52" />
+    <script>
+      if (new URLSearchParams(location.search).has("kiosk")) {
+        document.documentElement.dataset.kiosk = "1";
+      }
+    </script>
+    <style>
+      html[data-kiosk="1"],
+      html[data-kiosk="1"] * {
+        cursor: none !important;
+      }
+      html[data-kiosk="1"] {
+        overflow: hidden;
+      }
+      html[data-kiosk="1"] .day-flip,
+      html[data-kiosk="1"] .mood-caption,
+      html[data-kiosk="1"] .credit,
+      html[data-kiosk="1"] button {
+        display: none !important;
+      }
+      .kiosk-wake {
+        display: none;
+      }
+      html[data-kiosk="1"] .kiosk-wake {
+        display: block;
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        width: 2px;
+        height: 2px;
+        opacity: 0.02;
+        pointer-events: none;
+      }
+    </style>
     <meta
       name="description"
       content="Living tide wall art for The Boom, Nicaragua, drawn from Surfline Corinto / Isla Cardon."
@@ -28,6 +61,19 @@
     />
   </head>
   <body>
+    <video
+      id="kiosk-wake"
+      class="kiosk-wake"
+      muted
+      loop
+      playsinline
+      autoplay
+      preload="auto"
+      aria-hidden="true"
+      disableRemotePlayback
+    >
+      <source src="/live-tide/kiosk-wake.mp4" type="video/mp4" />
+    </video>
     <div class="scene" aria-hidden="true">
       <canvas id="stars" class="stars"></canvas>
     </div>

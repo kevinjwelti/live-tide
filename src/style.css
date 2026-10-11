@@ -980,3 +980,194 @@ html[data-mood="zine"] .clock-line {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+
+/* TV kiosk (?kiosk). Normal view is unchanged. */
+.kiosk-wake {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  width: 2px;
+  height: 2px;
+  opacity: 0.02;
+  pointer-events: none;
+  z-index: 1;
+}
+
+html[data-kiosk="1"] .kiosk-wake {
+  display: block;
+}
+
+html:not([data-kiosk="1"]) .kiosk-wake {
+  display: none;
+}
+
+html[data-kiosk="1"],
+html[data-kiosk="1"] body {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+  cursor: none !important;
+}
+
+html[data-kiosk="1"] * {
+  cursor: none !important;
+}
+
+html[data-kiosk="1"] .day-flip,
+html[data-kiosk="1"] .mood-caption,
+html[data-kiosk="1"] .credit,
+html[data-kiosk="1"] button,
+html[data-kiosk="1"] .status-msg,
+html[data-kiosk="1"] .scrub-note {
+  display: none !important;
+}
+
+html[data-kiosk="1"] .chart-hit,
+html[data-kiosk="1"] .chart-stage {
+  pointer-events: none;
+}
+
+html[data-kiosk="1"] .scene {
+  inset: -16px;
+}
+
+html[data-kiosk="1"] .scene,
+html[data-kiosk="1"] .frame {
+  transform: translate3d(var(--burn-x, 0px), var(--burn-y, 0px), 0);
+  transition: transform 50s ease-in-out;
+}
+
+html[data-kiosk="1"] .frame {
+  padding:
+    max(1.5rem, 2vh, env(safe-area-inset-top))
+    max(2rem, 2.2vw, env(safe-area-inset-right))
+    max(0.9rem, 1.4vh, env(safe-area-inset-bottom))
+    max(2rem, 2.2vw, env(safe-area-inset-left));
+  gap: clamp(0.35rem, 0.8vh, 1rem);
+}
+
+html[data-kiosk="1"] .wordmark {
+  font-size: clamp(2.2rem, 4.5vw + 1.5vh, 8.5rem);
+}
+
+html[data-kiosk="1"] .tagline {
+  margin-top: 0.35rem;
+  font-size: clamp(0.78rem, 1vw + 0.45vh, 1.55rem);
+}
+
+html[data-kiosk="1"] .eyebrow {
+  font-size: clamp(0.72rem, 0.7vw + 0.4vh, 1.35rem);
+}
+
+html[data-kiosk="1"] .status-row {
+  font-size: clamp(1rem, 1.15vw + 0.7vh, 2.1rem);
+}
+
+html[data-kiosk="1"] .height {
+  font-size: clamp(3.2rem, 5.6vw + 2.6vh, 11rem);
+}
+
+html[data-kiosk="1"] .unit {
+  font-size: clamp(1.15rem, 1.2vw + 0.7vh, 2.5rem);
+}
+
+html[data-kiosk="1"] .place-name {
+  font-size: clamp(0.78rem, 0.95vw + 0.45vh, 1.55rem);
+}
+
+html[data-kiosk="1"] .date-line {
+  font-size: clamp(1.05rem, 1.25vw + 0.75vh, 2.3rem);
+}
+
+html[data-kiosk="1"] .clock-line {
+  font-size: clamp(2.5rem, 4.3vw + 2.1vh, 9rem);
+}
+
+html[data-kiosk="1"] .moon-icon {
+  width: clamp(2.1rem, 1.8vw + 1.1vh, 3.6rem);
+  height: clamp(2.1rem, 1.8vw + 1.1vh, 3.6rem);
+}
+
+html[data-kiosk="1"] .moon-name {
+  font-size: clamp(0.85rem, 0.85vw + 0.45vh, 1.6rem);
+}
+
+html[data-kiosk="1"] .moon-pct {
+  font-size: clamp(1.05rem, 1.15vw + 0.6vh, 2.2rem);
+}
+
+html[data-kiosk="1"] .extremum {
+  padding: 0.5rem 0.95rem 0.55rem;
+}
+
+html[data-kiosk="1"] .extremum .t-time {
+  font-size: clamp(0.9rem, 1.15vw + 0.7vh, 1.8rem);
+}
+
+html[data-kiosk="1"] .extremum .t-kind {
+  font-size: clamp(0.7rem, 0.75vw + 0.45vh, 1.25rem);
+}
+
+html[data-kiosk="1"] .extremum .t-ht {
+  font-size: clamp(1.15rem, 1.4vw + 0.9vh, 2.4rem);
+}
+
+@media (orientation: portrait) {
+  html[data-kiosk="1"] .mast {
+    flex-direction: column;
+    align-items: stretch;
+    gap: clamp(0.35rem, 1vh, 1.2rem);
+  }
+
+  html[data-kiosk="1"] .mast-right {
+    text-align: left;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "place clock"
+      "date clock";
+    align-items: end;
+    column-gap: 1rem;
+    row-gap: 0.15rem;
+    padding-top: 0;
+    width: 100%;
+  }
+
+  html[data-kiosk="1"] .place {
+    grid-area: place;
+    text-align: left;
+    padding-left: 0;
+  }
+
+  html[data-kiosk="1"] .date-line {
+    grid-area: date;
+    margin-top: 0;
+  }
+
+  html[data-kiosk="1"] .clock-line {
+    grid-area: clock;
+    margin-top: 0;
+    font-size: clamp(2.8rem, 8vw + 2.2vh, 10rem);
+  }
+
+  html[data-kiosk="1"] .wordmark {
+    font-size: clamp(2.6rem, 7.4vw + 1.6vh, 9rem);
+  }
+
+  html[data-kiosk="1"] .tagline {
+    font-size: clamp(0.8rem, 1.8vw + 0.5vh, 1.8rem);
+    letter-spacing: 0.16em;
+  }
+
+  html[data-kiosk="1"] .height {
+    font-size: clamp(3.4rem, 11vw + 2vh, 12rem);
+  }
+
+  html[data-kiosk="1"] .place-name {
+    font-size: clamp(0.85rem, 1.9vw + 0.5vh, 1.8rem);
+    letter-spacing: 0.14em;
+  }
+
+  html[data-kiosk="1"] .current {
+    margin-top: 0.55rem;
+  }
+}

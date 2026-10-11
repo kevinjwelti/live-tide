@@ -6,6 +6,7 @@ import { moonState, renderMoon } from "./moon.js";
 import { formatClock, formatDate, setPlace } from "./time.js";
 import { applyMood, pickMood } from "./moods.js";
 import { initSkyMode, listenForSkyMessages, resolveNow } from "./now.js";
+import { initKiosk, isKiosk, KIOSK_RETRY_START_MS, nextRetryDelay } from "./kiosk.js";
 
 const params = new URLSearchParams(location.search);
 if (params.get("embed") === "1") {
@@ -15,6 +16,8 @@ if (params.get("embed") === "1") {
 initSkyMode();
 listenForSkyMessages();
 setPlace(STATION);
+const kiosk = isKiosk();
+if (kiosk) initKiosk();
 const mood = applyMood(pickMood(resolveNow()));
 
 const els = {
@@ -116,31 +119,59 @@ chart.onView((timeMs, sample, exploring, meta) => {
   swell.setTime(washTime);
 });
 
+let retryMs = KIOSK_RETRY_START_MS;
+let retryTimer = 0;
+
+function scheduleQuietRetry() {
+  if (!kiosk) return;
+  clearTimeout(retryTimer);
+  retryTimer = window.setTimeout(() => loadTide("retry"), retryMs);
+  retryMs = nextRetryDelay(retryMs);
+}
+
+function applyTideData(data) {
+  if (els.credit) {
+    els.credit.textContent =
+      data.source === "harmonics"
+        ? "Tide predictions in feet · NOAA harmonics · Puerto Corinto"
+        : STATION.credit;
+  }
+  const view = chart.setData({
+    series: data.series,
+    extrema: data.extrema,
+    now: resolveNow(),
+  });
+  syncDayFlip();
+  if (kiosk) {
+    setStatus("");
+    return;
+  }
+  if (view?.empty) {
+    setStatus("No tide curve yet.");
+  } else if (chart.dayOffset() === 1 && !chart.hasDay(1)) {
+    setStatus("Tomorrow’s curve is not ready yet.");
+  } else {
+    setStatus("");
+  }
+}
+
 async function loadTide(reason = "refresh") {
-  setStatus(reason === "init" ? "Gathering the tide…" : "");
+  if (!kiosk) setStatus(reason === "init" ? "Gathering the tide…" : "");
   try {
     const data = await fetchTide();
-    if (els.credit) {
-      els.credit.textContent =
-        data.source === "harmonics"
-          ? "Tide predictions in feet · NOAA harmonics · Puerto Corinto"
-          : STATION.credit;
-    }
-    const view = chart.setData({
-      series: data.series,
-      extrema: data.extrema,
-      now: resolveNow(),
-    });
-    syncDayFlip();
-    if (view?.empty) {
-      setStatus("No tide curve yet.");
-    } else if (chart.dayOffset() === 1 && !chart.hasDay(1)) {
-      setStatus("Tomorrow’s curve is not ready yet.");
-    } else {
-      setStatus("");
+    const keepLast = kiosk && data.live === false && chart.hasData();
+    if (!keepLast) applyTideData(data);
+    if (kiosk && data.live === false) scheduleQuietRetry();
+    else if (kiosk) {
+      retryMs = KIOSK_RETRY_START_MS;
+      clearTimeout(retryTimer);
     }
   } catch (error) {
     console.warn(error);
+    if (kiosk) {
+      scheduleQuietRetry();
+      return;
+    }
     if (!chart.hasData()) {
       setStatus(error?.message || "The Boom tide file has not landed yet.");
     }

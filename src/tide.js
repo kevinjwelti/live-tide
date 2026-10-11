@@ -75,6 +75,7 @@ export async function fetchTide() {
       source: covered.source ?? file.source ?? "harmonics",
       lastT,
       stale: false,
+      live: true,
     };
   } catch (error) {
     console.warn(error);
@@ -87,6 +88,7 @@ export async function fetchTide() {
       source: "harmonics",
       lastT,
       stale: false,
+      live: false,
     };
   }
 }
