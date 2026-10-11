@@ -369,24 +369,74 @@ export function createChart(stage) {
     const w = stage.clientWidth;
     const h = stage.clientHeight;
     const dayExtrema = extrema.filter((e) => e.t >= rangeStart && e.t <= rangeEnd);
+    const cursor = sampleTide(series, viewTime);
+    const orbPx = cursor
+      ? L.x(Math.min(rangeEnd, Math.max(rangeStart, viewTime)))
+      : null;
+    const orbPy = cursor ? L.y(cursor.height) - 46 : null;
+    const placed = [];
     dayExtrema.forEach((e) => {
       const node = document.createElement("div");
       const low = e.type !== "H";
-      node.className = low ? "extremum is-low" : "extremum";
+      node.className = "extremum";
+      node.innerHTML = `<div class="t-time">${formatClock(new Date(e.t))}</div>
+        <div class="t-ht">${e.v.toFixed(1)}<span class="t-unit"> ft</span></div>
+        <div class="t-kind">${low ? "Low" : "High"}</div>`;
+      labelsEl.append(node);
+      const width = node.offsetWidth;
+      const height = node.offsetHeight;
       const px = L.x(e.t);
       const py = L.y(e.v);
-      const kind = low ? "Low" : "High";
-      node.innerHTML = `<div class="t-time">${formatClock(new Date(e.t))}</div>
-        <div class="t-kind">${kind} · ${e.v.toFixed(1)} ft</div>`;
-      labelsEl.append(node);
-      const hw = node.offsetWidth / 2;
-      const left = Math.min(w - hw - 8, Math.max(hw + 8, px));
-      let placeLow = low;
-      if (low && py > h - 72) placeLow = false;
-      if (!low && py < 56) placeLow = true;
-      node.classList.toggle("is-low", placeLow);
-      node.style.left = `${left}px`;
+      let above = !low;
+      if (!above && py > h - height - 40) above = true;
+      if (above && py < height + 28) above = false;
+      const rectFor = (gap, nudge, isAbove) => {
+        const left = px + nudge - width / 2;
+        const top = isAbove ? py - gap - height : py + gap;
+        return { left, top, right: left + width, bottom: top + height };
+      };
+      const hitsOrb = (rect) => {
+        if (orbPx == null) return false;
+        const cx = Math.min(Math.max(orbPx, rect.left), rect.right);
+        const cy = Math.min(Math.max(orbPy, rect.top), rect.bottom);
+        const dx = orbPx - cx;
+        const dy = orbPy - cy;
+        return dx * dx + dy * dy < 36 * 36;
+      };
+      const hitsPlaced = (rect) => placed.some(
+        (other) => rect.right > other.left && rect.left < other.right && rect.bottom > other.top && rect.top < other.bottom
+      );
+      let gap = 28;
+      let nudge = 0;
+      let rect = rectFor(gap, nudge, above);
+      if (hitsOrb(rect)) {
+        gap = Math.max(gap, 84);
+        rect = rectFor(gap, nudge, above);
+      }
+      if (above && py - gap - height < 8) {
+        above = false;
+        gap = 28;
+        rect = rectFor(gap, nudge, above);
+      }
+      if (!above && py + gap + height > h - 8) {
+        above = true;
+        gap = 28;
+        rect = rectFor(gap, nudge, above);
+      }
+      if (hitsOrb(rect) || hitsPlaced(rect)) {
+        const toward = px < (orbPx ?? w / 2) ? -1 : 1;
+        nudge = toward * Math.min(88, width * 0.55);
+        rect = rectFor(gap, nudge, above);
+      }
+      const half = width / 2;
+      const left = Math.min(w - half - 8, Math.max(half + 8, px + nudge));
+      nudge = left - px;
+      node.classList.toggle("is-low", !above);
+      node.style.left = `${px}px`;
       node.style.top = `${py}px`;
+      node.style.setProperty("--whisper-gap", `${gap}px`);
+      node.style.setProperty("--whisper-x", `${nudge}px`);
+      placed.push(rectFor(gap, nudge, above));
     });
   };
 

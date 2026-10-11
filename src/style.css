@@ -468,8 +468,10 @@ html[data-light="night"] .playhead-line {
 }
 
 .extremum {
+  --whisper-gap: 28px;
+  --whisper-x: 0px;
   position: absolute;
-  transform: translate(-50%, calc(-100% - 0.65rem));
+  transform: translate(calc(-50% + var(--whisper-x)), calc(-100% - var(--whisper-gap)));
   text-align: center;
   min-width: 0;
   padding: 0;
@@ -477,36 +479,53 @@ html[data-light="night"] .playhead-line {
   color: var(--ink);
   background: none;
   box-shadow: none;
-  opacity: 0.4;
+  opacity: 0.82;
   font-family: "Playfair Display", "Iowan Old Style", Palatino, Georgia, serif;
   font-weight: 400;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  line-height: 1.35;
+  line-height: 1.15;
   pointer-events: none;
+  text-shadow:
+    0 0 16px rgba(255, 248, 236, 0.72),
+    0 1px 2px rgba(20, 24, 32, 0.28);
+}
+
+html[data-light="night"] .extremum {
+  text-shadow:
+    0 0 10px rgba(0, 0, 0, 0.95),
+    0 0 18px rgba(255, 214, 170, 0.32);
 }
 
 .extremum.is-low {
-  transform: translate(-50%, 0.55rem);
+  transform: translate(calc(-50% + var(--whisper-x)), var(--whisper-gap));
 }
 
 .extremum .t-time {
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
+  font-size: clamp(16px, 1.35vw, 28px);
+  letter-spacing: 0.12em;
   color: inherit;
 }
 
 .extremum .t-kind {
-  margin-top: 0.1rem;
-  font-size: 0.62rem;
-  letter-spacing: 0.22em;
+  margin-top: 0.22rem;
+  font-size: clamp(11px, 0.72vw, 16px);
+  letter-spacing: 0.24em;
   font-weight: 400;
 }
 
 .extremum .t-ht {
   font-family: inherit;
-  font-size: 0.62rem;
-  margin-top: 0.08rem;
+  font-size: clamp(20px, 2vw, 36px);
+  margin-top: 0.12rem;
+  letter-spacing: 0.03em;
+  line-height: 0.95;
+}
+
+.extremum .t-unit {
+  font-size: 0.48em;
+  letter-spacing: 0.14em;
+  margin-left: 0.2em;
 }
 
 .status-msg {
@@ -693,22 +712,21 @@ html[data-light="night"] .playhead-line {
 
   .extremum {
     min-width: 0;
-    max-width: 23vw;
-    padding: 0.22rem 0.32rem 0.26rem;
-    border-radius: 0.45rem;
+    max-width: 42vw;
+    padding: 0;
   }
 
   .extremum .t-time {
-    font-size: 0.62rem;
+    font-size: clamp(16px, 4.2vw, 20px);
   }
 
   .extremum .t-kind {
-    font-size: 0.5rem;
-    letter-spacing: 0.08em;
+    font-size: clamp(11px, 2.8vw, 13px);
+    letter-spacing: 0.18em;
   }
 
   .extremum .t-ht {
-    font-size: 0.82rem;
+    font-size: clamp(18px, 5vw, 22px);
   }
 
   .credit {
@@ -807,21 +825,21 @@ html[data-light="night"] .playhead-line {
 
   .extremum {
     min-width: 0;
-    max-width: 20vw;
-    padding: 0.16rem 0.28rem 0.2rem;
+    max-width: 34vw;
+    padding: 0;
   }
 
   .extremum .t-time {
-    font-size: 0.58rem;
+    font-size: clamp(16px, 2.4vh, 18px);
   }
 
   .extremum .t-kind {
-    font-size: 0.48rem;
-    letter-spacing: 0.06em;
+    font-size: clamp(11px, 1.6vh, 13px);
+    letter-spacing: 0.16em;
   }
 
   .extremum .t-ht {
-    font-size: 0.75rem;
+    font-size: clamp(18px, 3vh, 22px);
   }
 
   .credit {
@@ -1113,15 +1131,29 @@ html[data-kiosk="1"] .extremum {
 }
 
 html[data-kiosk="1"] .extremum .t-time {
-  font-size: clamp(0.85rem, 0.95vw + 0.5vh, 1.45rem);
+  font-size: clamp(22px, 1.35vw + 0.7vh, 32px);
 }
 
 html[data-kiosk="1"] .extremum .t-kind {
-  font-size: clamp(0.68rem, 0.72vw + 0.38vh, 1.1rem);
+  font-size: clamp(14px, 0.75vw + 0.35vh, 18px);
 }
 
 html[data-kiosk="1"] .extremum .t-ht {
-  font-size: clamp(0.68rem, 0.72vw + 0.38vh, 1.1rem);
+  font-size: clamp(28px, 1.9vw + 1vh, 40px);
+}
+
+@media (max-width: 700px) {
+  html[data-kiosk="1"] .extremum .t-time {
+    font-size: clamp(16px, 4.4vw, 20px);
+  }
+
+  html[data-kiosk="1"] .extremum .t-ht {
+    font-size: clamp(18px, 5.2vw, 22px);
+  }
+
+  html[data-kiosk="1"] .extremum .t-kind {
+    font-size: clamp(11px, 3vw, 13px);
+  }
 }
 
 @media (orientation: portrait) {
@@ -1191,9 +1223,12 @@ html[data-kiosk="1"] .extremum {
   transition: opacity 2.2s ease;
 }
 
-html[data-kiosk="1"][data-kiosk-quiet="1"] .mast,
-html[data-kiosk="1"][data-kiosk-quiet="1"] .extremum {
+html[data-kiosk="1"][data-kiosk-quiet="1"] .mast {
   opacity: 0.15;
+}
+
+html[data-kiosk="1"][data-kiosk-quiet="1"] .extremum {
+  opacity: 0.52;
 }
 
 @media (prefers-reduced-motion: reduce) {
