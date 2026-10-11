@@ -71,89 +71,40 @@ function pointsInDay(series, startMs, endMs) {
   return series.filter((p) => p.t >= startMs - pad && p.t <= endMs + pad);
 }
 
-function paintGrid(ctx, L) {
-  ctx.save();
-  ctx.strokeStyle = "rgba(160, 210, 255, 0.18)";
-  ctx.lineWidth = 1;
-  const stepX = Math.max(28, (L.right - L.left) / 16);
-  const stepY = Math.max(22, (L.bottom - L.top) / 8);
-  for (let x = L.left; x <= L.right + 0.5; x += stepX) {
-    ctx.beginPath();
-    ctx.moveTo(x, L.top);
-    ctx.lineTo(x, L.bottom);
-    ctx.stroke();
-  }
-  for (let y = L.top; y <= L.bottom + 0.5; y += stepY) {
-    ctx.beginPath();
-    ctx.moveTo(L.left, y);
-    ctx.lineTo(L.right, y);
-    ctx.stroke();
-  }
-  ctx.restore();
+function rgbOf(color) {
+  const match = String(color).match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (!match) return null;
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
 }
 
-function paintTicks(ctx, L) {
-  ctx.save();
-  ctx.strokeStyle = "rgba(230, 244, 255, 0.45)";
-  ctx.lineWidth = 1;
-  const mid = (L.top + L.bottom) / 2;
-  for (let x = L.left; x <= L.right; x += Math.max(36, (L.right - L.left) / 12)) {
-    ctx.beginPath();
-    ctx.moveTo(x, mid - 5);
-    ctx.lineTo(x, mid + 5);
-    ctx.stroke();
-  }
-  ctx.restore();
+function withAlpha(color, alpha) {
+  const rgb = rgbOf(color);
+  const a = Math.max(0, Math.min(1, alpha));
+  if (!rgb) return `rgba(255, 236, 214, ${a})`;
+  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${a})`;
 }
 
-function paintBleed(ctx, series, L, from, to, yShift) {
-  ctx.save();
-  curvePath(ctx, series, L, from, to, yShift);
-  ctx.lineJoin = "round";
-  ctx.lineCap = "round";
-  ctx.strokeStyle = "rgba(70, 140, 190, 0.12)";
-  ctx.lineWidth = 22;
-  ctx.stroke();
-  ctx.strokeStyle = "rgba(70, 140, 190, 0.2)";
-  ctx.lineWidth = 10;
-  ctx.stroke();
-  ctx.restore();
+/** Mood tint for the water. A hard ink stroke is not used. */
+function moodColor(style, night) {
+  const inner = night ? style.inner?.night : style.inner?.day;
+  if (rgbOf(inner)) return inner;
+  if (style.twin) return night ? style.twin.b.color : style.twin.a.color;
+  return night ? "rgba(214, 226, 240, 0.9)" : "rgba(255, 236, 214, 0.9)";
 }
 
-function paintTwin(ctx, series, L, from, to, twin) {
-  for (const layer of [twin.a, twin.b]) {
-    ctx.save();
-    ctx.translate(layer.dx, layer.dy);
-    curvePath(ctx, series, L, from, to);
-    ctx.lineJoin = "round";
-    ctx.lineCap = "round";
-    ctx.strokeStyle = layer.color;
-    ctx.lineWidth = layer.width;
-    ctx.stroke();
-    ctx.restore();
-  }
-}
-
-function paintTorn(ctx, series, L, from, to, night, yShift) {
-  ctx.save();
+function closeWater(ctx, series, L, from, to, yShift) {
   curvePath(ctx, series, L, from, to, yShift);
   const lastX = L.x(Math.min(to, series[series.length - 1].t));
-  ctx.lineTo(lastX, L.bottom + 10);
-  ctx.lineTo(L.x(from), L.bottom + 10);
+  ctx.lineTo(lastX, L.bottom + 2);
+  ctx.lineTo(L.x(from), L.bottom + 2);
   ctx.closePath();
-  ctx.fillStyle = night ? "rgba(18, 18, 18, 0.55)" : "rgba(246, 238, 220, 0.72)";
-  ctx.fill();
-  ctx.restore();
 }
 
 export function createChart(stage) {
   const canvas = stage.querySelector("#chart");
   const ctx = canvas.getContext("2d");
-  const nowLine = stage.querySelector("#now-line");
-  const playLine = stage.querySelector("#playhead-line");
   const playhead = stage.querySelector("#playhead");
   const orb = playhead?.querySelector("#playhead-orb");
-  const yAxis = stage.querySelector("#y-axis");
   const labelsEl = stage.querySelector("#extremum-labels");
   const hit = stage.querySelector("#chart-hit") ?? stage;
 
@@ -256,67 +207,69 @@ export function createChart(stage) {
     L = layout(w, h, series, rangeStart, rangeEnd);
     const style = canvasStyle();
     const night = document.documentElement.dataset.light === "night";
-
-    if (style.grid) paintGrid(ctx, L);
-    if (style.bleed) paintBleed(ctx, series, L, rangeStart, rangeEnd, swellPx);
-
     const shift = swellPx;
-    ctx.save();
-    curvePath(ctx, series, L, rangeStart, rangeEnd, shift);
-    const lastX = L.x(Math.min(rangeEnd, series[series.length - 1].t));
-    ctx.lineTo(lastX, L.bottom + 2);
-    ctx.lineTo(L.x(rangeStart), L.bottom + 2);
-    ctx.closePath();
-    const mist = ctx.createLinearGradient(0, L.top, 0, L.bottom + 2);
-    mist.addColorStop(0, style.mistTop);
-    mist.addColorStop(1, style.mistBottom);
-    ctx.fillStyle = mist;
-    const body = style.showMist === false ? 1.15 : 1;
-    ctx.globalAlpha = Math.min(1, body * (0.88 + breathGlow * 0.14));
-    ctx.fill();
-    ctx.restore();
-
-    if (style.torn) paintTorn(ctx, series, L, rangeStart, rangeEnd, night, shift);
+    paintHaze(shift, night);
+    paintWater(shift, style, night);
     paintCaustics();
-    paintGlow(shift);
+    paintSoftEdge(shift, style, night);
     paintShimmer(shift);
-    if (style.twin) paintTwin(ctx, series, L, rangeStart, rangeEnd, style.twin);
-
-    ctx.save();
-    curvePath(ctx, series, L, rangeStart, rangeEnd);
-    ctx.lineJoin = "round";
-    ctx.lineCap = "round";
-    const outerW = night ? style.outerWidth.night : style.outerWidth.day;
-    const innerW = night ? style.innerWidth.night : style.innerWidth.day;
-    if (outerW) {
-      ctx.strokeStyle = night ? style.outer.night : style.outer.day;
-      ctx.lineWidth = outerW;
-      ctx.stroke();
-    }
-    if (innerW) {
-      ctx.strokeStyle = night ? style.inner.night : style.inner.day;
-      ctx.lineWidth = innerW;
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    if (style.ticks) paintTicks(ctx, L);
-
-    if (yAxis?.childNodes.length) yAxis.replaceChildren();
-    paintDots();
     paintChips();
   };
 
-  const paintGlow = (shift) => {
-    const night = document.documentElement.dataset.light === "night";
-    const ink = night ? "190, 214, 235" : "255, 244, 224";
+  const paintHaze = (shift, night) => {
+    const warm = night ? "255, 206, 160" : "255, 186, 120";
+    const alpha = (night ? 0.035 : 0.055) + breathGlow * (night ? 0.04 : 0.07);
     ctx.save();
-    curvePath(ctx, series, L, rangeStart, rangeEnd, shift);
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
-    ctx.strokeStyle = `rgba(${ink}, ${0.06 + breathGlow * 0.1})`;
-    ctx.lineWidth = 7 + breathGlow * 5;
+    curvePath(ctx, series, L, rangeStart, rangeEnd, shift);
+    ctx.strokeStyle = `rgba(${warm}, ${alpha})`;
+    ctx.lineWidth = 54 + breathGlow * 22;
     ctx.stroke();
+    curvePath(ctx, series, L, rangeStart, rangeEnd, shift);
+    ctx.strokeStyle = `rgba(${warm}, ${alpha * 0.85})`;
+    ctx.lineWidth = 26 + breathGlow * 10;
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  const paintWater = (shift, style, night) => {
+    const tint = moodColor(style, night);
+    const surface = 0.2 + breathGlow * 0.08;
+    const deep = night ? 0.04 : 0.055;
+    const buried = shift - 9;
+    ctx.save();
+    closeWater(ctx, series, L, rangeStart, rangeEnd, buried);
+    const body = ctx.createLinearGradient(0, L.top, 0, L.bottom + 2);
+    body.addColorStop(0, withAlpha(tint, surface));
+    body.addColorStop(0.55, withAlpha(tint, deep + breathGlow * 0.03));
+    body.addColorStop(1, withAlpha(tint, 0));
+    ctx.fillStyle = body;
+    ctx.fill();
+    ctx.restore();
+  };
+
+  const paintSoftEdge = (shift, style, night) => {
+    const tint = moodColor(style, night);
+    const dark = (() => {
+      const rgb = rgbOf(tint);
+      return rgb ? rgb[0] + rgb[1] + rgb[2] < 280 : false;
+    })();
+    const glow = dark ? (night ? "rgba(236, 226, 208, 0.9)" : "rgba(255, 244, 228, 0.95)") : tint;
+    const layers = [
+      { width: 40 + breathGlow * 12, alpha: 0.05 + breathGlow * 0.03 },
+      { width: 22 + breathGlow * 6, alpha: 0.08 + breathGlow * 0.035 },
+      { width: 11, alpha: 0.1 + breathGlow * 0.04 },
+    ];
+    ctx.save();
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    for (const layer of layers) {
+      curvePath(ctx, series, L, rangeStart, rangeEnd, shift);
+      ctx.strokeStyle = withAlpha(glow, layer.alpha);
+      ctx.lineWidth = layer.width;
+      ctx.stroke();
+    }
     ctx.restore();
   };
 
@@ -325,11 +278,7 @@ export function createChart(stage) {
     const night = document.documentElement.dataset.light === "night";
     const ink = night ? "210, 224, 240" : "255, 248, 236";
     ctx.save();
-    curvePath(ctx, series, L, rangeStart, rangeEnd, swellPx);
-    const lastX = L.x(Math.min(rangeEnd, series[series.length - 1].t));
-    ctx.lineTo(lastX, L.bottom + 2);
-    ctx.lineTo(L.x(rangeStart), L.bottom + 2);
-    ctx.closePath();
+    closeWater(ctx, series, L, rangeStart, rangeEnd, swellPx);
     ctx.clip();
     ctx.lineCap = "round";
     ctx.lineWidth = 1;
@@ -366,11 +315,7 @@ export function createChart(stage) {
     const depth = (48 + breathGlow * 64) * ampScale();
     const half = 9 + breathGlow * 22;
     ctx.save();
-    curvePath(ctx, series, L, rangeStart, rangeEnd, shift);
-    const lastX = L.x(Math.min(rangeEnd, series[series.length - 1].t));
-    ctx.lineTo(lastX, L.bottom + 2);
-    ctx.lineTo(L.x(rangeStart), L.bottom + 2);
-    ctx.closePath();
+    closeWater(ctx, series, L, rangeStart, rangeEnd, shift);
     ctx.clip();
     const shaft = ctx.createLinearGradient(0, surfaceY, 0, surfaceY + depth);
     shaft.addColorStop(0, `rgba(${hot}, ${alpha})`);
@@ -410,56 +355,38 @@ export function createChart(stage) {
 
   const floatPlayhead = () => {
     if (!playhead) return;
-    const bob = motionReduced() ? 0 : -swellPx * 0.35;
-    playhead.style.transform = `translateY(${(-18 + bob).toFixed(2)}px)`;
+    const follow = motionReduced() ? 0 : swellPx;
+    playhead.style.transform = `translateY(${(-46 - follow).toFixed(2)}px)`;
     playhead.style.setProperty("--breath", breathGlow.toFixed(3));
-  };
-
-  const paintDots = () => {
-    if (!L) return;
-    const style = canvasStyle();
-    if (style.showDots === false) return;
-    extrema
-      .filter((e) => e.t >= rangeStart && e.t <= rangeEnd)
-      .forEach((e) => {
-        ctx.beginPath();
-        ctx.arc(L.x(e.t), L.y(e.v), style.dotRadius, 0, Math.PI * 2);
-        ctx.fillStyle = style.dotFill;
-        ctx.strokeStyle = style.dotStroke;
-        ctx.lineWidth = style.dotWidth;
-        ctx.fill();
-        ctx.stroke();
-      });
   };
 
   const paintChips = () => {
     if (!L || !labelsEl) return;
-    const key = `${rangeStart}:${rangeEnd}`;
+    const key = `${rangeStart}:${rangeEnd}:${Math.round(stage.clientWidth)}:${Math.round(stage.clientHeight)}`;
     if (key === chipKey && labelsEl.childNodes.length) return;
     chipKey = key;
     labelsEl.replaceChildren();
     const w = stage.clientWidth;
+    const h = stage.clientHeight;
     const dayExtrema = extrema.filter((e) => e.t >= rangeStart && e.t <= rangeEnd);
-    const placed = [];
     dayExtrema.forEach((e) => {
       const node = document.createElement("div");
-      node.className = "extremum";
+      const low = e.type !== "H";
+      node.className = low ? "extremum is-low" : "extremum";
       const px = L.x(e.t);
-      node.style.top = `${L.bottom + 8}px`;
-      const kind = e.type === "H" ? "HIGH TIDE" : "LOW TIDE";
+      const py = L.y(e.v);
+      const kind = low ? "Low" : "High";
       node.innerHTML = `<div class="t-time">${formatClock(new Date(e.t))}</div>
-        <div class="t-kind">${kind}</div>
-        <div class="t-ht">${e.v.toFixed(1)} ft</div>`;
+        <div class="t-kind">${kind} · ${e.v.toFixed(1)} ft</div>`;
       labelsEl.append(node);
       const hw = node.offsetWidth / 2;
-      const left = Math.min(w - hw - 4, Math.max(hw + 4, px));
-      const overlap = placed.some((p) => Math.abs(left - p.left) < hw + p.hw + 8);
-      if (overlap) {
-        node.remove();
-        return;
-      }
+      const left = Math.min(w - hw - 8, Math.max(hw + 8, px));
+      let placeLow = low;
+      if (low && py > h - 72) placeLow = false;
+      if (!low && py < 56) placeLow = true;
+      node.classList.toggle("is-low", placeLow);
       node.style.left = `${left}px`;
-      placed.push({ left, hw });
+      node.style.top = `${py}px`;
     });
   };
 
@@ -494,12 +421,8 @@ export function createChart(stage) {
   };
 
   const placeMarks = (timeMs) => {
-    if (!L || !series.length) return;
+    if (!L || !series.length || !playhead) return;
     const sample = sampleTide(series, timeMs);
-    const now = clockMs;
-    const nowInRange = now >= rangeStart && now <= rangeEnd;
-    nowLine.style.opacity = nowInRange ? "1" : "0";
-    if (nowInRange) nowLine.style.left = `${L.x(now)}px`;
     if (!sample) return;
     const px = L.x(Math.min(rangeEnd, Math.max(rangeStart, timeMs)));
     const py = L.y(sample.height);
@@ -510,10 +433,6 @@ export function createChart(stage) {
     playhead.classList.toggle("live", !exploring);
     playhead.classList.toggle("exploring", exploring);
     paintOrb(timeMs);
-    if (playLine) {
-      playLine.style.opacity = exploring ? "1" : "0";
-      playLine.style.left = `${px}px`;
-    }
     floatPlayhead();
   };
 
