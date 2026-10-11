@@ -291,6 +291,23 @@ html[data-light="night"] .scene::after {
   letter-spacing: 0.28em;
   font-weight: 400;
   overflow-wrap: anywhere;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.place-name:focus-visible {
+  outline: 1px solid var(--gold);
+  outline-offset: 0.35rem;
+}
+
+html[data-kiosk="1"] #place-name,
+html[data-embed="1"] #place-name {
+  pointer-events: none;
 }
 
 .date-line {
@@ -1015,7 +1032,8 @@ html[data-kiosk="1"] * {
 html[data-kiosk="1"] .day-flip,
 html[data-kiosk="1"] .mood-caption,
 html[data-kiosk="1"] .credit,
-html[data-kiosk="1"] button,
+html[data-kiosk="1"] .beach-menu,
+html[data-kiosk="1"] button:not(#place-name),
 html[data-kiosk="1"] .status-msg,
 html[data-kiosk="1"] .scrub-note {
   display: none !important;
@@ -1170,4 +1188,100 @@ html[data-kiosk="1"] .extremum .t-ht {
   html[data-kiosk="1"] .current {
     margin-top: 0.55rem;
   }
+}
+
+.beach-menu {
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  max-height: min(72vh, 34rem);
+  background: rgba(20, 18, 16, 0.92);
+  color: var(--cream);
+  border-radius: 0.7rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(16px);
+  padding: 0.35rem 0.15rem 0;
+}
+
+.beach-menu[hidden] {
+  display: none;
+}
+
+.beach-menu-list {
+  overflow: auto;
+  min-height: 0;
+  padding-bottom: 0.2rem;
+}
+
+.beach-label {
+  margin: 0.55rem 0.7rem 0.15rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(243, 234, 216, 0.55);
+}
+
+.beach-row {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding-right: 0.2rem;
+}
+
+.beach-row.is-active .beach-pick,
+.beach-pick[aria-selected="true"] {
+  color: var(--gold);
+}
+
+.beach-pick,
+.beach-star {
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.beach-pick {
+  flex: 1;
+  text-align: left;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  padding: 0.48rem 0.55rem;
+}
+
+.beach-star {
+  opacity: 0.45;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.45rem;
+}
+
+.beach-star.is-on {
+  opacity: 1;
+  color: var(--gold);
+}
+
+.beach-search {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid rgba(243, 234, 216, 0.16);
+  background: transparent;
+  color: var(--cream);
+  caret-color: var(--cream);
+  font: inherit;
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.75rem 0.7rem 0.7rem;
+  user-select: text;
+}
+
+.beach-search::placeholder {
+  color: rgba(243, 234, 216, 0.45);
+}
+
+.beach-search:focus {
+  outline: none;
 }

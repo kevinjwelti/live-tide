@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-title" content="LIVE TIDE" />
     <meta name="theme-color" content="#000000" />
     <meta http-equiv="Cache-Control" content="no-cache" />
-    <meta name="live-tide-build" content="moods-v52" />
+    <meta name="live-tide-build" content="moods-v53" />
     <script>
       if (new URLSearchParams(location.search).has("kiosk")) {
         document.documentElement.dataset.kiosk = "1";
@@ -29,7 +29,8 @@
       html[data-kiosk="1"] .day-flip,
       html[data-kiosk="1"] .mood-caption,
       html[data-kiosk="1"] .credit,
-      html[data-kiosk="1"] button {
+      html[data-kiosk="1"] .beach-menu,
+      html[data-kiosk="1"] button:not(#place-name) {
         display: none !important;
       }
       .kiosk-wake {
@@ -48,7 +49,7 @@
     </style>
     <meta
       name="description"
-      content="Living tide wall art for The Boom, Nicaragua, drawn from Surfline Corinto / Isla Cardon."
+      content="Living tide wall art. The ocean is always in motion."
     />
     <title>LIVE TIDE</title>
     <link rel="icon" href="/live-tide/favicon.svg" type="image/svg+xml" />
@@ -113,7 +114,9 @@
                 d="M12 2.2c-3.7 0-6.7 2.9-6.7 6.6 0 4.9 6.7 12.9 6.7 12.9s6.7-8 6.7-12.9c0-3.7-3-6.6-6.7-6.6zm0 9a2.4 2.4 0 1 1 0-4.8 2.4 2.4 0 0 1 0 4.8z"
               />
             </svg>
-            <span id="place-name" class="place-name">THE BOOM, NICARAGUA</span>
+            <button id="place-name" class="place-name" type="button" aria-haspopup="dialog" aria-expanded="false">
+              THE BOOM, NICARAGUA
+            </button>
           </p>
           <p id="date-line" class="date-line"></p>
           <p id="clock-line" class="clock-line"></p>

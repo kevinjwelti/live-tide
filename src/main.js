@@ -1,12 +1,15 @@
 import "./style.css";
 import { createSwell } from "./swell.js";
 import { createChart } from "./chart.js";
-import { fetchTide, STATION, REFRESH_MS } from "./tide.js";
+import { fetchTide, REFRESH_MS } from "./tide.js";
 import { moonState, renderMoon } from "./moon.js";
 import { formatClock, formatDate, setPlace } from "./time.js";
 import { applyMood, pickMood } from "./moods.js";
 import { initSkyMode, listenForSkyMessages, resolveNow } from "./now.js";
 import { initKiosk, isKiosk, KIOSK_RETRY_START_MS, nextRetryDelay } from "./kiosk.js";
+import { rememberBeach, resolveInitialBeach, writeBeachParam } from "./beaches.js";
+import { initBeachMenu } from "./beach-menu.js";
+import { cachedStations, loadStations, upgradeBeach } from "./stations.js";
 
 const params = new URLSearchParams(location.search);
 if (params.get("embed") === "1") {
@@ -15,10 +18,18 @@ if (params.get("embed") === "1") {
 
 initSkyMode();
 listenForSkyMessages();
-setPlace(STATION);
+
+let beach = resolveInitialBeach(location.search);
+const stationCache = cachedStations();
+if (stationCache) {
+  const upgraded = upgradeBeach(beach, stationCache);
+  if (upgraded.name !== beach.name) beach = upgraded;
+}
+setPlace(beach);
 const kiosk = isKiosk();
 if (kiosk) initKiosk();
-const mood = applyMood(pickMood(resolveNow()));
+const embed = params.get("embed") === "1";
+let mood = applyMood(pickMood(resolveNow()));
 
 const els = {
   direction: document.querySelector("#direction"),
@@ -48,8 +59,8 @@ function setStatus(text) {
 }
 
 function applyPlace() {
-  els.placeName.textContent = STATION.name;
-  if (els.credit) els.credit.textContent = STATION.credit;
+  els.placeName.textContent = beach.name;
+  if (els.credit) els.credit.textContent = beach.credit;
 }
 
 function applyCaption() {
@@ -132,9 +143,9 @@ function scheduleQuietRetry() {
 function applyTideData(data) {
   if (els.credit) {
     els.credit.textContent =
-      data.source === "harmonics"
+      beach.id === "boom" && data.source === "harmonics"
         ? "Tide predictions in feet · NOAA harmonics · Puerto Corinto"
-        : STATION.credit;
+        : beach.credit;
   }
   const view = chart.setData({
     series: data.series,
@@ -155,10 +166,31 @@ function applyTideData(data) {
   }
 }
 
+let loadToken = 0;
+
+function selectBeach(next) {
+  beach = next;
+  rememberBeach(next);
+  writeBeachParam(next.id);
+  setPlace(next);
+  applyPlace();
+  if (!params.get("mood")) {
+    mood = applyMood(pickMood(resolveNow()));
+    applyCaption();
+  }
+  chart.setDayOffset(0);
+  syncDayFlip();
+  pulse(resolveNow());
+  loadTide("beach");
+}
+
 async function loadTide(reason = "refresh") {
+  const token = ++loadToken;
+  const requested = beach;
   if (!kiosk) setStatus(reason === "init" ? "Gathering the tide…" : "");
   try {
-    const data = await fetchTide();
+    const data = await fetchTide(requested);
+    if (token !== loadToken) return;
     const keepLast = kiosk && data.live === false && chart.hasData();
     if (!keepLast) applyTideData(data);
     if (kiosk && data.live === false) scheduleQuietRetry();
@@ -173,7 +205,7 @@ async function loadTide(reason = "refresh") {
       return;
     }
     if (!chart.hasData()) {
-      setStatus(error?.message || "The Boom tide file has not landed yet.");
+      setStatus(requested.id === "boom" ? "The Boom tide file has not landed yet." : "The tide didn't answer.");
     }
   }
 }
@@ -211,6 +243,23 @@ document.querySelector(".wordmark").addEventListener("click", async () => {
 window.addEventListener("livetide-sky", () => {
   pulse(resolveNow());
 });
+
+initBeachMenu({
+  button: els.placeName,
+  getBeach: () => beach,
+  onSelect: selectBeach,
+  enabled: !kiosk && !embed,
+});
+
+if (params.get("beach")) rememberBeach(beach);
+else if (beach.id !== "boom") writeBeachParam(beach.id);
+
+loadStations()
+  .then((rows) => {
+    const upgraded = upgradeBeach(beach, rows);
+    if (upgraded.name !== beach.name || upgraded.tz !== beach.tz) selectBeach(upgraded);
+  })
+  .catch(() => {});
 
 applyPlace();
 applyCaption();
