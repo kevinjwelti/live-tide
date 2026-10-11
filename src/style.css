@@ -409,6 +409,7 @@ html[data-light="night"] .playhead-line {
 }
 
 .playhead {
+  --breath: 0.7;
   position: absolute;
   width: 36px;
   height: 36px;
@@ -416,6 +417,7 @@ html[data-light="night"] .playhead-line {
   pointer-events: none;
   opacity: 0;
   z-index: 5;
+  transform: translateY(-18px);
   transition: width 0.2s ease, height 0.2s ease, margin 0.2s ease;
 }
 
@@ -430,6 +432,8 @@ html[data-light="night"] .playhead-line {
   inset: -10px;
   border-radius: 50%;
   pointer-events: none;
+  opacity: calc(0.78 + var(--breath) * 0.22);
+  transform: scale(calc(0.94 + var(--breath) * 0.14));
 }
 
 .playhead.is-sun .orb-glow {
@@ -1187,6 +1191,24 @@ html[data-kiosk="1"] .extremum .t-ht {
 
   html[data-kiosk="1"] .current {
     margin-top: 0.55rem;
+  }
+}
+
+/* After a quiet minute the television type rests, then returns briefly. */
+html[data-kiosk="1"] .mast,
+html[data-kiosk="1"] .extremum {
+  transition: opacity 2.2s ease;
+}
+
+html[data-kiosk="1"][data-kiosk-quiet="1"] .mast,
+html[data-kiosk="1"][data-kiosk-quiet="1"] .extremum {
+  opacity: 0.15;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-kiosk="1"] .mast,
+  html[data-kiosk="1"] .extremum {
+    transition-duration: 0.01ms;
   }
 }
 

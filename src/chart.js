@@ -11,6 +11,7 @@ import {
 import { sampleTide } from "./tide.js";
 import { moonState, renderMoon, renderSun } from "./moon.js";
 import { canvasStyle } from "./moods.js";
+import { breathLight, breathPeriodMs, breathSwell, tideBreathLevel } from "./breath.js";
 
 function chartPad(w, h) {
   const phone = Math.min(w, h) < 640;
@@ -41,13 +42,15 @@ function layout(w, h, series, rangeStart, rangeEnd) {
   return { left, right, top, bottom, min, max, x, y };
 }
 
-function curvePath(ctx, series, L, from, to) {
+function curvePath(ctx, series, L, from, to, yShift = 0) {
   // Neighbor points outside the day keep the spline smooth at midnight.
   // Never cap at "now" / the playhead — the full local day must stay visible.
+  // yShift is a visual lift in pixels. Tide samples stay on the unshifted curve.
   const pts = series.filter((p) => p.t >= from - 12 * 3600000 && p.t <= to + 12 * 3600000);
   if (pts.length < 2) return;
+  const py = (v) => L.y(v) - yShift;
   ctx.beginPath();
-  ctx.moveTo(L.x(pts[0].t), L.y(pts[0].v));
+  ctx.moveTo(L.x(pts[0].t), py(pts[0].v));
   for (let i = 0; i < pts.length - 1; i += 1) {
     const p0 = pts[Math.max(0, i - 1)];
     const p1 = pts[i];
@@ -57,9 +60,9 @@ function curvePath(ctx, series, L, from, to) {
     const x2 = L.x(p2.t);
     const c1x = x1 + (x2 - x1) / 3;
     const c2x = x1 + (2 * (x2 - x1)) / 3;
-    const c1y = L.y(p1.v + (p2.v - p0.v) / 6);
-    const c2y = L.y(p2.v - (p3.v - p1.v) / 6);
-    ctx.bezierCurveTo(c1x, c1y, c2x, c2y, x2, L.y(p2.v));
+    const c1y = py(p1.v + (p2.v - p0.v) / 6);
+    const c2y = py(p2.v - (p3.v - p1.v) / 6);
+    ctx.bezierCurveTo(c1x, c1y, c2x, c2y, x2, py(p2.v));
   }
 }
 
@@ -103,14 +106,16 @@ function paintTicks(ctx, L) {
   ctx.restore();
 }
 
-function paintBleed(ctx, series, L, from, to) {
+function paintBleed(ctx, series, L, from, to, yShift) {
   ctx.save();
-  ctx.filter = "blur(10px)";
-  curvePath(ctx, series, L, from, to);
+  curvePath(ctx, series, L, from, to, yShift);
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
-  ctx.strokeStyle = "rgba(70, 140, 190, 0.28)";
-  ctx.lineWidth = 18;
+  ctx.strokeStyle = "rgba(70, 140, 190, 0.12)";
+  ctx.lineWidth = 22;
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(70, 140, 190, 0.2)";
+  ctx.lineWidth = 10;
   ctx.stroke();
   ctx.restore();
 }
@@ -129,9 +134,9 @@ function paintTwin(ctx, series, L, from, to, twin) {
   }
 }
 
-function paintTorn(ctx, series, L, from, to, night) {
+function paintTorn(ctx, series, L, from, to, night, yShift) {
   ctx.save();
-  curvePath(ctx, series, L, from, to);
+  curvePath(ctx, series, L, from, to, yShift);
   const lastX = L.x(Math.min(to, series[series.length - 1].t));
   ctx.lineTo(lastX, L.bottom + 10);
   ctx.lineTo(L.x(from), L.bottom + 10);
@@ -167,17 +172,73 @@ export function createChart(stage) {
   let listeners = { onView: () => {} };
   let orbKey = "";
   let clockMs = Date.now();
+  let viewW = 0;
+  let viewH = 0;
+  let breathPhase = 0;
+  let swellPx = 0;
+  let breathGlow = 0.7;
+  let causticShift = 0;
+  let tideLevel = 0.5;
+  let tideRising = true;
+  let lastBreathMs = 0;
+  let breathFrame = 0;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  const motionReduced = () => reduceMotion.matches;
 
   const size = () => {
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const dpr = Math.min(1.5, window.devicePixelRatio || 1);
     const w = stage.clientWidth;
     const h = stage.clientHeight;
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
+    const bw = Math.round(w * dpr);
+    const bh = Math.round(h * dpr);
+    if (w === viewW && h === viewH && canvas.width === bw && canvas.height === bh) {
+      return { w, h };
+    }
+    viewW = w;
+    viewH = h;
+    canvas.width = bw;
+    canvas.height = bh;
     canvas.style.width = `${w}px`;
     canvas.style.height = `${h}px`;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     return { w, h };
+  };
+
+  const ampScale = () => {
+    if (!L) return 1;
+    return Math.min(1.35, Math.max(0.85, (L.bottom - L.top) / 420));
+  };
+
+  const syncTide = () => {
+    const sample = sampleTide(series, clockMs);
+    if (!sample) return;
+    const day = extrema.filter((e) => e.t >= rangeStart && e.t <= rangeEnd);
+    if (day.length) {
+      const lo = Math.min(...day.map((e) => e.v));
+      const hi = Math.max(...day.map((e) => e.v));
+      tideLevel = tideBreathLevel(sample.height, lo, hi);
+    } else if (L) {
+      tideLevel = tideBreathLevel(sample.height, L.min, L.max);
+    }
+    tideRising = sample.slope >= 0;
+  };
+
+  const advanceBreath = (dt) => {
+    syncTide();
+    const period = breathPeriodMs(tideLevel);
+    breathPhase += (dt / period) * Math.PI * 2;
+    if (breathPhase > Math.PI * 8) breathPhase -= Math.PI * 2;
+    swellPx = breathSwell(breathPhase, tideLevel) * ampScale();
+    breathGlow = breathLight(breathPhase, tideRising);
+    causticShift += dt * 0.012;
+  };
+
+  const holdBreath = () => {
+    syncTide();
+    swellPx = 0;
+    causticShift = 0;
+    breathGlow = breathLight(Math.PI / 2, tideRising);
   };
 
   const liveCursor = (now = new Date()) => {
@@ -197,24 +258,28 @@ export function createChart(stage) {
     const night = document.documentElement.dataset.light === "night";
 
     if (style.grid) paintGrid(ctx, L);
-    if (style.bleed) paintBleed(ctx, series, L, rangeStart, rangeEnd);
+    if (style.bleed) paintBleed(ctx, series, L, rangeStart, rangeEnd, swellPx);
 
+    const shift = swellPx;
     ctx.save();
-    curvePath(ctx, series, L, rangeStart, rangeEnd);
+    curvePath(ctx, series, L, rangeStart, rangeEnd, shift);
     const lastX = L.x(Math.min(rangeEnd, series[series.length - 1].t));
-    ctx.lineTo(lastX, L.bottom);
-    ctx.lineTo(L.x(rangeStart), L.bottom);
+    ctx.lineTo(lastX, L.bottom + 2);
+    ctx.lineTo(L.x(rangeStart), L.bottom + 2);
     ctx.closePath();
-    if (style.showMist !== false) {
-      const mist = ctx.createLinearGradient(0, L.top, 0, L.bottom);
-      mist.addColorStop(0, style.mistTop);
-      mist.addColorStop(1, style.mistBottom);
-      ctx.fillStyle = mist;
-      ctx.fill();
-    }
+    const mist = ctx.createLinearGradient(0, L.top, 0, L.bottom + 2);
+    mist.addColorStop(0, style.mistTop);
+    mist.addColorStop(1, style.mistBottom);
+    ctx.fillStyle = mist;
+    const body = style.showMist === false ? 1.15 : 1;
+    ctx.globalAlpha = Math.min(1, body * (0.88 + breathGlow * 0.14));
+    ctx.fill();
     ctx.restore();
 
-    if (style.torn) paintTorn(ctx, series, L, rangeStart, rangeEnd, night);
+    if (style.torn) paintTorn(ctx, series, L, rangeStart, rangeEnd, night, shift);
+    paintCaustics();
+    paintGlow(shift);
+    paintShimmer(shift);
     if (style.twin) paintTwin(ctx, series, L, rangeStart, rangeEnd, style.twin);
 
     ctx.save();
@@ -237,10 +302,117 @@ export function createChart(stage) {
 
     if (style.ticks) paintTicks(ctx, L);
 
-    yAxis.replaceChildren();
+    if (yAxis?.childNodes.length) yAxis.replaceChildren();
     paintDots();
-    chipKey = "";
     paintChips();
+  };
+
+  const paintGlow = (shift) => {
+    const night = document.documentElement.dataset.light === "night";
+    const ink = night ? "190, 214, 235" : "255, 244, 224";
+    ctx.save();
+    curvePath(ctx, series, L, rangeStart, rangeEnd, shift);
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.strokeStyle = `rgba(${ink}, ${0.06 + breathGlow * 0.1})`;
+    ctx.lineWidth = 7 + breathGlow * 5;
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  const paintCaustics = () => {
+    if (!L) return;
+    const night = document.documentElement.dataset.light === "night";
+    const ink = night ? "210, 224, 240" : "255, 248, 236";
+    ctx.save();
+    curvePath(ctx, series, L, rangeStart, rangeEnd, swellPx);
+    const lastX = L.x(Math.min(rangeEnd, series[series.length - 1].t));
+    ctx.lineTo(lastX, L.bottom + 2);
+    ctx.lineTo(L.x(rangeStart), L.bottom + 2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.lineCap = "round";
+    ctx.lineWidth = 1;
+    for (let band = 0; band < 3; band += 1) {
+      const y0 = L.top + (L.bottom - L.top) * (0.46 + band * 0.15);
+      const amp = 2.2 + band;
+      const freq = 0.016 + band * 0.004;
+      ctx.beginPath();
+      let started = false;
+      for (let x = L.left; x <= L.right; x += 8) {
+        const y = y0 + Math.sin(x * freq + causticShift * (0.32 + band * 0.06) + band * 1.7) * amp;
+        if (!started) {
+          ctx.moveTo(x, y);
+          started = true;
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.strokeStyle = `rgba(${ink}, ${0.035 + breathGlow * 0.035})`;
+      ctx.stroke();
+    }
+    ctx.restore();
+  };
+
+  const paintShimmer = (shift) => {
+    if (!L) return;
+    const sample = sampleTide(series, viewTime);
+    if (!sample) return;
+    const px = L.x(Math.min(rangeEnd, Math.max(rangeStart, viewTime)));
+    const surfaceY = L.y(sample.height) - shift;
+    const night = document.documentElement.dataset.light === "night";
+    const hot = night ? "198, 216, 240" : "255, 226, 168";
+    const alpha = 0.05 + breathGlow * 0.16;
+    const depth = (48 + breathGlow * 64) * ampScale();
+    const half = 9 + breathGlow * 22;
+    ctx.save();
+    curvePath(ctx, series, L, rangeStart, rangeEnd, shift);
+    const lastX = L.x(Math.min(rangeEnd, series[series.length - 1].t));
+    ctx.lineTo(lastX, L.bottom + 2);
+    ctx.lineTo(L.x(rangeStart), L.bottom + 2);
+    ctx.closePath();
+    ctx.clip();
+    const shaft = ctx.createLinearGradient(0, surfaceY, 0, surfaceY + depth);
+    shaft.addColorStop(0, `rgba(${hot}, ${alpha})`);
+    shaft.addColorStop(0.42, `rgba(${hot}, ${alpha * 0.4})`);
+    shaft.addColorStop(1, `rgba(${hot}, 0)`);
+    ctx.fillStyle = shaft;
+    ctx.beginPath();
+    ctx.moveTo(px - 4, surfaceY);
+    ctx.bezierCurveTo(
+      px - half * 0.4,
+      surfaceY + depth * 0.28,
+      px - half,
+      surfaceY + depth * 0.7,
+      px - 1.2,
+      surfaceY + depth
+    );
+    ctx.lineTo(px + 1.2, surfaceY + depth);
+    ctx.bezierCurveTo(
+      px + half,
+      surfaceY + depth * 0.7,
+      px + half * 0.4,
+      surfaceY + depth * 0.28,
+      px + 4,
+      surfaceY
+    );
+    ctx.closePath();
+    ctx.fill();
+    const pool = ctx.createRadialGradient(px, surfaceY + 2, 0, px, surfaceY + 2, half);
+    pool.addColorStop(0, `rgba(${hot}, ${Math.min(0.34, alpha + 0.08)})`);
+    pool.addColorStop(1, `rgba(${hot}, 0)`);
+    ctx.fillStyle = pool;
+    ctx.beginPath();
+    ctx.ellipse(px, surfaceY + 3, half * 0.9, 4 + breathGlow * 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  };
+
+  const floatPlayhead = () => {
+    if (!playhead) return;
+    const bob = motionReduced() ? 0 : -swellPx * 0.35;
+    playhead.style.transform = `translateY(${(-18 + bob).toFixed(2)}px)`;
+    playhead.style.setProperty("--breath", breathGlow.toFixed(3));
   };
 
   const paintDots = () => {
@@ -342,6 +514,7 @@ export function createChart(stage) {
       playLine.style.opacity = exploring ? "1" : "0";
       playLine.style.left = `${px}px`;
     }
+    floatPlayhead();
   };
 
   const emit = () => {
@@ -444,6 +617,56 @@ export function createChart(stage) {
     }
     return { stale, lastT, empty: inDay.length < 2 && series.length < 2 };
   };
+
+  const paintStill = () => {
+    holdBreath();
+    paint();
+    floatPlayhead();
+  };
+
+  const onBreathFrame = (now) => {
+    breathFrame = requestAnimationFrame(onBreathFrame);
+    if (document.hidden || motionReduced()) return;
+    if (!lastBreathMs) {
+      lastBreathMs = now;
+      return;
+    }
+    const dt = now - lastBreathMs;
+    if (dt < 33) return;
+    lastBreathMs = now;
+    advanceBreath(Math.min(dt, 80));
+    if (series.length > 1) {
+      paint();
+      floatPlayhead();
+    }
+  };
+
+  const stopBreath = () => {
+    if (breathFrame) cancelAnimationFrame(breathFrame);
+    breathFrame = 0;
+    lastBreathMs = 0;
+  };
+
+  const startBreath = () => {
+    if (motionReduced()) {
+      stopBreath();
+      if (series.length > 1) paintStill();
+      return;
+    }
+    if (breathFrame) return;
+    lastBreathMs = 0;
+    breathFrame = requestAnimationFrame(onBreathFrame);
+  };
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      stopBreath();
+      return;
+    }
+    startBreath();
+  });
+  reduceMotion.addEventListener("change", startBreath);
+  startBreath();
 
   return {
     setData({ series: nextSeries, extrema: nextExtrema, now }) {

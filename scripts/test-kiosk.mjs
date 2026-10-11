@@ -3,7 +3,11 @@ import {
   KIOSK_BURN_PX,
   KIOSK_MIDNIGHT_GRACE_SEC,
   KIOSK_UPTIME_MS,
+  KIOSK_QUIET_AFTER_MS,
+  KIOSK_WAKE_EVERY_MS,
+  KIOSK_WAKE_FOR_MS,
   kioskReloadDue,
+  kioskTextQuiet,
   localDayKey,
   nextRetryDelay,
   randomBurnShift,
@@ -80,5 +84,13 @@ assert(Number.isInteger(far.x) && Number.isInteger(far.y), "burn-in uses whole p
 
 assert(nextRetryDelay(15_000) > 15_000, "retry backs off");
 assert(nextRetryDelay(4 * 60_000) === 5 * 60_000, "retry caps at five minutes");
+
+assert(kioskTextQuiet(59_000) === false, "type stays up through the first minute");
+assert(kioskTextQuiet(61_000) === true, "type rests just after a minute");
+const wakeAt = KIOSK_QUIET_AFTER_MS + KIOSK_WAKE_EVERY_MS - KIOSK_WAKE_FOR_MS;
+assert(kioskTextQuiet(wakeAt - 1) === true, "still quiet just before the whisper returns");
+assert(kioskTextQuiet(wakeAt) === false, "type returns for eight seconds");
+assert(kioskTextQuiet(KIOSK_QUIET_AFTER_MS + KIOSK_WAKE_EVERY_MS - 1) === false, "return lasts through the period");
+assert(kioskTextQuiet(KIOSK_QUIET_AFTER_MS + KIOSK_WAKE_EVERY_MS) === true, "type rests again after the return");
 
 console.log("kiosk tests passed");

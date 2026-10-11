@@ -55,6 +55,33 @@ export function nextRetryDelay(current, max = KIOSK_RETRY_MAX_MS) {
   return Math.min(max, Math.max(KIOSK_RETRY_START_MS, grown));
 }
 
+export const KIOSK_QUIET_AFTER_MS = 60_000;
+export const KIOSK_WAKE_EVERY_MS = 5 * 60 * 1000;
+export const KIOSK_WAKE_FOR_MS = 8_000;
+
+/** True when kiosk type should rest at a whisper. */
+export function kioskTextQuiet(
+  elapsedMs,
+  {
+    idleMs = KIOSK_QUIET_AFTER_MS,
+    everyMs = KIOSK_WAKE_EVERY_MS,
+    wakeMs = KIOSK_WAKE_FOR_MS,
+  } = {}
+) {
+  if (elapsedMs < idleMs) return false;
+  const into = (elapsedMs - idleMs) % everyMs;
+  return into < everyMs - wakeMs;
+}
+
+function startQuietFade(bootMs) {
+  const root = document.documentElement;
+  const apply = () => {
+    root.dataset.kioskQuiet = kioskTextQuiet(Date.now() - bootMs) ? "1" : "0";
+  };
+  apply();
+  window.setInterval(apply, 1000);
+}
+
 function applyBurnShift() {
   const shift = randomBurnShift();
   const root = document.documentElement;
@@ -136,4 +163,5 @@ export function initKiosk(bootMs = Date.now()) {
   startWake();
   startBurnIn();
   startDailyReload(bootMs);
+  startQuietFade(bootMs);
 }
