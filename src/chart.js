@@ -218,17 +218,13 @@ export function createChart(stage) {
 
   const paintHaze = (shift, night) => {
     const warm = night ? "255, 206, 160" : "255, 186, 120";
-    const alpha = (night ? 0.035 : 0.055) + breathGlow * (night ? 0.04 : 0.07);
+    const alpha = (night ? 0.035 : 0.05) + breathGlow * (night ? 0.03 : 0.045);
     ctx.save();
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     curvePath(ctx, series, L, rangeStart, rangeEnd, shift);
     ctx.strokeStyle = `rgba(${warm}, ${alpha})`;
-    ctx.lineWidth = 54 + breathGlow * 22;
-    ctx.stroke();
-    curvePath(ctx, series, L, rangeStart, rangeEnd, shift);
-    ctx.strokeStyle = `rgba(${warm}, ${alpha * 0.85})`;
-    ctx.lineWidth = 26 + breathGlow * 10;
+    ctx.lineWidth = 36 + breathGlow * 8;
     ctx.stroke();
     ctx.restore();
   };
@@ -237,9 +233,8 @@ export function createChart(stage) {
     const tint = moodColor(style, night);
     const surface = 0.2 + breathGlow * 0.08;
     const deep = night ? 0.04 : 0.055;
-    const buried = shift - 9;
     ctx.save();
-    closeWater(ctx, series, L, rangeStart, rangeEnd, buried);
+    closeWater(ctx, series, L, rangeStart, rangeEnd, shift);
     const body = ctx.createLinearGradient(0, L.top, 0, L.bottom + 2);
     body.addColorStop(0, withAlpha(tint, surface));
     body.addColorStop(0.55, withAlpha(tint, deep + breathGlow * 0.03));
@@ -256,20 +251,19 @@ export function createChart(stage) {
       return rgb ? rgb[0] + rgb[1] + rgb[2] < 280 : false;
     })();
     const glow = dark ? (night ? "rgba(236, 226, 208, 0.9)" : "rgba(255, 244, 228, 0.95)") : tint;
-    const layers = [
-      { width: 40 + breathGlow * 12, alpha: 0.05 + breathGlow * 0.03 },
-      { width: 22 + breathGlow * 6, alpha: 0.08 + breathGlow * 0.035 },
-      { width: 11, alpha: 0.1 + breathGlow * 0.04 },
-    ];
+    const span = Math.max(1, L.right - L.left);
+    const core = Math.min(3, Math.max(2, span / 560));
     ctx.save();
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
-    for (const layer of layers) {
-      curvePath(ctx, series, L, rangeStart, rangeEnd, shift);
-      ctx.strokeStyle = withAlpha(glow, layer.alpha);
-      ctx.lineWidth = layer.width;
-      ctx.stroke();
-    }
+    curvePath(ctx, series, L, rangeStart, rangeEnd, shift);
+    ctx.strokeStyle = withAlpha(glow, 0.2 + breathGlow * 0.08);
+    ctx.lineWidth = core + 9;
+    ctx.stroke();
+    curvePath(ctx, series, L, rangeStart, rangeEnd, shift);
+    ctx.strokeStyle = withAlpha(glow, night ? 0.94 : 0.9);
+    ctx.lineWidth = core;
+    ctx.stroke();
     ctx.restore();
   };
 
@@ -356,7 +350,7 @@ export function createChart(stage) {
   const floatPlayhead = () => {
     if (!playhead) return;
     const follow = motionReduced() ? 0 : swellPx;
-    playhead.style.transform = `translateY(${(-46 - follow).toFixed(2)}px)`;
+    playhead.style.transform = `translateY(${(-follow).toFixed(2)}px)`;
     playhead.style.setProperty("--breath", breathGlow.toFixed(3));
   };
 
@@ -373,7 +367,7 @@ export function createChart(stage) {
     const orbPx = cursor
       ? L.x(Math.min(rangeEnd, Math.max(rangeStart, viewTime)))
       : null;
-    const orbPy = cursor ? L.y(cursor.height) - 46 : null;
+    const orbPy = cursor ? L.y(cursor.height) - swellPx : null;
     const placed = [];
     dayExtrema.forEach((e) => {
       const node = document.createElement("div");

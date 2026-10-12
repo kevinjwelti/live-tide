@@ -397,7 +397,7 @@ html[data-light="night"] .playhead-line {
   pointer-events: none;
   opacity: 0;
   z-index: 5;
-  transform: translateY(-46px);
+  transform: none;
   transition: width 0.2s ease, height 0.2s ease, margin 0.2s ease;
 }
 
