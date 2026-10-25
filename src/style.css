@@ -1333,3 +1333,262 @@ html[data-kiosk="1"][data-kiosk-quiet="1"] .extremum {
 .beach-search:focus {
   outline: none;
 }
+
+.forecast-toggle {
+  display: block;
+  margin: 0.45rem 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: var(--serif);
+  font-size: clamp(13px, 0.9vw, 16px);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.72;
+  cursor: pointer;
+}
+
+.forecast-toggle:hover,
+.forecast-toggle:focus-visible {
+  opacity: 1;
+}
+
+html[data-embed="1"] .forecast-toggle {
+  display: none;
+}
+
+html[data-view="forecast"] .chart-stage {
+  touch-action: pan-y;
+  cursor: default;
+}
+
+html[data-view="forecast"] .moon {
+  display: none;
+}
+
+html[data-view="forecast"] .wordmark {
+  font-size: clamp(1.7rem, 2.5vw, 2.8rem);
+}
+
+html[data-view="forecast"] .height {
+  font-size: clamp(3rem, 5.2vw, 5rem);
+}
+
+html[data-view="forecast"] .chart-canvas,
+html[data-view="forecast"] .playhead,
+html[data-view="forecast"] .extremum-labels,
+html[data-view="forecast"] .day-flip,
+html[data-view="forecast"] .chart-hit,
+html[data-view="forecast"] .y-axis {
+  visibility: hidden;
+}
+
+.forecast {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 0.35rem;
+  pointer-events: auto;
+  color: var(--ink);
+}
+
+.forecast[hidden] {
+  display: none !important;
+}
+
+.forecast-kicker,
+.forecast-empty {
+  font-family: var(--serif);
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  font-size: clamp(12px, 0.8vw, 15px);
+  opacity: 0.62;
+}
+
+.forecast-empty {
+  margin: auto;
+  letter-spacing: 0.14em;
+  text-transform: none;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.forecast-days {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: clamp(0.35rem, 0.8vw, 0.9rem);
+  overflow: hidden;
+}
+
+.forecast-day {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: 0.35rem;
+}
+
+.forecast-date {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-family: var(--serif);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1.15;
+  opacity: 0.72;
+}
+
+.forecast-dow {
+  font-size: clamp(13px, 0.95vw, 18px);
+}
+
+.forecast-dom {
+  font-size: clamp(11px, 0.72vw, 14px);
+  letter-spacing: 0.18em;
+  opacity: 0.8;
+}
+
+.forecast-day.is-today .forecast-date {
+  opacity: 1;
+}
+
+.forecast-wave {
+  display: block;
+  width: 100%;
+  height: clamp(44px, 6.5vh, 72px);
+  flex: 0 0 auto;
+}
+
+.forecast-turns {
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+  min-height: 0;
+}
+
+.forecast-turn {
+  display: flex;
+  flex-direction: column;
+  font-family: "Playfair Display", "Iowan Old Style", Palatino, Georgia, serif;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.05;
+  opacity: 0.82;
+  color: var(--ink);
+  text-shadow:
+    0 0 16px rgba(255, 248, 236, 0.72),
+    0 1px 2px rgba(20, 24, 32, 0.28);
+}
+
+html[data-light="night"] .forecast-turn,
+html[data-light="night"] .forecast-date {
+  text-shadow:
+    0 0 10px rgba(0, 0, 0, 0.95),
+    0 0 18px rgba(255, 214, 170, 0.32);
+}
+
+.forecast-turn .t-time {
+  font-size: clamp(13px, 0.9vw, 18px);
+  letter-spacing: 0.12em;
+}
+
+.forecast-turn .t-ht {
+  margin-top: 0.06rem;
+  font-size: clamp(20px, 1.45vw, 34px);
+  letter-spacing: 0.03em;
+  line-height: 0.95;
+}
+
+.forecast-turn .t-unit {
+  font-size: 0.48em;
+  letter-spacing: 0.14em;
+  margin-left: 0.18em;
+}
+
+.forecast-turn .t-kind {
+  margin-top: 0.12rem;
+  font-size: clamp(10px, 0.62vw, 13px);
+  letter-spacing: 0.22em;
+}
+
+@media (max-width: 800px) {
+  .forecast-days {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    gap: 1.15rem;
+    padding-bottom: 0.6rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .forecast-day {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.35rem;
+    flex: 0 0 auto;
+  }
+
+  .forecast-wave {
+    height: 76px;
+  }
+
+  .forecast-turns {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.15rem;
+    overflow: visible;
+  }
+
+  .forecast-turn .t-time {
+    font-size: clamp(14px, 3.8vw, 18px);
+  }
+
+  .forecast-turn .t-ht {
+    font-size: clamp(20px, 5.4vw, 26px);
+  }
+
+  .forecast-turn .t-kind {
+    font-size: clamp(11px, 2.8vw, 13px);
+  }
+}
+
+html[data-kiosk="1"][data-view="forecast"] .current,
+html[data-kiosk="1"][data-view="forecast"] .tagline,
+html[data-kiosk="1"][data-view="forecast"] .moon {
+  display: none;
+}
+
+html[data-kiosk="1"][data-view="forecast"] .wordmark {
+  font-size: clamp(1.5rem, 2.6vw, 2.6rem);
+}
+
+html[data-kiosk="1"][data-view="forecast"] .clock-line {
+  font-size: clamp(1.3rem, 2.2vw, 2.2rem);
+}
+
+html[data-kiosk="1"][data-view="forecast"] .place-name {
+  font-size: clamp(0.95rem, 1.3vw, 1.4rem);
+}
+
+html[data-kiosk="1"][data-view="forecast"] .forecast-turn .t-ht {
+  font-size: clamp(18px, 1.35vw, 32px);
+}
+
+html[data-kiosk="1"][data-view="forecast"] .forecast-turn .t-time {
+  font-size: clamp(13px, 0.9vw, 20px);
+}
+
+@media (max-width: 700px) {
+  html[data-kiosk="1"][data-view="forecast"] .forecast-days {
+    display: flex;
+    overflow-y: auto;
+  }
+}

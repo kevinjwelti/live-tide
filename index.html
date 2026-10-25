@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-title" content="LIVE TIDE" />
     <meta name="theme-color" content="#000000" />
     <meta http-equiv="Cache-Control" content="no-cache" />
-    <meta name="live-tide-build" content="moods-v58" />
+    <meta name="live-tide-build" content="moods-v59" />
     <script>
       if (new URLSearchParams(location.search).has("kiosk")) {
         document.documentElement.dataset.kiosk = "1";
@@ -118,6 +118,9 @@
               THE BOOM, NICARAGUA
             </button>
           </p>
+          <button id="forecast-toggle" class="forecast-toggle" type="button" aria-pressed="false">
+            Forecast
+          </button>
           <p id="date-line" class="date-line"></p>
           <p id="clock-line" class="clock-line"></p>
         </div>
@@ -138,6 +141,7 @@
         <button id="day-flip" class="day-flip" type="button" aria-pressed="false">
           Tomorrow
         </button>
+        <section id="forecast" class="forecast" hidden aria-label="Seven day tide forecast"></section>
       </section>
 
       <p id="credit" class="credit">

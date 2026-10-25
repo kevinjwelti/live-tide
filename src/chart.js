@@ -134,6 +134,7 @@ export function createChart(stage) {
   let tideRising = true;
   let lastBreathMs = 0;
   let breathFrame = 0;
+  let shown = true;
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   const motionReduced = () => reduceMotion.matches;
@@ -699,6 +700,7 @@ export function createChart(stage) {
   };
 
   const startBreath = () => {
+    if (!shown) return;
     if (motionReduced()) {
       stopBreath();
       if (series.length > 1) paintStill();
@@ -762,6 +764,11 @@ export function createChart(stage) {
       const pts = series.filter((p) => p.t >= start - 3600000 && p.t <= end + 3600000);
       if (pts.length < 8) return false;
       return pts[0].t <= start + 4 * 3600000 && pts[pts.length - 1].t >= end - 4 * 3600000;
+    },
+    setShown(on) {
+      shown = Boolean(on);
+      if (shown) startBreath();
+      else stopBreath();
     },
     tick(now) {
       clockMs = (now ?? new Date()).getTime();

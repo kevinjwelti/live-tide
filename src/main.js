@@ -9,6 +9,7 @@ import { initSkyMode, listenForSkyMessages, resolveNow } from "./now.js";
 import { initKiosk, isKiosk, KIOSK_RETRY_START_MS, nextRetryDelay } from "./kiosk.js";
 import { rememberBeach, resolveInitialBeach, writeBeachParam } from "./beaches.js";
 import { initBeachMenu } from "./beach-menu.js";
+import { createForecast } from "./forecast.js";
 import { cachedStations, loadStations, upgradeBeach } from "./stations.js";
 
 const params = new URLSearchParams(location.search);
@@ -45,6 +46,7 @@ const els = {
   moonIcon: document.querySelector("#moon-icon"),
   credit: document.querySelector("#credit"),
   dayFlip: document.querySelector("#day-flip"),
+  forecastToggle: document.querySelector("#forecast-toggle"),
   tideEyebrow: document.querySelector("#tide-eyebrow"),
   chartStage: document.querySelector("#chart-stage"),
   moodCaption: document.querySelector("#mood-caption"),
@@ -52,6 +54,7 @@ const els = {
 
 const swell = createSwell();
 const chart = createChart(els.chartStage);
+const forecast = createForecast(document.querySelector("#forecast"));
 
 function setStatus(text) {
   els.statusMsg.hidden = !text;
@@ -152,6 +155,11 @@ function applyTideData(data) {
     extrema: data.extrema,
     now: resolveNow(),
   });
+  forecast.setData({
+    series: data.series,
+    extrema: data.extrema,
+    now: resolveNow(),
+  });
   syncDayFlip();
   if (kiosk) {
     setStatus("");
@@ -216,6 +224,31 @@ function pulse(now = resolveNow()) {
   chart.tick(now);
 }
 
+function showForecast(on, { updateUrl = true } = {}) {
+  document.documentElement.dataset.view = on ? "forecast" : "today";
+  if (updateUrl) {
+    const url = new URL(location.href);
+    if (on) url.searchParams.set("view", "forecast");
+    else url.searchParams.delete("view");
+    history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+  if (els.forecastToggle) {
+    els.forecastToggle.textContent = on ? "Today" : "Forecast";
+    els.forecastToggle.setAttribute("aria-pressed", on ? "true" : "false");
+    els.forecastToggle.setAttribute(
+      "aria-label",
+      on ? "Show today's tide" : "Show the seven day forecast"
+    );
+  }
+  chart.setShown(!on);
+  forecast.setActive(on, resolveNow());
+}
+
+els.forecastToggle?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  showForecast(!forecast.isActive());
+});
+
 els.dayFlip?.addEventListener("click", (event) => {
   event.stopPropagation();
   const next = chart.dayOffset() === 1 ? 0 : 1;
@@ -264,6 +297,7 @@ loadStations()
 applyPlace();
 applyCaption();
 syncDayFlip();
+if (params.get("view") === "forecast") showForecast(true, { updateUrl: false });
 pulse(resolveNow());
 loadTide("init");
 
