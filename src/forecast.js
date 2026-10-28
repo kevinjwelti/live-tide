@@ -133,12 +133,12 @@ export function createForecast(root) {
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     trace();
-    ctx.strokeStyle = withAlpha(glow, 0.24);
-    ctx.lineWidth = 8;
+    ctx.strokeStyle = withAlpha(glow, 0.12);
+    ctx.lineWidth = 7;
     ctx.stroke();
     trace();
-    ctx.strokeStyle = withAlpha(glow, darkNight ? 0.94 : 0.9);
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = withAlpha(glow, 0.38);
+    ctx.lineWidth = 1.4;
     ctx.stroke();
     ctx.restore();
   };
@@ -173,12 +173,40 @@ export function createForecast(root) {
     if (!frame) frame = requestAnimationFrame(loop);
   };
 
+  let advanceTimer = 0;
+
+  const stopAdvance = () => {
+    clearInterval(advanceTimer);
+    advanceTimer = 0;
+  };
+
+  const startAdvance = () => {
+    stopAdvance();
+    if (!active || reduceMotion.matches) return;
+    if (document.documentElement.dataset.kiosk !== "1") return;
+    advanceTimer = window.setInterval(() => {
+      const list = root.querySelector(".forecast-days");
+      const rows = [...(list?.querySelectorAll(".forecast-day") ?? [])];
+      if (!list || rows.length < 2) return;
+      const max = list.scrollHeight - list.clientHeight;
+      if (max < 12) return;
+      const edge = list.getBoundingClientRect().top;
+      const index = rows.findIndex((row) => row.getBoundingClientRect().top >= edge - 8);
+      const nextIndex = index < 0 ? 0 : (index + 1) % rows.length;
+      const dest = nextIndex === 0
+        ? 0
+        : list.scrollTop + (rows[nextIndex].getBoundingClientRect().top - edge);
+      list.scrollTo({ top: dest, behavior: "smooth" });
+    }, 9000);
+  };
+
   const render = (now = new Date()) => {
     const days = forecastDays(extrema, now);
     const hasCurve = series.length > 1;
     const hasTurns = days.some((day) => day.turns.length);
     root.replaceChildren();
     canvases = [];
+    stopAdvance();
     if (!hasCurve && !hasTurns) {
       const empty = document.createElement("p");
       empty.className = "forecast-empty";
@@ -186,37 +214,65 @@ export function createForecast(root) {
       root.append(empty);
       return;
     }
-    const kicker = document.createElement("p");
-    kicker.className = "forecast-kicker";
-    kicker.textContent = "Seven days";
     const list = document.createElement("div");
     list.className = "forecast-days";
     days.forEach((day) => {
       const card = document.createElement("article");
       card.className = `forecast-day${day.today ? " is-today" : ""}`;
-      const label = forecastLabel(day.start);
-      const date = document.createElement("p");
-      date.className = "forecast-date";
-      date.innerHTML = `<span class="forecast-dow">${label.dow}</span><span class="forecast-dom">${label.dom}</span>`;
       const canvas = document.createElement("canvas");
       canvas.className = "forecast-wave";
       canvas.setAttribute("aria-hidden", "true");
+      const label = forecastLabel(day.start);
+      const date = document.createElement("p");
+      date.className = "forecast-date";
+      if (day.today) {
+        const badge = document.createElement("span");
+        badge.className = "forecast-today";
+        badge.textContent = "Today";
+        date.append(badge);
+      }
+      const dow = document.createElement("span");
+      dow.className = "forecast-dow";
+      dow.textContent = label.dow;
+      const dom = document.createElement("span");
+      dom.className = "forecast-dom";
+      dom.textContent = label.dom;
+      date.append(dow, dom);
       const turns = document.createElement("div");
       turns.className = "forecast-turns";
       day.turns.forEach((turn) => {
         const node = document.createElement("p");
-        node.className = "forecast-turn";
         const low = turn.type !== "H";
-        node.innerHTML = `<span class="t-time">${clock(turn.t)}</span><span class="t-ht">${turn.v.toFixed(1)}<span class="t-unit"> ft</span></span><span class="t-kind">${low ? "Low" : "High"}</span>`;
+        node.className = `forecast-turn${low ? " is-low" : " is-high"}`;
+        const mark = document.createElement("span");
+        mark.className = "t-mark";
+        mark.setAttribute("aria-hidden", "true");
+        mark.textContent = low ? "↓" : "↑";
+        const kind = document.createElement("span");
+        kind.className = "t-kind";
+        kind.textContent = low ? "Low" : "High";
+        const ht = document.createElement("span");
+        ht.className = "t-ht";
+        ht.textContent = turn.v.toFixed(1);
+        const unit = document.createElement("span");
+        unit.className = "t-unit";
+        unit.textContent = " ft";
+        ht.append(unit);
+        const time = document.createElement("span");
+        time.className = "t-time";
+        time.textContent = clock(turn.t);
+        node.append(mark, kind, ht, time);
         turns.append(node);
       });
-      card.append(date, canvas, turns);
+      card.append(canvas, date, turns);
       list.append(card);
       canvases.push({ canvas, day });
     });
-    root.append(kicker, list);
+    root.append(list);
     requestAnimationFrame(() => {
-      if (active) start();
+      if (!active) return;
+      start();
+      startAdvance();
     });
   };
 
@@ -252,6 +308,7 @@ export function createForecast(root) {
       root.setAttribute("aria-hidden", active ? "false" : "true");
       if (!active) {
         stop();
+        stopAdvance();
         return;
       }
       render(now);
