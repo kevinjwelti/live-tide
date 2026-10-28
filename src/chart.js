@@ -299,13 +299,13 @@ export function createChart(stage) {
       ctx.moveTo(samples[0].x, yAt(0, frontExtra(0)));
       for (let i = 1; i < samples.length; i += 1) ctx.lineTo(samples[i].x, yAt(i, frontExtra(i)));
       for (let i = samples.length - 1; i >= 0; i -= 1) {
-        ctx.lineTo(samples[i].x, yAt(i, frontExtra(i) + 110));
+        ctx.lineTo(samples[i].x, yAt(i, frontExtra(i) + 150));
       }
       ctx.closePath();
       const mid = samples[Math.floor(samples.length / 2)];
       const midFront = mid.y + washDropPx(state.reach, floor - mid.y);
-      const sheet = ctx.createLinearGradient(0, midFront, 0, midFront + 110);
-      const alpha = (0.05 + state.reach * 0.04) * quiet;
+      const sheet = ctx.createLinearGradient(0, midFront, 0, midFront + 150);
+      const alpha = (0.09 + state.reach * 0.06) * quiet;
       sheet.addColorStop(0, `rgba(${cream}, ${alpha.toFixed(3)})`);
       sheet.addColorStop(0.45, `rgba(${cream}, ${(alpha * 0.45).toFixed(3)})`);
       sheet.addColorStop(1, `rgba(${cream}, 0)`);
@@ -313,7 +313,7 @@ export function createChart(stage) {
       ctx.fill();
 
       if (state.foam > 0.04) {
-        const foamAlpha = (0.2 * state.foam * quiet).toFixed(3);
+        const foamAlpha = (0.28 * state.foam * quiet).toFixed(3);
         ctx.beginPath();
         for (let i = 0; i < samples.length; i += 1) {
           const lace = 1.6
@@ -323,7 +323,7 @@ export function createChart(stage) {
           if (i === 0) ctx.moveTo(samples[i].x, y);
           else ctx.lineTo(samples[i].x, y);
         }
-        ctx.strokeStyle = `rgba(${cream}, ${(0.08 * state.foam * quiet).toFixed(3)})`;
+        ctx.strokeStyle = `rgba(${cream}, ${(0.12 * state.foam * quiet).toFixed(3)})`;
         ctx.lineWidth = 4.5;
         ctx.stroke();
         ctx.strokeStyle = `rgba(${cream}, ${foamAlpha})`;
