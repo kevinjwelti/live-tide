@@ -1502,10 +1502,29 @@ html[data-light="night"] .forecast-day.is-today {
 }
 
 .forecast-turns {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.45rem 1.25rem;
+  min-width: 0;
+}
+
+.forecast-turns.is-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.35rem 1.1rem;
-  min-width: 0;
+  grid-auto-flow: row;
+  align-items: center;
+  justify-content: stretch;
+  gap: 0.45rem 1.25rem;
+}
+
+.forecast-turns.is-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.7rem;
 }
 
 .forecast-turn {
@@ -1517,6 +1536,10 @@ html[data-light="night"] .forecast-day.is-today {
   white-space: nowrap;
   color: #f7f1e6;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.forecast-turn.is-past {
+  opacity: 0.4;
 }
 
 .forecast-turn .t-mark {
@@ -1580,25 +1603,14 @@ html[data-light="night"] .forecast-day.is-today {
     font-size: clamp(1.05rem, 4.5vw, 1.4rem);
   }
 
-  .forecast-turns {
-    grid-template-columns: 1fr;
+  .forecast-turns,
+  .forecast-turns.is-grid,
+  .forecast-turns.is-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
     gap: 0.85rem;
   }
-
-  .forecast-turn {
-    display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr);
-    grid-template-areas:
-      "mark kind ht"
-      "mark kind time";
-    white-space: normal;
-    align-items: center;
-  }
-
-  .forecast-turn .t-mark { grid-area: mark; }
-  .forecast-turn .t-kind { grid-area: kind; }
-  .forecast-turn .t-ht { grid-area: ht; }
-  .forecast-turn .t-time { grid-area: time; }
 
   .forecast-turn .t-mark {
     font-size: clamp(1.8rem, 8vw, 2.6rem);

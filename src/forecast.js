@@ -20,6 +20,11 @@ export function forecastDays(extrema = [], now = new Date(), count = FORECAST_DA
   return days;
 }
 
+/** A tide has passed when its time is already behind the clock. */
+export function tideHasPassed(turn, nowMs) {
+  return Number.isFinite(turn?.t) && turn.t < nowMs;
+}
+
 export function forecastLabel(ms) {
   const timeZone = getPlace().tz;
   const date = new Date(ms);
@@ -240,10 +245,15 @@ export function createForecast(root) {
       date.append(dow, dom);
       const turns = document.createElement("div");
       turns.className = "forecast-turns";
+      const nowMs = now.getTime();
       day.turns.forEach((turn) => {
         const node = document.createElement("p");
         const low = turn.type !== "H";
-        node.className = `forecast-turn${low ? " is-low" : " is-high"}`;
+        const past = day.today && tideHasPassed(turn, nowMs);
+        node.className = `forecast-turn${low ? " is-low" : " is-high"}${past ? " is-past" : ""}`;
+        const time = document.createElement("span");
+        time.className = "t-time";
+        time.textContent = clock(turn.t);
         const mark = document.createElement("span");
         mark.className = "t-mark";
         mark.setAttribute("aria-hidden", "true");
@@ -258,10 +268,7 @@ export function createForecast(root) {
         unit.className = "t-unit";
         unit.textContent = " ft";
         ht.append(unit);
-        const time = document.createElement("span");
-        time.className = "t-time";
-        time.textContent = clock(turn.t);
-        node.append(mark, kind, ht, time);
+        node.append(time, mark, kind, ht);
         turns.append(node);
       });
       card.append(canvas, date, turns);
@@ -271,8 +278,24 @@ export function createForecast(root) {
     root.append(list);
     requestAnimationFrame(() => {
       if (!active) return;
+      fitRows();
       start();
       startAdvance();
+    });
+  };
+
+  const overflows = (el) => el.scrollWidth > el.clientWidth + 2;
+
+  const fitRows = () => {
+    root.querySelectorAll(".forecast-turns").forEach((el) => {
+      el.classList.remove("is-grid", "is-stack");
+      if (!overflows(el)) return;
+      el.classList.add("is-grid");
+      const clipped = [...el.children].some((child) => overflows(child));
+      if (clipped) {
+        el.classList.remove("is-grid");
+        el.classList.add("is-stack");
+      }
     });
   };
 
@@ -294,6 +317,9 @@ export function createForecast(root) {
   });
   window.addEventListener("livetide-sky", () => {
     if (active) paint(reduceMotion.matches ? 0 : Math.sin(phase) * 1.4);
+  });
+  window.addEventListener("resize", () => {
+    if (active) fitRows();
   });
 
   return {

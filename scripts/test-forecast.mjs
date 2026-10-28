@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { forecastDays, forecastLabel, FORECAST_DAYS } from "../src/forecast.js";
+import { forecastDays, forecastLabel, FORECAST_DAYS, tideHasPassed } from "../src/forecast.js";
 import { addZonedDays, setPlace, startOfZonedDay } from "../src/time.js";
 
 function assert(cond, message) {
@@ -40,6 +40,15 @@ assert(days[6].end === addZonedDays(origin, 7).getTime(), "the week ends seven m
 const label = forecastLabel(day0);
 assert(/monday/i.test(label.dow), "the weekday follows the beach clock");
 assert(/jun/i.test(label.dom) && /15/.test(label.dom), "the date follows the beach clock");
+
+const noon = day0 + 12 * 3600000;
+assert(tideHasPassed({ t: day0 + 4 * 3600000 }, noon), "a morning tide is past by noon");
+assert(!tideHasPassed({ t: day0 + 18 * 3600000 }, noon), "an evening tide is still ahead at noon");
+assert(!tideHasPassed({ t: noon }, noon), "a tide at this minute has not passed");
+assert(
+  days[0].turns.every((turn, i) => i === 0 || turn.t >= days[0].turns[i - 1].t),
+  "a day's tides stay in time order"
+);
 
 const empty = forecastDays([], now);
 assert(empty.length === 7 && empty.every((day) => day.turns.length === 0), "an empty tide still has seven days");
