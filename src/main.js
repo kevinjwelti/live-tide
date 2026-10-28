@@ -45,9 +45,7 @@ const els = {
   moonPct: document.querySelector("#moon-pct"),
   moonIcon: document.querySelector("#moon-icon"),
   credit: document.querySelector("#credit"),
-  dayFlip: document.querySelector("#day-flip"),
   forecastToggle: document.querySelector("#forecast-toggle"),
-  tideEyebrow: document.querySelector("#tide-eyebrow"),
   chartStage: document.querySelector("#chart-stage"),
   moodCaption: document.querySelector("#mood-caption"),
 };
@@ -82,30 +80,6 @@ function applyCaption() {
   els.moodCaption.textContent = forced ? `Preview: ${mood.name}` : `Today: ${mood.name}`;
 }
 
-function syncDayFlip() {
-  const tomorrow = chart.dayOffset() === 1;
-  document.documentElement.dataset.forecast = tomorrow ? "tomorrow" : "today";
-  if (els.tideEyebrow) {
-    els.tideEyebrow.textContent = tomorrow ? "TOMORROW" : "CURRENT TIDE";
-  }
-  if (els.chartStage) {
-    els.chartStage.setAttribute(
-      "aria-label",
-      tomorrow ? "Tomorrow's tide curve" : "Today's tide curve"
-    );
-  }
-  if (els.dayFlip) {
-    const show = tomorrow || chart.hasDay(1) || !chart.hasData();
-    els.dayFlip.hidden = !show;
-    els.dayFlip.textContent = tomorrow ? "Today" : "Tomorrow";
-    els.dayFlip.setAttribute("aria-pressed", tomorrow ? "true" : "false");
-    els.dayFlip.setAttribute(
-      "aria-label",
-      tomorrow ? "Show today's tide" : "Show tomorrow's tide"
-    );
-  }
-}
-
 function renderMoonPanel(now) {
   const moon = moonState(now);
   els.moonName.textContent = moon.name;
@@ -137,10 +111,9 @@ function renderTideReadout(timeMs, sample, exploring) {
   }
 }
 
-chart.onView((timeMs, sample, exploring, meta) => {
+chart.onView((timeMs, sample, exploring) => {
   renderTideReadout(timeMs, sample, exploring);
-  const washTime = meta?.dayOffset === 1 ? resolveNow() : new Date(timeMs);
-  swell.setTime(washTime);
+  swell.setTime(new Date(timeMs));
 });
 
 let retryMs = KIOSK_RETRY_START_MS;
@@ -170,18 +143,11 @@ function applyTideData(data) {
     extrema: data.extrema,
     now: resolveNow(),
   });
-  syncDayFlip();
   if (kiosk) {
     setStatus("");
     return;
   }
-  if (view?.empty) {
-    setStatus("No tide curve yet.");
-  } else if (chart.dayOffset() === 1 && !chart.hasDay(1)) {
-    setStatus("Tomorrow’s curve is not ready yet.");
-  } else {
-    setStatus("");
-  }
+  setStatus(view?.empty ? "No tide curve yet." : "");
 }
 
 let loadToken = 0;
@@ -196,8 +162,6 @@ function selectBeach(next) {
     mood = applyMood(pickMood(resolveNow()));
     applyCaption();
   }
-  chart.setDayOffset(0);
-  syncDayFlip();
   pulse(resolveNow());
   loadTide("beach");
 }
@@ -280,18 +244,6 @@ document.addEventListener("keydown", (event) => {
   toggle.focus();
 });
 
-els.dayFlip?.addEventListener("click", (event) => {
-  event.stopPropagation();
-  const next = chart.dayOffset() === 1 ? 0 : 1;
-  chart.setDayOffset(next);
-  syncDayFlip();
-  if (next === 1 && !chart.hasDay(1)) {
-    setStatus("Tomorrow’s curve is not ready yet.");
-  } else {
-    setStatus("");
-  }
-});
-
 document.querySelector(".wordmark").addEventListener("click", async () => {
   const root = document.documentElement;
   try {
@@ -327,7 +279,6 @@ loadStations()
 
 applyPlace();
 applyCaption();
-syncDayFlip();
 if (params.get("view") === "forecast") showForecast(true, { updateUrl: false });
 pulse(resolveNow());
 loadTide("init");

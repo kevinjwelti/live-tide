@@ -350,35 +350,6 @@ html[data-embed="1"] #place-name {
   display: none;
 }
 
-.day-flip {
-  appearance: none;
-  position: absolute;
-  right: max(0.15rem, env(safe-area-inset-right));
-  top: 16%;
-  z-index: 8;
-  margin: 0;
-  border: 0;
-  background: none;
-  color: var(--ink-soft);
-  font: inherit;
-  font-size: 0.68rem;
-  letter-spacing: 0.22em;
-  font-weight: 400;
-  text-transform: uppercase;
-  cursor: pointer;
-  padding: 0.85rem 0.45rem;
-  min-width: 44px;
-  min-height: 44px;
-  text-align: right;
-  pointer-events: auto;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.day-flip:focus-visible {
-  outline: 1px solid var(--gold);
-  outline-offset: 3px;
-}
-
 html[data-light="night"] .now-line {
   background: linear-gradient(180deg, transparent, #c5d4e8 12%, #c5d4e8 88%, transparent);
   box-shadow: 0 0 12px rgba(180, 200, 230, 0.4);
@@ -736,12 +707,13 @@ html[data-light="night"] .extremum {
     max-width: calc(100% - 0.4rem);
   }
 
-  .day-flip {
+  .forecast-toggle {
     top: 8%;
-    right: 0;
-    font-size: 0.62rem;
-    letter-spacing: 0.16em;
-    padding: 0.7rem 0.2rem 0.7rem 0.55rem;
+    right: max(0.15rem, env(safe-area-inset-right));
+    min-height: 44px;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.92rem;
+    letter-spacing: 0.12em;
   }
 }
 
@@ -848,11 +820,12 @@ html[data-light="night"] .extremum {
     padding: 0.22rem 0.5rem;
   }
 
-  .day-flip {
+  .forecast-toggle {
     top: 10%;
-    font-size: 0.58rem;
-    letter-spacing: 0.14em;
-    padding: 0.55rem 0.15rem 0.55rem 0.45rem;
+    min-height: 44px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.82rem;
+    letter-spacing: 0.1em;
   }
 }
 
@@ -888,8 +861,7 @@ html[data-light="night"] .extremum {
 }
 
 html[data-embed="1"] .credit,
-html[data-embed="1"] .mood-caption,
-html[data-embed="1"] .day-flip {
+html[data-embed="1"] .mood-caption {
   display: none;
 }
 
@@ -1042,7 +1014,6 @@ html[data-kiosk="1"] * {
   cursor: none !important;
 }
 
-html[data-kiosk="1"] .day-flip,
 html[data-kiosk="1"] .mood-caption,
 html[data-kiosk="1"] .credit,
 html[data-kiosk="1"] .beach-menu,
@@ -1335,22 +1306,30 @@ html[data-kiosk="1"][data-kiosk-quiet="1"] .extremum {
 }
 
 .forecast-toggle {
+  appearance: none;
+  position: absolute;
+  right: max(0.15rem, env(safe-area-inset-right));
+  top: 16%;
+  z-index: 8;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin: 0.85rem 0 0;
+  margin: 0;
+  min-width: 44px;
   min-height: 44px;
-  padding: 0.55rem 1.35rem;
+  padding: 0.5rem 1.25rem;
   border: 0;
   border-radius: 999px;
   background: rgba(8, 14, 22, 0.55);
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
   color: #f7f1e6;
   font-family: var(--serif);
-  font-size: clamp(1.05rem, 1.55vw, 1.7rem);
+  font-size: clamp(1.05rem, 1.35vw, 1.45rem);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .forecast-toggle:hover,
@@ -1392,7 +1371,6 @@ html[data-view="forecast"] .height {
 html[data-view="forecast"] .chart-canvas,
 html[data-view="forecast"] .playhead,
 html[data-view="forecast"] .extremum-labels,
-html[data-view="forecast"] .day-flip,
 html[data-view="forecast"] .chart-hit,
 html[data-view="forecast"] .y-axis {
   visibility: hidden;
@@ -1743,6 +1721,7 @@ html[data-light="night"] .tide-pill {
     overflow-x: hidden;
     overflow-y: auto;
     gap: 0.75rem;
+    padding-top: 3.4rem;
     padding-bottom: 6.5rem;
   }
 

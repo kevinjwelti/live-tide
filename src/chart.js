@@ -2,8 +2,6 @@ import {
   formatClock,
   startOfZonedDay,
   startOfNextZonedDay,
-  addZonedDays,
-  clockOnZonedDay,
   skyPalette,
   isNightScene,
   getPlace,
@@ -115,7 +113,6 @@ export function createChart(stage) {
   let rangeStart = 0;
   let rangeEnd = 1;
   let viewTime = Date.now();
-  let dayOffset = 0;
   let originMs = Date.now();
   let chipKey = "";
   let scrubbing = false;
@@ -198,10 +195,7 @@ export function createChart(stage) {
     breathGlow = breathLight(Math.PI / 2, tideRising);
   };
 
-  const liveCursor = (now = new Date()) => {
-    if (dayOffset === 0) return now.getTime();
-    return clockOnZonedDay(new Date(rangeStart), now).getTime();
-  };
+  const liveCursor = (now = new Date()) => now.getTime();
 
   const paint = () => {
     const { w, h } = size();
@@ -575,9 +569,7 @@ export function createChart(stage) {
   };
 
   const emit = () => {
-    listeners.onView(viewTime, sampleTide(series, viewTime), scrubbing || Boolean(anim), {
-      dayOffset,
-    });
+    listeners.onView(viewTime, sampleTide(series, viewTime), scrubbing || Boolean(anim));
     paintChips();
     placeMarks(viewTime);
   };
@@ -604,7 +596,7 @@ export function createChart(stage) {
 
   const onPointerDown = (event) => {
     if (!series.length) return;
-    if (event.target?.closest?.(".day-flip")) return;
+    if (event.target?.closest?.(".forecast-toggle")) return;
     scrubbing = true;
     if (anim) cancelAnimationFrame(anim);
     anim = null;
@@ -662,22 +654,21 @@ export function createChart(stage) {
       return { stale: false, lastT, empty: inDay.length < 2 };
     }
     const liveStart = startOfZonedDay(origin);
-    const viewDay = addZonedDays(liveStart, dayOffset);
-    const viewEnd = startOfNextZonedDay(viewDay);
-    const inDay = pointsInDay(series, viewDay.getTime(), viewEnd.getTime());
+    const viewEnd = startOfNextZonedDay(liveStart);
+    const inDay = pointsInDay(series, liveStart.getTime(), viewEnd.getTime());
     const lastT = series.length ? series[series.length - 1].t : 0;
     let stale = false;
     if (inDay.length >= 2) {
-      rangeStart = viewDay.getTime();
+      rangeStart = liveStart.getTime();
       rangeEnd = viewEnd.getTime();
-      stale = dayOffset === 0 && lastT < origin.getTime() - 90 * 60000;
-    } else if (dayOffset === 0 && series.length >= 2) {
+      stale = lastT < origin.getTime() - 90 * 60000;
+    } else if (series.length >= 2) {
       const fallback = new Date(lastT);
       rangeStart = startOfZonedDay(fallback).getTime();
       rangeEnd = startOfNextZonedDay(fallback).getTime();
       stale = true;
     } else {
-      rangeStart = viewDay.getTime();
+      rangeStart = liveStart.getTime();
       rangeEnd = viewEnd.getTime();
       stale = true;
     }
@@ -744,7 +735,7 @@ export function createChart(stage) {
       clockMs = originMs;
       const view = applyRange(origin);
       if (!scrubbing && !anim) {
-        viewTime = view.stale && view.lastT && dayOffset === 0
+        viewTime = view.stale && view.lastT
           ? Math.min(origin.getTime(), Math.max(rangeStart, view.lastT))
           : liveCursor(origin);
       }
@@ -752,32 +743,6 @@ export function createChart(stage) {
       paint();
       emit();
       return view;
-    },
-    setDayOffset(nextOffset) {
-      const next = nextOffset ? 1 : 0;
-      if (next === dayOffset) return { dayOffset };
-      dayOffset = next;
-      if (anim) cancelAnimationFrame(anim);
-      anim = null;
-      scrubbing = false;
-      clearTimeout(idleTimer);
-      applyRange(new Date(originMs));
-      viewTime = liveCursor();
-      chipKey = "";
-      paint();
-      emit();
-      return { dayOffset };
-    },
-    dayOffset() {
-      return dayOffset;
-    },
-    hasDay(offset) {
-      const origin = new Date(originMs);
-      const start = addZonedDays(startOfZonedDay(origin), offset).getTime();
-      const end = addZonedDays(startOfZonedDay(origin), offset + 1).getTime();
-      const pts = series.filter((p) => p.t >= start - 3600000 && p.t <= end + 3600000);
-      if (pts.length < 8) return false;
-      return pts[0].t <= start + 4 * 3600000 && pts[pts.length - 1].t >= end - 4 * 3600000;
     },
     setShown(on) {
       shown = Boolean(on);
