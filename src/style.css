@@ -1466,6 +1466,19 @@ html[data-view="forecast"][data-forecast-open="1"] .extremum-labels {
   opacity: 0.8;
 }
 
+@media (max-width: 800px) {
+  .forecast-open-title {
+    display: none;
+  }
+
+  .forecast-back {
+    top: 0.35rem;
+    left: 0.35rem;
+    font-size: 0.85rem;
+    padding: 0.35rem 0.7rem;
+  }
+}
+
 .forecast-empty {
   margin: auto;
   font-family: var(--serif);

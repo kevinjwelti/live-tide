@@ -246,7 +246,7 @@ export function createForecast(root, hooks = {}) {
     back.className = "forecast-back";
     back.role = "button";
     back.tabIndex = 0;
-    back.textContent = "‹ Forecast";
+    back.textContent = day.today ? "‹ Today" : `‹ ${label.short}`;
     back.setAttribute("aria-label", "Back to the forecast");
     const title = document.createElement("p");
     title.className = "forecast-open-title";
