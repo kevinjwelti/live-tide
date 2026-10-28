@@ -12,7 +12,7 @@ import { sampleTide } from "./tide.js";
 import { moonState, renderMoon, renderSun } from "./moon.js";
 import { canvasStyle } from "./moods.js";
 import { breathLight, breathPeriodMs, breathSwell, tideBreathLevel } from "./breath.js";
-import { WASH_SLOTS, washDropPx, washReach, washUnit } from "./wash.js";
+import { washDropPx, washState } from "./wash.js";
 
 function chartPad(w, h) {
   const phone = Math.min(w, h) < 640;
@@ -127,6 +127,7 @@ export function createChart(stage) {
   let viewW = 0;
   let viewH = 0;
   let breathPhase = 0;
+  let washMs = 0;
   let swellPx = 0;
   let breathGlow = 0.7;
   let causticShift = 0;
@@ -187,6 +188,7 @@ export function createChart(stage) {
     swellPx = breathSwell(breathPhase, tideLevel) * ampScale();
     breathGlow = breathLight(breathPhase, tideRising);
     causticShift += dt * 0.012;
+    washMs += dt;
   };
 
   const holdBreath = () => {
@@ -249,17 +251,9 @@ export function createChart(stage) {
     ctx.restore();
   };
 
-  const paintWashes = (shift, style, night) => {
-    if (motionReduced() || !L) return;
-    const unit = washUnit(breathPhase);
-    const active = [];
-    for (let i = 0; i < WASH_SLOTS.length; i += 1) {
-      const reach = washReach(unit, WASH_SLOTS[i]);
-      if (reach > 0.015) active.push({ slot: WASH_SLOTS[i], reach });
-    }
-    if (!active.length) return;
-
-    const steps = 24;
+  const paintWashes = (shift, _style, night) => {
+    if (!L) return;
+    const steps = 48;
     const samples = [];
     for (let i = 0; i <= steps; i += 1) {
       const t = rangeStart + ((rangeEnd - rangeStart) * i) / steps;
@@ -269,11 +263,17 @@ export function createChart(stage) {
     }
     if (samples.length < 2) return;
 
-    const cream = night ? "210, 226, 240" : "255, 250, 242";
-    const quiet = night ? 0.8 : 1;
-    const tint = moodColor(style, night);
+    const reduced = motionReduced();
+    const state = reduced ? { reach: 0, foam: 0, wet: 0.65, phase: "rest" } : washState(washMs);
+    const cream = night ? "214, 226, 238" : "255, 250, 242";
+    const quiet = night ? 0.72 : 1;
     const floor = L.bottom + 2;
-    const tail = 260;
+    const lacePhase = washMs * 0.00035;
+
+    const yAt = (index, extra) => {
+      const s = samples[index];
+      return Math.min(floor, s.y + extra);
+    };
 
     ctx.save();
     closeWater(ctx, series, L, rangeStart, rangeEnd, shift);
@@ -281,54 +281,53 @@ export function createChart(stage) {
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
 
-    for (let n = 0; n < active.length; n += 1) {
-      const { slot, reach } = active[n];
-      const big = slot.reach >= 0.99;
-      const alpha = (big ? 0.16 + reach * 0.08 : 0.1 + reach * 0.06) * quiet;
-      const frontOf = (s) => s.y + washDropPx(reach, floor - s.y);
-      for (let i = 0; i < samples.length - 1; i += 1) {
-        const a = samples[i];
-        const b = samples[i + 1];
-        const y0 = frontOf(a);
-        const y1 = frontOf(b);
-        const top = Math.min(y0, y1) - 14;
-        const bot = Math.max(y0, y1) + tail;
-        ctx.beginPath();
-        ctx.moveTo(a.x, y0 - 14);
-        ctx.lineTo(b.x, y1 - 14);
-        ctx.lineTo(b.x, Math.min(floor, y1 + tail));
-        ctx.lineTo(a.x, Math.min(floor, y0 + tail));
-        ctx.closePath();
-        const sheet = ctx.createLinearGradient(0, top, 0, bot);
-        sheet.addColorStop(0, `rgba(${cream}, 0)`);
-        sheet.addColorStop(0.045, `rgba(${cream}, ${(alpha * 0.92).toFixed(3)})`);
-        sheet.addColorStop(0.42, `rgba(${cream}, ${(alpha * 0.72).toFixed(3)})`);
-        sheet.addColorStop(0.78, `rgba(${cream}, ${(alpha * 0.28).toFixed(3)})`);
-        sheet.addColorStop(1, `rgba(${cream}, 0)`);
-        ctx.fillStyle = sheet;
-        ctx.fill();
-      }
-      const moodTop = frontOf(samples[Math.floor(samples.length / 2)]) - 14;
+    const wetAlpha = (0.045 + state.wet * 0.035) * quiet;
+    ctx.beginPath();
+    ctx.moveTo(samples[0].x, yAt(0, 3));
+    for (let i = 1; i < samples.length; i += 1) ctx.lineTo(samples[i].x, yAt(i, 3));
+    for (let i = samples.length - 1; i >= 0; i -= 1) ctx.lineTo(samples[i].x, yAt(i, 26));
+    ctx.closePath();
+    ctx.fillStyle = `rgba(${night ? "8, 16, 28" : "18, 42, 64"}, ${wetAlpha.toFixed(3)})`;
+    ctx.fill();
+
+    if (!reduced && state.reach > 0.02) {
+      const frontExtra = (index) => {
+        const drop = washDropPx(state.reach, floor - samples[index].y);
+        return drop;
+      };
       ctx.beginPath();
-      ctx.moveTo(samples[0].x, frontOf(samples[0]) - 8);
-      for (let i = 1; i < samples.length; i += 1) ctx.lineTo(samples[i].x, frontOf(samples[i]) - 8);
+      ctx.moveTo(samples[0].x, yAt(0, frontExtra(0)));
+      for (let i = 1; i < samples.length; i += 1) ctx.lineTo(samples[i].x, yAt(i, frontExtra(i)));
       for (let i = samples.length - 1; i >= 0; i -= 1) {
-        ctx.lineTo(samples[i].x, Math.min(floor, frontOf(samples[i]) + tail));
+        ctx.lineTo(samples[i].x, yAt(i, frontExtra(i) + 110));
       }
       ctx.closePath();
-      const mood = ctx.createLinearGradient(0, moodTop, 0, moodTop + tail);
-      mood.addColorStop(0, withAlpha(tint, 0));
-      mood.addColorStop(0.12, withAlpha(tint, alpha * 0.2));
-      mood.addColorStop(1, withAlpha(tint, 0));
-      ctx.fillStyle = mood;
+      const mid = samples[Math.floor(samples.length / 2)];
+      const midFront = mid.y + washDropPx(state.reach, floor - mid.y);
+      const sheet = ctx.createLinearGradient(0, midFront, 0, midFront + 110);
+      const alpha = (0.05 + state.reach * 0.04) * quiet;
+      sheet.addColorStop(0, `rgba(${cream}, ${alpha.toFixed(3)})`);
+      sheet.addColorStop(0.45, `rgba(${cream}, ${(alpha * 0.45).toFixed(3)})`);
+      sheet.addColorStop(1, `rgba(${cream}, 0)`);
+      ctx.fillStyle = sheet;
       ctx.fill();
-      if (big && reach > 0.9) {
-        const foam = Math.min(1, (reach - 0.9) / 0.08);
+
+      if (state.foam > 0.04) {
+        const foamAlpha = (0.2 * state.foam * quiet).toFixed(3);
         ctx.beginPath();
-        ctx.moveTo(samples[0].x, samples[0].y + 1);
-        for (let i = 1; i < samples.length; i += 1) ctx.lineTo(samples[i].x, samples[i].y + 1);
-        ctx.strokeStyle = `rgba(${cream}, ${(0.32 * foam * quiet).toFixed(3)})`;
-        ctx.lineWidth = 2.4;
+        for (let i = 0; i < samples.length; i += 1) {
+          const lace = 1.6
+            + Math.abs(Math.sin(i * 0.62 + lacePhase) * 3.4)
+            + Math.abs(Math.sin(i * 1.47 + 1.2) * 1.6);
+          const y = yAt(i, frontExtra(i) + lace);
+          if (i === 0) ctx.moveTo(samples[i].x, y);
+          else ctx.lineTo(samples[i].x, y);
+        }
+        ctx.strokeStyle = `rgba(${cream}, ${(0.08 * state.foam * quiet).toFixed(3)})`;
+        ctx.lineWidth = 4.5;
+        ctx.stroke();
+        ctx.strokeStyle = `rgba(${cream}, ${foamAlpha})`;
+        ctx.lineWidth = 1.25;
         ctx.stroke();
       }
     }
