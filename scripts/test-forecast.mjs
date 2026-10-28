@@ -1,5 +1,12 @@
 #!/usr/bin/env node
-import { forecastDays, forecastLabel, FORECAST_DAYS, tideHasPassed } from "../src/forecast.js";
+import {
+  daylightWindow,
+  daytimePair,
+  forecastDays,
+  forecastLabel,
+  FORECAST_DAYS,
+  tideHasPassed,
+} from "../src/forecast.js";
 import { addZonedDays, setPlace, startOfZonedDay } from "../src/time.js";
 
 function assert(cond, message) {
@@ -49,6 +56,33 @@ assert(
   days[0].turns.every((turn, i) => i === 0 || turn.t >= days[0].turns[i - 1].t),
   "a day's tides stay in time order"
 );
+
+setPlace({ tz: "America/Los_Angeles", lat: 34.025, lon: -118.78 });
+const malibuDay = startOfZonedDay(new Date("2026-10-28T19:00:00Z"));
+const light = daylightWindow(malibuDay.getTime(), 34.025, -118.78);
+const riseHour = new Date(light.sunrise).toLocaleString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", hourCycle: "h23" });
+const setHour = new Date(light.sunset).toLocaleString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", hourCycle: "h23" });
+assert(light.sunset > light.sunrise, "sunset follows sunrise");
+assert(Number(riseHour) >= 5 && Number(riseHour) <= 8, "Malibu sunrise is in the morning");
+assert(Number(setHour) >= 16 && Number(setHour) <= 20, "Malibu sunset is in the evening");
+
+const rise = light.sunrise;
+const set = light.sunset;
+const pair = daytimePair(
+  [
+    { t: rise - 3 * 3600000, v: 7, type: "H" },
+    { t: rise + 2 * 3600000, v: 5.2, type: "H" },
+    { t: rise + 5 * 3600000, v: 1.1, type: "L" },
+    { t: set + 4 * 3600000, v: 6.4, type: "H" },
+  ],
+  rise,
+  set
+);
+assert(pair.high.turn.v === 5.2 && pair.high.borrowed === false, "the daytime high is the one in daylight");
+assert(pair.low.turn.v === 1.1 && pair.low.borrowed === false, "the daytime low is the one in daylight");
+const nightOnly = daytimePair([{ t: set + 2 * 3600000, v: 4.4, type: "H" }], rise, set);
+assert(nightOnly.high.borrowed === true && nightOnly.high.turn.v === 4.4, "a night high stands in when daylight has none");
+assert(nightOnly.low === null, "a missing low stays empty");
 
 const empty = forecastDays([], now);
 assert(empty.length === 7 && empty.every((day) => day.turns.length === 0), "an empty tide still has seven days");

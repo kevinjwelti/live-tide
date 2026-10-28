@@ -1,6 +1,4 @@
-import { canvasStyle } from "./moods.js";
-import { sampleTide } from "./tide.js";
-import { addZonedDays, getPlace, startOfZonedDay } from "./time.js";
+import { addZonedDays, civilTimeOnZonedDay, getPlace, solarElevation, startOfZonedDay } from "./time.js";
 
 export const FORECAST_DAYS = 7;
 
@@ -31,27 +29,64 @@ export function forecastLabel(ms) {
   return {
     dow: new Intl.DateTimeFormat("en-US", { timeZone, weekday: "long" }).format(date),
     dom: new Intl.DateTimeFormat("en-US", { timeZone, month: "short", day: "numeric" }).format(date),
+    short: new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short" }).format(date),
   };
 }
 
-function rgbOf(color) {
-  const match = String(color).match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
-  if (!match) return null;
-  return [Number(match[1]), Number(match[2]), Number(match[3])];
+/**
+ * Sunrise and sunset for the local day that begins at `dayStartMs`,
+ * from the beach's latitude and longitude. Falls back to 6 AM–6 PM.
+ */
+export function daylightWindow(dayStartMs, lat = getPlace().lat, lon = getPlace().lon) {
+  const start = new Date(dayStartMs);
+  const fallback = () => ({
+    sunrise: civilTimeOnZonedDay(start, 6).getTime(),
+    sunset: civilTimeOnZonedDay(start, 18).getTime(),
+  });
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return fallback();
+  const horizon = -0.833;
+  let sunrise = null;
+  let sunset = null;
+  let prev = solarElevation(start, lat, lon);
+  for (let minute = 4; minute <= 24 * 60; minute += 4) {
+    const at = new Date(dayStartMs + minute * 60000);
+    const elev = solarElevation(at, lat, lon);
+    if (sunrise == null && prev < horizon && elev >= horizon) sunrise = at.getTime();
+    if (prev >= horizon && elev < horizon) sunset = at.getTime();
+    prev = elev;
+  }
+  if (sunrise == null || sunset == null || sunset <= sunrise) return fallback();
+  return { sunrise, sunset };
 }
 
-function withAlpha(color, alpha) {
-  const rgb = rgbOf(color);
-  const a = Math.max(0, Math.min(1, alpha));
-  if (!rgb) return `rgba(255, 236, 214, ${a})`;
-  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${a})`;
+function extreme(list, which) {
+  return list.reduce((best, turn) => {
+    if (which === "high") return turn.v > best.v ? turn : best;
+    return turn.v < best.v ? turn : best;
+  });
 }
 
-function moodColor(style, night) {
-  const inner = night ? style.inner?.night : style.inner?.day;
-  if (rgbOf(inner)) return inner;
-  if (style.twin) return night ? style.twin.b.color : style.twin.a.color;
-  return night ? "rgba(214, 226, 240, 0.9)" : "rgba(255, 236, 214, 0.9)";
+function nearest(list, sunrise, sunset) {
+  const mid = (sunrise + sunset) / 2;
+  return list.reduce((best, turn) => (
+    Math.abs(turn.t - mid) < Math.abs(best.t - mid) ? turn : best
+  ));
+}
+
+/**
+ * One daytime high and one daytime low.
+ * If the daylight hours have none, the nearest tide of that kind is used and marked borrowed.
+ */
+export function daytimePair(turns = [], sunrise, sunset) {
+  const pick = (kind) => {
+    const list = turns.filter((turn) => (kind === "high" ? turn.type === "H" : turn.type !== "H"));
+    if (!list.length) return null;
+    const inside = list.filter((turn) => turn.t >= sunrise && turn.t <= sunset);
+    if (inside.length) return { turn: extreme(inside, kind), borrowed: false };
+    const turn = nearest(list, sunrise, sunset);
+    return { turn, borrowed: true };
+  };
+  return { high: pick("high"), low: pick("low") };
 }
 
 function clock(ms) {
@@ -62,123 +97,23 @@ function clock(ms) {
   }).format(new Date(ms));
 }
 
+function spanOf(pair) {
+  if (!pair?.high || !pair?.low) return 0.5;
+  return Math.abs(pair.high.turn.v - pair.low.turn.v);
+}
+
 export function createForecast(root) {
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   let series = [];
   let extrema = [];
   let active = false;
-  let frame = 0;
-  let lastMs = 0;
-  let phase = 0;
-  let canvases = [];
-
-  const night = () => document.documentElement.dataset.light === "night";
-
-  const paintCanvas = (canvas, day, shift) => {
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    if (w < 2 || h < 2) return;
-    const dpr = Math.min(1.5, window.devicePixelRatio || 1);
-    const bw = Math.round(w * dpr);
-    const bh = Math.round(h * dpr);
-    if (canvas.width !== bw || canvas.height !== bh) {
-      canvas.width = bw;
-      canvas.height = bh;
-    }
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    const steps = 48;
-    const heights = [];
-    for (let i = 0; i <= steps; i += 1) {
-      const t = day.start + ((day.end - day.start) * i) / steps;
-      const sample = sampleTide(series, t);
-      if (sample) heights.push(sample.height);
-    }
-    if (heights.length < 2) return;
-    let min = Math.min(...heights);
-    let max = Math.max(...heights);
-    const pad = Math.max(0.2, (max - min) * 0.22);
-    min -= pad;
-    max += pad;
-    const span = max - min || 1;
-    const top = h * 0.22;
-    const bottom = h * 0.82;
-    const yOf = (v) => bottom - ((v - min) / span) * (bottom - top);
-    const xOf = (i) => (i / (heights.length - 1)) * (w - 1);
-
-    const trace = () => {
-      ctx.beginPath();
-      heights.forEach((v, i) => {
-        const py = yOf(v) - shift;
-        if (i === 0) ctx.moveTo(xOf(i), py);
-        else ctx.lineTo(xOf(i), py);
-      });
-    };
-
-    const darkNight = night();
-    const tint = moodColor(canvasStyle(), darkNight);
-    const rgb = rgbOf(tint);
-    const dark = rgb ? rgb[0] + rgb[1] + rgb[2] < 280 : false;
-    const glow = dark
-      ? (darkNight ? "rgba(236, 226, 208, 0.9)" : "rgba(255, 244, 228, 0.95)")
-      : tint;
-
-    ctx.save();
-    trace();
-    ctx.lineTo(xOf(heights.length - 1), h + 2);
-    ctx.lineTo(xOf(0), h + 2);
-    ctx.closePath();
-    const body = ctx.createLinearGradient(0, top, 0, h);
-    body.addColorStop(0, withAlpha(tint, darkNight ? 0.22 : 0.3));
-    body.addColorStop(1, withAlpha(tint, 0));
-    ctx.fillStyle = body;
-    ctx.fill();
-    ctx.lineJoin = "round";
-    ctx.lineCap = "round";
-    trace();
-    ctx.strokeStyle = withAlpha(glow, 0.12);
-    ctx.lineWidth = 7;
-    ctx.stroke();
-    trace();
-    ctx.strokeStyle = withAlpha(glow, 0.38);
-    ctx.lineWidth = 1.4;
-    ctx.stroke();
-    ctx.restore();
-  };
-
-  const paint = (shift) => {
-    canvases.forEach((entry) => paintCanvas(entry.canvas, entry.day, shift));
-  };
-
-  const stop = () => {
-    if (frame) cancelAnimationFrame(frame);
-    frame = 0;
-    lastMs = 0;
-  };
-
-  const loop = (now) => {
-    frame = requestAnimationFrame(loop);
-    if (!active || document.hidden || reduceMotion.matches) return;
-    if (!lastMs) {
-      lastMs = now;
-      return;
-    }
-    const dt = now - lastMs;
-    if (dt < 33) return;
-    lastMs = now;
-    phase += (Math.min(dt, 80) / 11000) * Math.PI * 2;
-    paint(Math.sin(phase) * 1.4);
-  };
-
-  const start = () => {
-    paint(reduceMotion.matches ? 0 : Math.sin(phase) * 1.4);
-    if (reduceMotion.matches || !active) return;
-    if (!frame) frame = requestAnimationFrame(loop);
-  };
-
+  let model = [];
+  let nowMs = Date.now();
+  let lead = 0;
+  let open = null;
   let advanceTimer = 0;
+
+  const kioskOn = () => document.documentElement.dataset.kiosk === "1";
 
   const stopAdvance = () => {
     clearInterval(advanceTimer);
@@ -186,158 +121,218 @@ export function createForecast(root) {
   };
 
   const startAdvance = () => {
-    stopAdvance();
-    if (!active || reduceMotion.matches) return;
-    if (document.documentElement.dataset.kiosk !== "1") return;
+    if (advanceTimer || !active || reduceMotion.matches || !kioskOn()) return;
     advanceTimer = window.setInterval(() => {
-      const list = root.querySelector(".forecast-days");
-      const rows = [...(list?.querySelectorAll(".forecast-day") ?? [])];
-      if (!list || rows.length < 2) return;
-      const max = list.scrollHeight - list.clientHeight;
-      if (max < 12) return;
-      const edge = list.getBoundingClientRect().top;
-      const index = rows.findIndex((row) => row.getBoundingClientRect().top >= edge - 8);
-      const nextIndex = index < 0 ? 0 : (index + 1) % rows.length;
-      const dest = nextIndex === 0
-        ? 0
-        : list.scrollTop + (rows[nextIndex].getBoundingClientRect().top - edge);
-      list.scrollTo({ top: dest, behavior: "smooth" });
+      if (!model.length) return;
+      open = null;
+      lead = (lead + 1) % model.length;
+      render();
     }, 9000);
   };
 
-  const render = (now = new Date()) => {
-    const days = forecastDays(extrema, now);
-    const hasCurve = series.length > 1;
-    const hasTurns = days.some((day) => day.turns.length);
+  const onKey = (event) => {
+    if (!active || root.hidden) return;
+    if (event.key === "Escape" && open != null) {
+      event.preventDefault();
+      open = null;
+      render();
+      return;
+    }
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    const pills = [...root.querySelectorAll(".tide-pill")];
+    if (!pills.length) return;
+    const current = pills.findIndex((pill) => pill === document.activeElement);
+    if (current < 0 && open == null) return;
+    event.preventDefault();
+    const dir = event.key === "ArrowRight" ? 1 : -1;
+    const next = (current < 0 ? lead : current + dir + pills.length) % pills.length;
+    if (open != null) {
+      open = Number(pills[next].dataset.index);
+      render();
+    }
+    pills[next]?.focus();
+  };
+
+  const figure = (mark, choice) => {
+    const node = document.createElement("span");
+    node.className = mark === "↑" ? "pill-high" : "pill-low";
+    if (!choice) {
+      node.textContent = "—";
+      return node;
+    }
+    const arrow = document.createElement("span");
+    arrow.className = "pill-arrow";
+    arrow.setAttribute("aria-hidden", "true");
+    arrow.textContent = mark;
+    const num = document.createElement("span");
+    num.className = "pill-num";
+    num.textContent = choice.turn.v.toFixed(1);
+    const unit = document.createElement("span");
+    unit.className = "pill-unit";
+    unit.textContent = " ft";
+    num.append(unit);
+    const time = document.createElement("span");
+    time.className = "pill-time";
+    time.textContent = clock(choice.turn.t);
+    if (choice.borrowed) {
+      const sky = document.createElement("span");
+      sky.className = "pill-sky";
+      sky.setAttribute("aria-hidden", "true");
+      sky.textContent = choice.turn.t < choice.sunrise || choice.turn.t > choice.sunset ? "☾" : "☀";
+      time.append(sky);
+    }
+    node.append(arrow, num, time);
+    return node;
+  };
+
+  const pill = (day, index, isLead) => {
+    const node = document.createElement("div");
+    node.className = `tide-pill${isLead ? " is-lead" : " is-small"}${day.today ? " is-today" : ""}`;
+    node.tabIndex = 0;
+    node.role = "button";
+    node.dataset.index = String(index);
+    node.style.setProperty("--span", day.span.toFixed(3));
+    const label = forecastLabel(day.start);
+    const date = document.createElement("span");
+    date.className = "pill-date";
+    const dow = document.createElement("span");
+    dow.className = "pill-dow";
+    dow.textContent = day.today && index === lead ? "Today" : (isLead ? label.dow : label.short);
+    const dom = document.createElement("span");
+    dom.className = "pill-dom";
+    dom.textContent = label.dom;
+    date.append(dow, dom);
+    const glow = document.createElement("span");
+    glow.className = "pill-glow";
+    glow.setAttribute("aria-hidden", "true");
+    const high = figure("↑", day.pair.high && { ...day.pair.high, sunrise: day.sunrise, sunset: day.sunset });
+    const low = figure("↓", day.pair.low && { ...day.pair.low, sunrise: day.sunrise, sunset: day.sunset });
+    node.append(glow, date, high, low);
+    const highText = day.pair.high ? `${day.pair.high.turn.v.toFixed(1)} feet at ${clock(day.pair.high.turn.t)}` : "no high";
+    const lowText = day.pair.low ? `${day.pair.low.turn.v.toFixed(1)} feet at ${clock(day.pair.low.turn.t)}` : "no low";
+    node.setAttribute("aria-label", `${label.dow}, daytime high ${highText}, daytime low ${lowText}`);
+    node.addEventListener("click", () => {
+      open = open === index ? null : index;
+      render();
+    });
+    node.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      open = open === index ? null : index;
+      render();
+    });
+    return node;
+  };
+
+  const detail = (day) => {
+    const panel = document.createElement("div");
+    panel.className = "forecast-detail";
+    const label = forecastLabel(day.start);
+    const back = document.createElement("div");
+    back.className = "detail-back";
+    back.tabIndex = 0;
+    back.role = "button";
+    back.textContent = day.today ? `Today · ${label.dow}` : label.dow;
+    back.setAttribute("aria-label", `Close ${label.dow}`);
+    const close = () => {
+      open = null;
+      render();
+    };
+    back.addEventListener("click", close);
+    back.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      close();
+    });
+    const when = document.createElement("p");
+    when.className = "detail-when";
+    when.textContent = label.dom;
+    const list = document.createElement("div");
+    list.className = "detail-list";
+    day.turns.forEach((turn) => {
+      const row = document.createElement("p");
+      const past = day.today && tideHasPassed(turn, nowMs);
+      row.className = `detail-line${past ? " is-past" : ""}`;
+      const time = document.createElement("span");
+      time.className = "t-time";
+      time.textContent = clock(turn.t);
+      const arrow = document.createElement("span");
+      arrow.className = "t-mark";
+      arrow.textContent = turn.type === "H" ? "↑" : "↓";
+      const ht = document.createElement("span");
+      ht.className = "t-ht";
+      ht.textContent = turn.v.toFixed(1);
+      const unit = document.createElement("span");
+      unit.className = "pill-unit";
+      unit.textContent = " ft";
+      ht.append(unit);
+      row.append(time, arrow, ht);
+      list.append(row);
+    });
+    panel.append(back, when, list);
+    return { panel, back };
+  };
+
+  const render = () => {
+    const place = getPlace();
+    const days = forecastDays(extrema, new Date(nowMs));
+    model = days.map((day) => {
+      const light = daylightWindow(day.start, place.lat, place.lon);
+      return { ...day, ...light, pair: daytimePair(day.turns, light.sunrise, light.sunset) };
+    });
+    if (!model.length) lead = 0;
+    else lead = ((lead % model.length) + model.length) % model.length;
     root.replaceChildren();
-    canvases = [];
-    stopAdvance();
-    if (!hasCurve && !hasTurns) {
+    if (!series.length && !extrema.length) {
       const empty = document.createElement("p");
       empty.className = "forecast-empty";
       empty.textContent = "The week is still gathering.";
       root.append(empty);
       return;
     }
-    const list = document.createElement("div");
-    list.className = "forecast-days";
-    days.forEach((day) => {
-      const card = document.createElement("article");
-      card.className = `forecast-day${day.today ? " is-today" : ""}`;
-      const canvas = document.createElement("canvas");
-      canvas.className = "forecast-wave";
-      canvas.setAttribute("aria-hidden", "true");
-      const label = forecastLabel(day.start);
-      const date = document.createElement("p");
-      date.className = "forecast-date";
-      if (day.today) {
-        const badge = document.createElement("span");
-        badge.className = "forecast-today";
-        badge.textContent = "Today";
-        date.append(badge);
-      }
-      const dow = document.createElement("span");
-      dow.className = "forecast-dow";
-      dow.textContent = label.dow;
-      const dom = document.createElement("span");
-      dom.className = "forecast-dom";
-      dom.textContent = label.dom;
-      date.append(dow, dom);
-      const turns = document.createElement("div");
-      turns.className = "forecast-turns";
-      const nowMs = now.getTime();
-      day.turns.forEach((turn) => {
-        const node = document.createElement("p");
-        const low = turn.type !== "H";
-        const past = day.today && tideHasPassed(turn, nowMs);
-        node.className = `forecast-turn${low ? " is-low" : " is-high"}${past ? " is-past" : ""}`;
-        const time = document.createElement("span");
-        time.className = "t-time";
-        time.textContent = clock(turn.t);
-        const mark = document.createElement("span");
-        mark.className = "t-mark";
-        mark.setAttribute("aria-hidden", "true");
-        mark.textContent = low ? "↓" : "↑";
-        const kind = document.createElement("span");
-        kind.className = "t-kind";
-        kind.textContent = low ? "Low" : "High";
-        const ht = document.createElement("span");
-        ht.className = "t-ht";
-        ht.textContent = turn.v.toFixed(1);
-        const unit = document.createElement("span");
-        unit.className = "t-unit";
-        unit.textContent = " ft";
-        ht.append(unit);
-        node.append(time, mark, kind, ht);
-        turns.append(node);
-      });
-      card.append(canvas, date, turns);
-      list.append(card);
-      canvases.push({ canvas, day });
+    const ranges = model.map((day) => spanOf(day.pair));
+    const lowRange = Math.min(...ranges);
+    const highRange = Math.max(...ranges);
+    model.forEach((day) => {
+      const range = spanOf(day.pair);
+      day.span = highRange - lowRange < 0.25 ? 0.55 : (range - lowRange) / (highRange - lowRange);
     });
-    root.append(list);
-    requestAnimationFrame(() => {
-      if (!active) return;
-      fitRows();
-      start();
+    if (open != null && model[open]) {
+      const { panel, back } = detail(model[open]);
+      root.append(panel);
+      back.focus();
       startAdvance();
-    });
-  };
-
-  const overflows = (el) => el.scrollWidth > el.clientWidth + 2;
-
-  const fitRows = () => {
-    root.querySelectorAll(".forecast-turns").forEach((el) => {
-      el.classList.remove("is-grid", "is-stack");
-      if (!overflows(el)) return;
-      el.classList.add("is-grid");
-      const clipped = [...el.children].some((child) => overflows(child));
-      if (clipped) {
-        el.classList.remove("is-grid");
-        el.classList.add("is-stack");
-      }
-    });
-  };
-
-  reduceMotion.addEventListener("change", () => {
-    if (!active) return;
-    if (reduceMotion.matches) stop();
-    start();
-  });
-  document.addEventListener("visibilitychange", () => {
-    if (!active) return;
-    if (document.hidden) {
-      stop();
       return;
     }
-    start();
-  });
-  window.addEventListener("livetide-mood", () => {
-    if (active) paint(reduceMotion.matches ? 0 : Math.sin(phase) * 1.4);
-  });
-  window.addEventListener("livetide-sky", () => {
-    if (active) paint(reduceMotion.matches ? 0 : Math.sin(phase) * 1.4);
-  });
-  window.addEventListener("resize", () => {
-    if (active) fitRows();
-  });
+    const stage = document.createElement("div");
+    stage.className = "forecast-stage";
+    model.forEach((day, index) => {
+      stage.append(pill(day, index, index === lead));
+    });
+    root.append(stage);
+    startAdvance();
+  };
+
+  document.addEventListener("keydown", onKey);
 
   return {
     setData({ series: nextSeries, extrema: nextExtrema, now }) {
       series = nextSeries ?? [];
       extrema = nextExtrema ?? [];
-      if (active) render(now ?? new Date());
+      nowMs = (now ?? new Date()).getTime();
+      if (active) render();
     },
     setActive(on, now = new Date()) {
       active = Boolean(on);
       root.hidden = !active;
       root.setAttribute("aria-hidden", active ? "false" : "true");
+      nowMs = now.getTime();
       if (!active) {
-        stop();
         stopAdvance();
+        open = null;
         return;
       }
-      render(now);
+      render();
     },
     isActive() {
       return active;
