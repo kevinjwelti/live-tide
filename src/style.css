@@ -706,15 +706,6 @@ html[data-light="night"] .extremum {
     padding: 0.32rem 0.55rem;
     max-width: calc(100% - 0.4rem);
   }
-
-  .forecast-toggle {
-    top: 8%;
-    right: max(0.15rem, env(safe-area-inset-right));
-    min-height: 44px;
-    padding: 0.45rem 0.95rem;
-    font-size: 0.92rem;
-    letter-spacing: 0.12em;
-  }
 }
 
 /* Landscape phone: keep the two-pane wall-art feel, shrink the mast. */
@@ -818,14 +809,6 @@ html[data-light="night"] .extremum {
     font-size: 0.55rem;
     letter-spacing: 0.08em;
     padding: 0.22rem 0.5rem;
-  }
-
-  .forecast-toggle {
-    top: 10%;
-    min-height: 44px;
-    padding: 0.4rem 0.8rem;
-    font-size: 0.82rem;
-    letter-spacing: 0.1em;
   }
 }
 
