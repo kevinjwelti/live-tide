@@ -264,6 +264,22 @@ els.forecastToggle?.addEventListener("click", (event) => {
   showForecast(!forecast.isActive());
 });
 
+document.addEventListener("keydown", (event) => {
+  if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
+  if (forecast.isActive()) return;
+  if (event.target?.closest?.("input, textarea")) return;
+  const menu = document.querySelector("#beach-menu");
+  if (menu && !menu.hidden) return;
+  const toggle = els.forecastToggle;
+  if (!toggle || toggle.offsetParent === null) return;
+  event.preventDefault();
+  if (document.activeElement === toggle && (event.key === "ArrowUp" || event.key === "ArrowLeft")) {
+    els.placeName?.focus();
+    return;
+  }
+  toggle.focus();
+});
+
 els.dayFlip?.addEventListener("click", (event) => {
   event.stopPropagation();
   const next = chart.dayOffset() === 1 ? 0 : 1;
