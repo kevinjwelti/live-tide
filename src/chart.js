@@ -135,6 +135,8 @@ export function createChart(stage) {
   let lastBreathMs = 0;
   let breathFrame = 0;
   let shown = true;
+  let forecastStart = null;
+  let dotLive = true;
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   const motionReduced = () => reduceMotion.matches;
@@ -555,6 +557,10 @@ export function createChart(stage) {
 
   const placeMarks = (timeMs) => {
     if (!L || !series.length || !playhead) return;
+    if (!dotLive) {
+      playhead.style.opacity = "0";
+      return;
+    }
     const sample = sampleTide(series, timeMs);
     if (!sample) return;
     const px = L.x(Math.min(rangeEnd, Math.max(rangeStart, timeMs)));
@@ -647,6 +653,15 @@ export function createChart(stage) {
   });
 
   const applyRange = (origin) => {
+    if (forecastStart != null) {
+      const viewDay = new Date(forecastStart);
+      const viewEnd = startOfNextZonedDay(viewDay);
+      rangeStart = viewDay.getTime();
+      rangeEnd = viewEnd.getTime();
+      const inDay = pointsInDay(series, rangeStart, rangeEnd);
+      const lastT = series.length ? series[series.length - 1].t : 0;
+      return { stale: false, lastT, empty: inDay.length < 2 };
+    }
     const liveStart = startOfZonedDay(origin);
     const viewDay = addZonedDays(liveStart, dayOffset);
     const viewEnd = startOfNextZonedDay(viewDay);
@@ -767,8 +782,41 @@ export function createChart(stage) {
     },
     setShown(on) {
       shown = Boolean(on);
-      if (shown) startBreath();
-      else stopBreath();
+      if (shown) {
+        if (series.length > 1) {
+          paint();
+          emit();
+        }
+        startBreath();
+      } else stopBreath();
+    },
+    showForecastDay(startMs, { live = false } = {}) {
+      forecastStart = startMs;
+      dotLive = Boolean(live);
+      scrubbing = false;
+      if (anim) cancelAnimationFrame(anim);
+      anim = null;
+      applyRange(new Date(originMs));
+      viewTime = dotLive ? liveCursor(new Date()) : rangeStart;
+      chipKey = "";
+      if (shown) {
+        paint();
+        emit();
+      }
+    },
+    clearForecastDay() {
+      if (forecastStart == null && dotLive) return;
+      forecastStart = null;
+      dotLive = true;
+      scrubbing = false;
+      applyRange(new Date(originMs || Date.now()));
+      viewTime = liveCursor(new Date());
+      chipKey = "";
+      if (playhead) playhead.style.opacity = "";
+      if (shown) {
+        paint();
+        emit();
+      }
     },
     tick(now) {
       clockMs = (now ?? new Date()).getTime();

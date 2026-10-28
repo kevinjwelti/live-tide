@@ -102,7 +102,7 @@ function spanOf(pair) {
   return Math.abs(pair.high.turn.v - pair.low.turn.v);
 }
 
-export function createForecast(root) {
+export function createForecast(root, hooks = {}) {
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   let series = [];
   let extrema = [];
@@ -112,6 +112,8 @@ export function createForecast(root) {
   let lead = 0;
   let open = null;
   let advanceTimer = 0;
+  let returnTimer = 0;
+  let announced = undefined;
 
   const kioskOn = () => document.documentElement.dataset.kiosk === "1";
 
@@ -121,36 +123,46 @@ export function createForecast(root) {
   };
 
   const startAdvance = () => {
-    if (advanceTimer || !active || reduceMotion.matches || !kioskOn()) return;
+    if (advanceTimer || !active || open != null || reduceMotion.matches || !kioskOn()) return;
     advanceTimer = window.setInterval(() => {
-      if (!model.length) return;
-      open = null;
+      if (!model.length || open != null) return;
       lead = (lead + 1) % model.length;
       render();
     }, 9000);
   };
 
+  const closeOpen = () => {
+    if (open == null) return;
+    clearTimeout(returnTimer);
+    returnTimer = 0;
+    open = null;
+    render();
+  };
+
+  const armReturn = () => {
+    clearTimeout(returnTimer);
+    returnTimer = 0;
+    if (open == null || !kioskOn()) return;
+    returnTimer = window.setTimeout(closeOpen, 20000);
+  };
+
   const onKey = (event) => {
     if (!active || root.hidden) return;
-    if (event.key === "Escape" && open != null) {
+    if (event.target?.closest?.("input, textarea")) return;
+    if (open != null && ["Escape", "Backspace", "Enter", " ", "GoBack", "BrowserBack"].includes(event.key)) {
       event.preventDefault();
-      open = null;
-      render();
+      closeOpen();
       return;
     }
+    if (open != null) return;
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
     const pills = [...root.querySelectorAll(".tide-pill")];
     if (!pills.length) return;
     const current = pills.findIndex((pill) => pill === document.activeElement);
-    if (current < 0 && open == null) return;
+    if (current < 0) return;
     event.preventDefault();
     const dir = event.key === "ArrowRight" ? 1 : -1;
-    const next = (current < 0 ? lead : current + dir + pills.length) % pills.length;
-    if (open != null) {
-      open = Number(pills[next].dataset.index);
-      render();
-    }
-    pills[next]?.focus();
+    pills[(current + dir + pills.length) % pills.length]?.focus();
   };
 
   const figure = (mark, choice) => {
@@ -218,59 +230,42 @@ export function createForecast(root) {
     node.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") return;
       event.preventDefault();
+      event.stopPropagation();
       open = open === index ? null : index;
       render();
     });
     return node;
   };
 
-  const detail = (day) => {
-    const panel = document.createElement("div");
-    panel.className = "forecast-detail";
+  const openLayer = (day) => {
+    const layer = document.createElement("div");
+    layer.className = "forecast-open";
+    layer.tabIndex = 0;
     const label = forecastLabel(day.start);
     const back = document.createElement("div");
-    back.className = "detail-back";
-    back.tabIndex = 0;
+    back.className = "forecast-back";
     back.role = "button";
-    back.textContent = day.today ? `Today · ${label.dow}` : label.dow;
-    back.setAttribute("aria-label", `Close ${label.dow}`);
-    const close = () => {
-      open = null;
-      render();
-    };
-    back.addEventListener("click", close);
-    back.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      event.preventDefault();
-      close();
-    });
-    const when = document.createElement("p");
-    when.className = "detail-when";
+    back.tabIndex = 0;
+    back.textContent = "‹ Forecast";
+    back.setAttribute("aria-label", "Back to the forecast");
+    const title = document.createElement("p");
+    title.className = "forecast-open-title";
+    const name = document.createElement("span");
+    name.textContent = day.today ? "Today" : label.dow;
+    const when = document.createElement("span");
     when.textContent = label.dom;
-    const list = document.createElement("div");
-    list.className = "detail-list";
-    day.turns.forEach((turn) => {
-      const row = document.createElement("p");
-      const past = day.today && tideHasPassed(turn, nowMs);
-      row.className = `detail-line${past ? " is-past" : ""}`;
-      const time = document.createElement("span");
-      time.className = "t-time";
-      time.textContent = clock(turn.t);
-      const arrow = document.createElement("span");
-      arrow.className = "t-mark";
-      arrow.textContent = turn.type === "H" ? "↑" : "↓";
-      const ht = document.createElement("span");
-      ht.className = "t-ht";
-      ht.textContent = turn.v.toFixed(1);
-      const unit = document.createElement("span");
-      unit.className = "pill-unit";
-      unit.textContent = " ft";
-      ht.append(unit);
-      row.append(time, arrow, ht);
-      list.append(row);
-    });
-    panel.append(back, when, list);
-    return { panel, back };
+    title.append(name, when);
+    layer.append(back, title);
+    layer.addEventListener("click", closeOpen);
+    return layer;
+  };
+
+  const announce = () => {
+    const day = open != null ? model[open] : null;
+    const key = day ? day.start : null;
+    if (key === announced) return;
+    announced = key;
+    hooks.onOpenDay?.(day);
   };
 
   const render = () => {
@@ -298,12 +293,21 @@ export function createForecast(root) {
       day.span = highRange - lowRange < 0.25 ? 0.55 : (range - lowRange) / (highRange - lowRange);
     });
     if (open != null && model[open]) {
-      const { panel, back } = detail(model[open]);
-      root.append(panel);
-      back.focus();
-      startAdvance();
+      root.classList.add("is-open");
+      document.documentElement.dataset.forecastOpen = "1";
+      const layer = openLayer(model[open]);
+      root.append(layer);
+      layer.focus();
+      stopAdvance();
+      armReturn();
+      announce();
       return;
     }
+    root.classList.remove("is-open");
+    delete document.documentElement.dataset.forecastOpen;
+    clearTimeout(returnTimer);
+    returnTimer = 0;
+    announce();
     const stage = document.createElement("div");
     stage.className = "forecast-stage";
     model.forEach((day, index) => {
@@ -329,7 +333,13 @@ export function createForecast(root) {
       nowMs = now.getTime();
       if (!active) {
         stopAdvance();
+        clearTimeout(returnTimer);
+        returnTimer = 0;
         open = null;
+        root.classList.remove("is-open");
+        delete document.documentElement.dataset.forecastOpen;
+        announced = undefined;
+        hooks.onOpenDay?.(null);
         return;
       }
       render();

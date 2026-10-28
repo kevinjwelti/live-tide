@@ -54,7 +54,17 @@ const els = {
 
 const swell = createSwell();
 const chart = createChart(els.chartStage);
-const forecast = createForecast(document.querySelector("#forecast"));
+const forecast = createForecast(document.querySelector("#forecast"), {
+  onOpenDay(day) {
+    if (day) {
+      chart.showForecastDay(day.start, { live: day.today });
+      chart.setShown(true);
+      return;
+    }
+    chart.clearForecastDay();
+    if (forecast.isActive()) chart.setShown(false);
+  },
+});
 
 function setStatus(text) {
   els.statusMsg.hidden = !text;
@@ -240,8 +250,13 @@ function showForecast(on, { updateUrl = true } = {}) {
       on ? "Show today's tide" : "Show the seven day forecast"
     );
   }
-  chart.setShown(!on);
-  forecast.setActive(on, resolveNow());
+  if (on) {
+    chart.setShown(false);
+    forecast.setActive(true, resolveNow());
+  } else {
+    forecast.setActive(false, resolveNow());
+    chart.setShown(true);
+  }
 }
 
 els.forecastToggle?.addEventListener("click", (event) => {
