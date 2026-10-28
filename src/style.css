@@ -1697,6 +1697,10 @@ html[data-light="night"] .tide-pill {
     padding-bottom: 5.6rem;
   }
 
+  html[data-view="forecast"] .forecast-toggle {
+    top: 0.4rem;
+  }
+
   .forecast-stage {
     flex-direction: column;
     align-items: stretch;
@@ -1704,7 +1708,7 @@ html[data-light="night"] .tide-pill {
     overflow-x: hidden;
     overflow-y: auto;
     gap: 0.75rem;
-    padding-top: 3.4rem;
+    padding-top: 4.5rem;
     padding-bottom: 6.5rem;
   }
 
