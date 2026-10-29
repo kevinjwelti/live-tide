@@ -1,8 +1,5 @@
 import { shoreBreathReach } from "./shore.js";
 
-/** Foam line in beach.jpg, 0 at the top of the photo. */
-export const SHORE_PHOTO_V = 0.0781;
-
 const VERT = `
 attribute vec2 aPos;
 attribute vec2 aUv;
@@ -16,11 +13,10 @@ void main() {
 const FRAG = `
 precision mediump float;
 varying vec2 vUv;
-uniform sampler2D uBeach;
 uniform sampler2D uSand;
+uniform sampler2D uWater;
+uniform sampler2D uFoam;
 uniform sampler2D uCurve;
-uniform float uShore;
-uniform float uBeachH;
 uniform float uViewH;
 uniform float uBreath;
 uniform float uWet;
@@ -31,32 +27,40 @@ float curveAt(float x) {
   return (e.r * 255.0 * 256.0 + e.g * 255.0) / 65535.0;
 }
 
+vec2 mirror(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 m = mod(i, 2.0);
+  return mix(f, 1.0 - f, m);
+}
+
 void main() {
-  float yTop = vUv.y;
   float curve = curveAt(vUv.x);
-  float dy = (yTop - curve) * uViewH;
-  float wgt = 1.0 - smoothstep(16.0, 72.0, abs(dy));
-  float sampleDy = dy + uBreath * wgt;
-  float rel = clamp(uShore + sampleDy / uBeachH, 0.0, 0.995);
-  vec3 sea = texture2D(uBeach, vec2(vUv.x, 1.0 - rel)).rgb;
+  float dy = (vUv.y - curve) * uViewH;
+  float sandV = abs(mod(vUv.y * uViewH / 92.0, 2.0) - 1.0);
+  float waterV = abs(mod(vUv.y * uViewH / 240.0, 2.0) - 1.0);
+  vec3 sand = texture2D(uSand, vec2(vUv.x, sandV)).rgb;
+  vec3 water = texture2D(uWater, vec2(vUv.x, waterV)).rgb;
+  water = vec3(water.r * 0.68, min(1.0, water.g * 1.06), min(1.0, water.b * 1.22));
+  water = mix(water, vec3(0.04, 0.66, 0.68), 0.2);
+  float waterMask = smoothstep(-0.8, 0.8, dy);
+  vec3 color = mix(sand, water, waterMask);
 
-  float up = max(0.0, -dy - 22.0);
-  float sandV = abs(mod(up / 58.0, 2.0) - 1.0);
-  vec3 dry = texture2D(uSand, vec2(vUv.x, sandV)).rgb;
-  float sandMix = smoothstep(-10.0, -36.0, dy);
-  vec3 color = mix(sea, dry, sandMix);
+  float across = (dy + uBreath) / 78.0 + 0.5;
+  if (across > 0.0 && across < 1.0) {
+    vec3 foam = texture2D(uFoam, vec2(vUv.x, 1.0 - across)).rgb;
+    float hi = max(foam.r, max(foam.g, foam.b));
+    float lo = min(foam.r, min(foam.g, foam.b));
+    float lace = smoothstep(0.46, 0.8, hi) * (1.0 - smoothstep(0.04, 0.28, hi - lo));
+    float fade = smoothstep(0.0, 0.08, across) * (1.0 - smoothstep(0.9, 1.0, across));
+    color = mix(color, vec3(1.0), lace * fade);
+  }
 
-  float edge = 1.0 - smoothstep(0.0, 16.0, abs(dy + uBreath * 0.85));
-  float hi = max(color.r, max(color.g, color.b));
-  float lo = min(color.r, min(color.g, color.b));
-  float foam = edge * smoothstep(0.58, 0.86, hi) * (1.0 - smoothstep(0.05, 0.22, hi - lo));
-  color = mix(color, vec3(1.0), foam * 0.42);
+  float wetBand = smoothstep(2.0, -4.0, dy) * (1.0 - smoothstep(-6.0, -26.0, dy));
+  color *= mix(1.0, 0.84, wetBand * uWet);
 
-  float wetBand = smoothstep(4.0, -6.0, dy) * (1.0 - smoothstep(-8.0, -42.0, dy));
-  color *= mix(1.0, 0.8, wetBand * uWet);
-  color += vec3(1.0, 0.96, 0.88) * wetBand * uWet * 0.06;
-
-  color *= mix(vec3(1.0), vec3(1.16, 0.9, 0.72), uDusk);
+  float warm = uDusk * mix(0.55, 0.16, waterMask);
+  color *= mix(vec3(1.0), vec3(1.14, 0.88, 0.7), warm);
   gl_FragColor = vec4(color, 1.0);
 }
 `;
@@ -73,15 +77,15 @@ function compile(gl, type, source) {
   return shader;
 }
 
-function makeTexture(gl, image, wrap) {
+function makeTexture(gl, image) {
   const tex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   return tex;
 }
 
@@ -93,14 +97,13 @@ export function createShorePhoto() {
     premultipliedAlpha: false,
     preserveDrawingBuffer: true,
   });
-  let beachTex = null;
   let sandTex = null;
-  let beachH = 644;
+  let waterTex = null;
+  let foamTex = null;
   let curveTex = null;
   let curveW = 256;
   const curveBytes = new Uint8Array(curveW * 4);
   let program = null;
-  let buf = null;
   const loc = {};
 
   const loadImage = (url) => new Promise((resolve, reject) => {
@@ -114,56 +117,59 @@ export function createShorePhoto() {
 
   if (gl) {
     try {
-    const vs = compile(gl, gl.VERTEX_SHADER, VERT);
-    const fs = compile(gl, gl.FRAGMENT_SHADER, FRAG);
-    program = gl.createProgram();
-    gl.attachShader(program, vs);
-    gl.attachShader(program, fs);
-    gl.linkProgram(program);
-    gl.useProgram(program);
-    buf = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-      -1, -1, 0, 1,
-      1, -1, 1, 1,
-      -1, 1, 0, 0,
-      1, 1, 1, 0,
-    ]), gl.STATIC_DRAW);
-    const stride = 16;
-    const aPos = gl.getAttribLocation(program, "aPos");
-    const aUv = gl.getAttribLocation(program, "aUv");
-    gl.enableVertexAttribArray(aPos);
-    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, stride, 0);
-    gl.enableVertexAttribArray(aUv);
-    gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, stride, 8);
-    loc.shore = gl.getUniformLocation(program, "uShore");
-    loc.beachH = gl.getUniformLocation(program, "uBeachH");
-    loc.viewH = gl.getUniformLocation(program, "uViewH");
-    loc.breath = gl.getUniformLocation(program, "uBreath");
-    loc.wet = gl.getUniformLocation(program, "uWet");
-    loc.dusk = gl.getUniformLocation(program, "uDusk");
-    loc.beach = gl.getUniformLocation(program, "uBeach");
-    loc.sand = gl.getUniformLocation(program, "uSand");
-    loc.curve = gl.getUniformLocation(program, "uCurve");
-    curveTex = gl.createTexture();
-    gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, curveTex);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    Promise.all([
-      loadImage(`${base}shore/beach.jpg`),
-      loadImage(`${base}shore/sand.jpg`),
-    ]).then(([beachImg, sandImg]) => {
-      beachH = beachImg.height;
-      gl.activeTexture(gl.TEXTURE0);
-      beachTex = makeTexture(gl, beachImg, gl.CLAMP_TO_EDGE);
-      gl.activeTexture(gl.TEXTURE1);
-      sandTex = makeTexture(gl, sandImg, gl.CLAMP_TO_EDGE);
-    }).catch((error) => {
-      console.warn(error);
-    });
+      const vs = compile(gl, gl.VERTEX_SHADER, VERT);
+      const fs = compile(gl, gl.FRAGMENT_SHADER, FRAG);
+      program = gl.createProgram();
+      gl.attachShader(program, vs);
+      gl.attachShader(program, fs);
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error(gl.getProgramInfoLog(program) || "link");
+      }
+      gl.useProgram(program);
+      const buf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        -1, -1, 0, 1,
+        1, -1, 1, 1,
+        -1, 1, 0, 0,
+        1, 1, 1, 0,
+      ]), gl.STATIC_DRAW);
+      const stride = 16;
+      const aPos = gl.getAttribLocation(program, "aPos");
+      const aUv = gl.getAttribLocation(program, "aUv");
+      gl.enableVertexAttribArray(aPos);
+      gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, stride, 0);
+      gl.enableVertexAttribArray(aUv);
+      gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, stride, 8);
+      for (const name of ["uViewH", "uBreath", "uWet", "uDusk"]) {
+        loc[name] = gl.getUniformLocation(program, name);
+      }
+      loc.sand = gl.getUniformLocation(program, "uSand");
+      loc.water = gl.getUniformLocation(program, "uWater");
+      loc.foam = gl.getUniformLocation(program, "uFoam");
+      loc.curve = gl.getUniformLocation(program, "uCurve");
+      curveTex = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE3);
+      gl.bindTexture(gl.TEXTURE_2D, curveTex);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      Promise.all([
+        loadImage(`${base}shore/sand.jpg`),
+        loadImage(`${base}shore/water.jpg`),
+        loadImage(`${base}shore/foam.jpg`),
+      ]).then(([sandImg, waterImg, foamImg]) => {
+        gl.activeTexture(gl.TEXTURE0);
+        sandTex = makeTexture(gl, sandImg);
+        gl.activeTexture(gl.TEXTURE1);
+        waterTex = makeTexture(gl, waterImg);
+        gl.activeTexture(gl.TEXTURE2);
+        foamTex = makeTexture(gl, foamImg);
+      }).catch((error) => {
+        console.warn(error);
+      });
     } catch (error) {
       console.warn(error);
       program = null;
@@ -189,7 +195,7 @@ export function createShorePhoto() {
 
   return {
     ready() {
-      return Boolean(gl && beachTex && sandTex && program);
+      return Boolean(gl && sandTex && waterTex && foamTex && program);
     },
     frame({ w, h, pts, breath, wet, dusk }) {
       if (!this.ready() || w < 2 || h < 2) return null;
@@ -212,27 +218,28 @@ export function createShorePhoto() {
         curveBytes[o + 2] = 0;
         curveBytes[o + 3] = 255;
       }
-      gl.activeTexture(gl.TEXTURE2);
+      gl.activeTexture(gl.TEXTURE3);
       gl.bindTexture(gl.TEXTURE_2D, curveTex);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, curveW, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, curveBytes);
-      gl.uniform1f(loc.shore, SHORE_PHOTO_V);
-      gl.uniform1f(loc.beachH, beachH);
-      gl.uniform1f(loc.viewH, h);
-      gl.uniform1f(loc.breath, breath);
-      gl.uniform1f(loc.wet, wet);
-      gl.uniform1f(loc.dusk, dusk);
-      gl.uniform1i(loc.beach, 0);
-      gl.uniform1i(loc.sand, 1);
-      gl.uniform1i(loc.curve, 2);
+      gl.uniform1f(loc.uViewH, h);
+      gl.uniform1f(loc.uBreath, breath);
+      gl.uniform1f(loc.uWet, wet);
+      gl.uniform1f(loc.uDusk, dusk);
+      gl.uniform1i(loc.sand, 0);
+      gl.uniform1i(loc.water, 1);
+      gl.uniform1i(loc.foam, 2);
+      gl.uniform1i(loc.curve, 3);
       gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, beachTex);
-      gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, sandTex);
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, waterTex);
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, foamTex);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       return canvas;
     },
     breathPx(phase) {
-      return (shoreBreathReach(phase) - 0.4) * 26;
+      return (shoreBreathReach(phase) - 0.45) * 16;
     },
   };
 }
