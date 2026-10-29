@@ -1,4 +1,5 @@
 import { skyPalette, isNightScene } from "./time.js";
+import { getSkyMode } from "./now.js";
 
 const PCTS = [0, 8, 16, 25, 33, 41, 49, 57, 64, 72, 80, 88, 94, 100];
 
@@ -158,8 +159,9 @@ export function createSwell() {
 
   const apply = (light) => {
     palette = light;
-    const night = isNightScene(light);
-    const w = washWeights(light.elevation);
+    const shoreDusk = root.dataset.shore === "real" && getSkyMode() === "dusk";
+    const night = !shoreDusk && isNightScene(light);
+    const w = shoreDusk ? { starry: 0, earth: 1, day: 0 } : washWeights(light.elevation);
     root.dataset.light = night ? "night" : w.earth > 0.45 ? "gold" : "day";
     root.style.setProperty("--star-opacity", w.starry.toFixed(3));
     const sun = sunSkyPosition(light.elevation, light.azimuth);

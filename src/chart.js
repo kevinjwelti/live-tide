@@ -2,8 +2,6 @@ import {
   formatClock,
   startOfZonedDay,
   startOfNextZonedDay,
-  addZonedDays,
-  clockOnZonedDay,
   skyPalette,
   isNightScene,
   getPlace,
@@ -12,7 +10,10 @@ import { sampleTide } from "./tide.js";
 import { moonState, renderMoon, renderSun } from "./moon.js";
 import { canvasStyle } from "./moods.js";
 import { breathLight, breathPeriodMs, breathSwell, tideBreathLevel } from "./breath.js";
-import { WASH_SLOTS, washDropPx, washReach, washUnit } from "./wash.js";
+import { washDropPx, washState } from "./wash.js";
+import { getSkyMode } from "./now.js";
+import { shoreBreathReach, shoreNightFade, shoreWetStep } from "./shore.js";
+import { createShorePhoto } from "./shore-photo.js";
 
 function chartPad(w, h) {
   const phone = Math.min(w, h) < 640;
@@ -104,6 +105,8 @@ function closeWater(ctx, series, L, from, to, yShift) {
 export function createChart(stage) {
   const canvas = stage.querySelector("#chart");
   const ctx = canvas.getContext("2d");
+  const shoreBuffer = document.createElement("canvas");
+  const shoreCtx = shoreBuffer.getContext("2d");
   const playhead = stage.querySelector("#playhead");
   const orb = playhead?.querySelector("#playhead-orb");
   const labelsEl = stage.querySelector("#extremum-labels");
@@ -115,7 +118,6 @@ export function createChart(stage) {
   let rangeStart = 0;
   let rangeEnd = 1;
   let viewTime = Date.now();
-  let dayOffset = 0;
   let originMs = Date.now();
   let chipKey = "";
   let scrubbing = false;
@@ -127,6 +129,8 @@ export function createChart(stage) {
   let viewW = 0;
   let viewH = 0;
   let breathPhase = 0;
+  let washMs = 0;
+  let shoreWet = 0.35;
   let swellPx = 0;
   let breathGlow = 0.7;
   let causticShift = 0;
@@ -134,6 +138,9 @@ export function createChart(stage) {
   let tideRising = true;
   let lastBreathMs = 0;
   let breathFrame = 0;
+  let shown = true;
+  let forecastStart = null;
+  let dotLive = true;
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   const motionReduced = () => reduceMotion.matches;
@@ -184,6 +191,7 @@ export function createChart(stage) {
     swellPx = breathSwell(breathPhase, tideLevel) * ampScale();
     breathGlow = breathLight(breathPhase, tideRising);
     causticShift += dt * 0.012;
+    washMs += dt;
   };
 
   const holdBreath = () => {
@@ -193,10 +201,7 @@ export function createChart(stage) {
     breathGlow = breathLight(Math.PI / 2, tideRising);
   };
 
-  const liveCursor = (now = new Date()) => {
-    if (dayOffset === 0) return now.getTime();
-    return clockOnZonedDay(new Date(rangeStart), now).getTime();
-  };
+  const liveCursor = (now = new Date()) => now.getTime();
 
   const paint = () => {
     const { w, h } = size();
@@ -206,6 +211,24 @@ export function createChart(stage) {
       return;
     }
     L = layout(w, h, series, rangeStart, rangeEnd);
+    const cover = beachCover();
+    if (cover <= 0.004) {
+      paintLiving();
+    } else if (cover >= 0.996) {
+      paintShore(ctx, w, h);
+    } else {
+      paintLiving();
+      paintShore(shoreCtx, w, h, true);
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalAlpha = cover;
+      ctx.drawImage(shoreBuffer, 0, 0);
+      ctx.restore();
+    }
+    paintChips();
+  };
+
+  const paintLiving = () => {
     const style = canvasStyle();
     const night = document.documentElement.dataset.light === "night";
     const shift = swellPx;
@@ -215,7 +238,70 @@ export function createChart(stage) {
     paintWashes(shift, style, night);
     paintSoftEdge(shift, style, night);
     paintShimmer(shift);
-    paintChips();
+  };
+
+  const beachCover = () => {
+    if (document.documentElement.dataset.shore !== "real") return 0;
+    const mode = getSkyMode();
+    if (mode === "night") return 0;
+    if (mode === "noon" || mode === "dusk") return 1;
+    return shoreNightFade(skyPalette(new Date(clockMs)).night);
+  };
+
+  const shoreScene = () => {
+    if (getSkyMode() === "dusk" || document.documentElement.dataset.light === "gold") return "dusk";
+    return "day";
+  };
+
+  const shoreLine = () => {
+    const steps = 140;
+    const pts = [];
+    for (let i = 0; i <= steps; i += 1) {
+      const u = i / steps;
+      const t = rangeStart + (rangeEnd - rangeStart) * u;
+      const sample = sampleTide(series, t);
+      if (!sample) continue;
+      pts.push({ x: L.x(t), y: L.y(sample.height), u });
+    }
+    return pts;
+  };
+
+  const shorePhoto = createShorePhoto();
+
+  const paintShore = (g, w, h, buffered) => {
+    if (buffered) {
+      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+      if (shoreBuffer.width !== canvas.width || shoreBuffer.height !== canvas.height) {
+        shoreBuffer.width = canvas.width;
+        shoreBuffer.height = canvas.height;
+      }
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.clearRect(0, 0, w, h);
+    }
+    const pts = shoreLine();
+    if (pts.length < 2) return;
+    const reduced = motionReduced();
+    const phase = reduced ? 0 : breathPhase;
+    const reach = shoreBreathReach(phase);
+    if (!reduced) shoreWet = shoreWetStep(shoreWet, reach);
+    const frame = shorePhoto.frame({
+      w,
+      h,
+      pts,
+      breath: reduced ? 0 : shorePhoto.breathPx(phase),
+      wet: reduced ? 0.45 : shoreWet,
+      dusk: shoreScene() === "dusk" ? 1 : 0,
+    });
+    if (!frame) return;
+    g.save();
+    g.drawImage(frame, 0, 0, w, h);
+    g.globalCompositeOperation = "destination-in";
+    const veil = g.createLinearGradient(0, 0, 0, Math.max(72, h * 0.16));
+    veil.addColorStop(0, "rgba(0,0,0,0)");
+    veil.addColorStop(1, "rgba(0,0,0,1)");
+    g.fillStyle = veil;
+    g.fillRect(0, 0, w, h);
+    g.restore();
   };
 
   const paintHaze = (shift, night) => {
@@ -246,17 +332,9 @@ export function createChart(stage) {
     ctx.restore();
   };
 
-  const paintWashes = (shift, style, night) => {
-    if (motionReduced() || !L) return;
-    const unit = washUnit(breathPhase);
-    const active = [];
-    for (let i = 0; i < WASH_SLOTS.length; i += 1) {
-      const reach = washReach(unit, WASH_SLOTS[i]);
-      if (reach > 0.015) active.push({ slot: WASH_SLOTS[i], reach });
-    }
-    if (!active.length) return;
-
-    const steps = 24;
+  const paintWashes = (shift, _style, night) => {
+    if (!L) return;
+    const steps = 48;
     const samples = [];
     for (let i = 0; i <= steps; i += 1) {
       const t = rangeStart + ((rangeEnd - rangeStart) * i) / steps;
@@ -266,11 +344,17 @@ export function createChart(stage) {
     }
     if (samples.length < 2) return;
 
-    const cream = night ? "210, 226, 240" : "255, 250, 242";
-    const quiet = night ? 0.8 : 1;
-    const tint = moodColor(style, night);
+    const reduced = motionReduced();
+    const state = reduced ? { reach: 0, foam: 0, wet: 0.65, phase: "rest" } : washState(washMs);
+    const cream = night ? "214, 226, 238" : "255, 250, 242";
+    const quiet = night ? 0.72 : 1;
     const floor = L.bottom + 2;
-    const tail = 260;
+    const lacePhase = washMs * 0.00035;
+
+    const yAt = (index, extra) => {
+      const s = samples[index];
+      return Math.min(floor, s.y + extra);
+    };
 
     ctx.save();
     closeWater(ctx, series, L, rangeStart, rangeEnd, shift);
@@ -278,54 +362,53 @@ export function createChart(stage) {
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
 
-    for (let n = 0; n < active.length; n += 1) {
-      const { slot, reach } = active[n];
-      const big = slot.reach >= 0.99;
-      const alpha = (big ? 0.16 + reach * 0.08 : 0.1 + reach * 0.06) * quiet;
-      const frontOf = (s) => s.y + washDropPx(reach, floor - s.y);
-      for (let i = 0; i < samples.length - 1; i += 1) {
-        const a = samples[i];
-        const b = samples[i + 1];
-        const y0 = frontOf(a);
-        const y1 = frontOf(b);
-        const top = Math.min(y0, y1) - 14;
-        const bot = Math.max(y0, y1) + tail;
-        ctx.beginPath();
-        ctx.moveTo(a.x, y0 - 14);
-        ctx.lineTo(b.x, y1 - 14);
-        ctx.lineTo(b.x, Math.min(floor, y1 + tail));
-        ctx.lineTo(a.x, Math.min(floor, y0 + tail));
-        ctx.closePath();
-        const sheet = ctx.createLinearGradient(0, top, 0, bot);
-        sheet.addColorStop(0, `rgba(${cream}, 0)`);
-        sheet.addColorStop(0.045, `rgba(${cream}, ${(alpha * 0.92).toFixed(3)})`);
-        sheet.addColorStop(0.42, `rgba(${cream}, ${(alpha * 0.72).toFixed(3)})`);
-        sheet.addColorStop(0.78, `rgba(${cream}, ${(alpha * 0.28).toFixed(3)})`);
-        sheet.addColorStop(1, `rgba(${cream}, 0)`);
-        ctx.fillStyle = sheet;
-        ctx.fill();
-      }
-      const moodTop = frontOf(samples[Math.floor(samples.length / 2)]) - 14;
+    const wetAlpha = (0.045 + state.wet * 0.035) * quiet;
+    ctx.beginPath();
+    ctx.moveTo(samples[0].x, yAt(0, 3));
+    for (let i = 1; i < samples.length; i += 1) ctx.lineTo(samples[i].x, yAt(i, 3));
+    for (let i = samples.length - 1; i >= 0; i -= 1) ctx.lineTo(samples[i].x, yAt(i, 26));
+    ctx.closePath();
+    ctx.fillStyle = `rgba(${night ? "8, 16, 28" : "18, 42, 64"}, ${wetAlpha.toFixed(3)})`;
+    ctx.fill();
+
+    if (!reduced && state.reach > 0.02) {
+      const frontExtra = (index) => {
+        const drop = washDropPx(state.reach, floor - samples[index].y);
+        return drop;
+      };
       ctx.beginPath();
-      ctx.moveTo(samples[0].x, frontOf(samples[0]) - 8);
-      for (let i = 1; i < samples.length; i += 1) ctx.lineTo(samples[i].x, frontOf(samples[i]) - 8);
+      ctx.moveTo(samples[0].x, yAt(0, frontExtra(0)));
+      for (let i = 1; i < samples.length; i += 1) ctx.lineTo(samples[i].x, yAt(i, frontExtra(i)));
       for (let i = samples.length - 1; i >= 0; i -= 1) {
-        ctx.lineTo(samples[i].x, Math.min(floor, frontOf(samples[i]) + tail));
+        ctx.lineTo(samples[i].x, yAt(i, frontExtra(i) + 150));
       }
       ctx.closePath();
-      const mood = ctx.createLinearGradient(0, moodTop, 0, moodTop + tail);
-      mood.addColorStop(0, withAlpha(tint, 0));
-      mood.addColorStop(0.12, withAlpha(tint, alpha * 0.2));
-      mood.addColorStop(1, withAlpha(tint, 0));
-      ctx.fillStyle = mood;
+      const mid = samples[Math.floor(samples.length / 2)];
+      const midFront = mid.y + washDropPx(state.reach, floor - mid.y);
+      const sheet = ctx.createLinearGradient(0, midFront, 0, midFront + 150);
+      const alpha = (0.09 + state.reach * 0.06) * quiet;
+      sheet.addColorStop(0, `rgba(${cream}, ${alpha.toFixed(3)})`);
+      sheet.addColorStop(0.45, `rgba(${cream}, ${(alpha * 0.45).toFixed(3)})`);
+      sheet.addColorStop(1, `rgba(${cream}, 0)`);
+      ctx.fillStyle = sheet;
       ctx.fill();
-      if (big && reach > 0.9) {
-        const foam = Math.min(1, (reach - 0.9) / 0.08);
+
+      if (state.foam > 0.04) {
+        const foamAlpha = (0.28 * state.foam * quiet).toFixed(3);
         ctx.beginPath();
-        ctx.moveTo(samples[0].x, samples[0].y + 1);
-        for (let i = 1; i < samples.length; i += 1) ctx.lineTo(samples[i].x, samples[i].y + 1);
-        ctx.strokeStyle = `rgba(${cream}, ${(0.32 * foam * quiet).toFixed(3)})`;
-        ctx.lineWidth = 2.4;
+        for (let i = 0; i < samples.length; i += 1) {
+          const lace = 1.6
+            + Math.abs(Math.sin(i * 0.62 + lacePhase) * 3.4)
+            + Math.abs(Math.sin(i * 1.47 + 1.2) * 1.6);
+          const y = yAt(i, frontExtra(i) + lace);
+          if (i === 0) ctx.moveTo(samples[i].x, y);
+          else ctx.lineTo(samples[i].x, y);
+        }
+        ctx.strokeStyle = `rgba(${cream}, ${(0.12 * state.foam * quiet).toFixed(3)})`;
+        ctx.lineWidth = 4.5;
+        ctx.stroke();
+        ctx.strokeStyle = `rgba(${cream}, ${foamAlpha})`;
+        ctx.lineWidth = 1.25;
         ctx.stroke();
       }
     }
@@ -554,6 +637,10 @@ export function createChart(stage) {
 
   const placeMarks = (timeMs) => {
     if (!L || !series.length || !playhead) return;
+    if (!dotLive) {
+      playhead.style.opacity = "0";
+      return;
+    }
     const sample = sampleTide(series, timeMs);
     if (!sample) return;
     const px = L.x(Math.min(rangeEnd, Math.max(rangeStart, timeMs)));
@@ -569,9 +656,7 @@ export function createChart(stage) {
   };
 
   const emit = () => {
-    listeners.onView(viewTime, sampleTide(series, viewTime), scrubbing || Boolean(anim), {
-      dayOffset,
-    });
+    listeners.onView(viewTime, sampleTide(series, viewTime), scrubbing || Boolean(anim));
     paintChips();
     placeMarks(viewTime);
   };
@@ -598,7 +683,7 @@ export function createChart(stage) {
 
   const onPointerDown = (event) => {
     if (!series.length) return;
-    if (event.target?.closest?.(".day-flip")) return;
+    if (event.target?.closest?.(".forecast-toggle")) return;
     scrubbing = true;
     if (anim) cancelAnimationFrame(anim);
     anim = null;
@@ -646,23 +731,31 @@ export function createChart(stage) {
   });
 
   const applyRange = (origin) => {
+    if (forecastStart != null) {
+      const viewDay = new Date(forecastStart);
+      const viewEnd = startOfNextZonedDay(viewDay);
+      rangeStart = viewDay.getTime();
+      rangeEnd = viewEnd.getTime();
+      const inDay = pointsInDay(series, rangeStart, rangeEnd);
+      const lastT = series.length ? series[series.length - 1].t : 0;
+      return { stale: false, lastT, empty: inDay.length < 2 };
+    }
     const liveStart = startOfZonedDay(origin);
-    const viewDay = addZonedDays(liveStart, dayOffset);
-    const viewEnd = startOfNextZonedDay(viewDay);
-    const inDay = pointsInDay(series, viewDay.getTime(), viewEnd.getTime());
+    const viewEnd = startOfNextZonedDay(liveStart);
+    const inDay = pointsInDay(series, liveStart.getTime(), viewEnd.getTime());
     const lastT = series.length ? series[series.length - 1].t : 0;
     let stale = false;
     if (inDay.length >= 2) {
-      rangeStart = viewDay.getTime();
+      rangeStart = liveStart.getTime();
       rangeEnd = viewEnd.getTime();
-      stale = dayOffset === 0 && lastT < origin.getTime() - 90 * 60000;
-    } else if (dayOffset === 0 && series.length >= 2) {
+      stale = lastT < origin.getTime() - 90 * 60000;
+    } else if (series.length >= 2) {
       const fallback = new Date(lastT);
       rangeStart = startOfZonedDay(fallback).getTime();
       rangeEnd = startOfNextZonedDay(fallback).getTime();
       stale = true;
     } else {
-      rangeStart = viewDay.getTime();
+      rangeStart = liveStart.getTime();
       rangeEnd = viewEnd.getTime();
       stale = true;
     }
@@ -699,6 +792,7 @@ export function createChart(stage) {
   };
 
   const startBreath = () => {
+    if (!shown) return;
     if (motionReduced()) {
       stopBreath();
       if (series.length > 1) paintStill();
@@ -728,7 +822,7 @@ export function createChart(stage) {
       clockMs = originMs;
       const view = applyRange(origin);
       if (!scrubbing && !anim) {
-        viewTime = view.stale && view.lastT && dayOffset === 0
+        viewTime = view.stale && view.lastT
           ? Math.min(origin.getTime(), Math.max(rangeStart, view.lastT))
           : liveCursor(origin);
       }
@@ -737,31 +831,43 @@ export function createChart(stage) {
       emit();
       return view;
     },
-    setDayOffset(nextOffset) {
-      const next = nextOffset ? 1 : 0;
-      if (next === dayOffset) return { dayOffset };
-      dayOffset = next;
+    setShown(on) {
+      shown = Boolean(on);
+      if (shown) {
+        if (series.length > 1) {
+          paint();
+          emit();
+        }
+        startBreath();
+      } else stopBreath();
+    },
+    showForecastDay(startMs, { live = false } = {}) {
+      forecastStart = startMs;
+      dotLive = Boolean(live);
+      scrubbing = false;
       if (anim) cancelAnimationFrame(anim);
       anim = null;
-      scrubbing = false;
-      clearTimeout(idleTimer);
       applyRange(new Date(originMs));
-      viewTime = liveCursor();
+      viewTime = dotLive ? liveCursor(new Date()) : rangeStart;
       chipKey = "";
-      paint();
-      emit();
-      return { dayOffset };
+      if (shown) {
+        paint();
+        emit();
+      }
     },
-    dayOffset() {
-      return dayOffset;
-    },
-    hasDay(offset) {
-      const origin = new Date(originMs);
-      const start = addZonedDays(startOfZonedDay(origin), offset).getTime();
-      const end = addZonedDays(startOfZonedDay(origin), offset + 1).getTime();
-      const pts = series.filter((p) => p.t >= start - 3600000 && p.t <= end + 3600000);
-      if (pts.length < 8) return false;
-      return pts[0].t <= start + 4 * 3600000 && pts[pts.length - 1].t >= end - 4 * 3600000;
+    clearForecastDay() {
+      if (forecastStart == null && dotLive) return;
+      forecastStart = null;
+      dotLive = true;
+      scrubbing = false;
+      applyRange(new Date(originMs || Date.now()));
+      viewTime = liveCursor(new Date());
+      chipKey = "";
+      if (playhead) playhead.style.opacity = "";
+      if (shown) {
+        paint();
+        emit();
+      }
     },
     tick(now) {
       clockMs = (now ?? new Date()).getTime();

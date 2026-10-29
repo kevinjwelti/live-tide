@@ -9,6 +9,7 @@ import { initSkyMode, listenForSkyMessages, resolveNow } from "./now.js";
 import { initKiosk, isKiosk, KIOSK_RETRY_START_MS, nextRetryDelay } from "./kiosk.js";
 import { rememberBeach, resolveInitialBeach, writeBeachParam } from "./beaches.js";
 import { initBeachMenu } from "./beach-menu.js";
+import { createForecast } from "./forecast.js";
 import { cachedStations, loadStations, upgradeBeach } from "./stations.js";
 
 const params = new URLSearchParams(location.search);
@@ -44,14 +45,24 @@ const els = {
   moonPct: document.querySelector("#moon-pct"),
   moonIcon: document.querySelector("#moon-icon"),
   credit: document.querySelector("#credit"),
-  dayFlip: document.querySelector("#day-flip"),
-  tideEyebrow: document.querySelector("#tide-eyebrow"),
+  forecastToggle: document.querySelector("#forecast-toggle"),
   chartStage: document.querySelector("#chart-stage"),
   moodCaption: document.querySelector("#mood-caption"),
 };
 
 const swell = createSwell();
 const chart = createChart(els.chartStage);
+const forecast = createForecast(document.querySelector("#forecast"), {
+  onOpenDay(day) {
+    if (day) {
+      chart.showForecastDay(day.start, { live: day.today });
+      chart.setShown(true);
+      return;
+    }
+    chart.clearForecastDay();
+    if (forecast.isActive()) chart.setShown(false);
+  },
+});
 
 function setStatus(text) {
   els.statusMsg.hidden = !text;
@@ -67,30 +78,6 @@ function applyCaption() {
   if (!els.moodCaption) return;
   const forced = params.get("mood");
   els.moodCaption.textContent = forced ? `Preview: ${mood.name}` : `Today: ${mood.name}`;
-}
-
-function syncDayFlip() {
-  const tomorrow = chart.dayOffset() === 1;
-  document.documentElement.dataset.forecast = tomorrow ? "tomorrow" : "today";
-  if (els.tideEyebrow) {
-    els.tideEyebrow.textContent = tomorrow ? "TOMORROW" : "CURRENT TIDE";
-  }
-  if (els.chartStage) {
-    els.chartStage.setAttribute(
-      "aria-label",
-      tomorrow ? "Tomorrow's tide curve" : "Today's tide curve"
-    );
-  }
-  if (els.dayFlip) {
-    const show = tomorrow || chart.hasDay(1) || !chart.hasData();
-    els.dayFlip.hidden = !show;
-    els.dayFlip.textContent = tomorrow ? "Today" : "Tomorrow";
-    els.dayFlip.setAttribute("aria-pressed", tomorrow ? "true" : "false");
-    els.dayFlip.setAttribute(
-      "aria-label",
-      tomorrow ? "Show today's tide" : "Show tomorrow's tide"
-    );
-  }
 }
 
 function renderMoonPanel(now) {
@@ -124,10 +111,9 @@ function renderTideReadout(timeMs, sample, exploring) {
   }
 }
 
-chart.onView((timeMs, sample, exploring, meta) => {
+chart.onView((timeMs, sample, exploring) => {
   renderTideReadout(timeMs, sample, exploring);
-  const washTime = meta?.dayOffset === 1 ? resolveNow() : new Date(timeMs);
-  swell.setTime(washTime);
+  swell.setTime(new Date(timeMs));
 });
 
 let retryMs = KIOSK_RETRY_START_MS;
@@ -152,18 +138,16 @@ function applyTideData(data) {
     extrema: data.extrema,
     now: resolveNow(),
   });
-  syncDayFlip();
+  forecast.setData({
+    series: data.series,
+    extrema: data.extrema,
+    now: resolveNow(),
+  });
   if (kiosk) {
     setStatus("");
     return;
   }
-  if (view?.empty) {
-    setStatus("No tide curve yet.");
-  } else if (chart.dayOffset() === 1 && !chart.hasDay(1)) {
-    setStatus("Tomorrow’s curve is not ready yet.");
-  } else {
-    setStatus("");
-  }
+  setStatus(view?.empty ? "No tide curve yet." : "");
 }
 
 let loadToken = 0;
@@ -178,8 +162,6 @@ function selectBeach(next) {
     mood = applyMood(pickMood(resolveNow()));
     applyCaption();
   }
-  chart.setDayOffset(0);
-  syncDayFlip();
   pulse(resolveNow());
   loadTide("beach");
 }
@@ -216,16 +198,50 @@ function pulse(now = resolveNow()) {
   chart.tick(now);
 }
 
-els.dayFlip?.addEventListener("click", (event) => {
-  event.stopPropagation();
-  const next = chart.dayOffset() === 1 ? 0 : 1;
-  chart.setDayOffset(next);
-  syncDayFlip();
-  if (next === 1 && !chart.hasDay(1)) {
-    setStatus("Tomorrow’s curve is not ready yet.");
-  } else {
-    setStatus("");
+function showForecast(on, { updateUrl = true } = {}) {
+  document.documentElement.dataset.view = on ? "forecast" : "today";
+  if (updateUrl) {
+    const url = new URL(location.href);
+    if (on) url.searchParams.set("view", "forecast");
+    else url.searchParams.delete("view");
+    history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   }
+  if (els.forecastToggle) {
+    els.forecastToggle.textContent = on ? "Today" : "Forecast";
+    els.forecastToggle.setAttribute("aria-pressed", on ? "true" : "false");
+    els.forecastToggle.setAttribute(
+      "aria-label",
+      on ? "Show today's tide" : "Show the seven day forecast"
+    );
+  }
+  if (on) {
+    chart.setShown(false);
+    forecast.setActive(true, resolveNow());
+  } else {
+    forecast.setActive(false, resolveNow());
+    chart.setShown(true);
+  }
+}
+
+els.forecastToggle?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  showForecast(!forecast.isActive());
+});
+
+document.addEventListener("keydown", (event) => {
+  if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
+  if (forecast.isActive()) return;
+  if (event.target?.closest?.("input, textarea")) return;
+  const menu = document.querySelector("#beach-menu");
+  if (menu && !menu.hidden) return;
+  const toggle = els.forecastToggle;
+  if (!toggle || toggle.offsetParent === null) return;
+  event.preventDefault();
+  if (document.activeElement === toggle && (event.key === "ArrowUp" || event.key === "ArrowLeft")) {
+    els.placeName?.focus();
+    return;
+  }
+  toggle.focus();
 });
 
 document.querySelector(".wordmark").addEventListener("click", async () => {
@@ -263,7 +279,7 @@ loadStations()
 
 applyPlace();
 applyCaption();
-syncDayFlip();
+if (params.get("view") === "forecast") showForecast(true, { updateUrl: false });
 pulse(resolveNow());
 loadTide("init");
 

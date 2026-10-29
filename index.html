@@ -12,10 +12,14 @@
     <meta name="apple-mobile-web-app-title" content="LIVE TIDE" />
     <meta name="theme-color" content="#000000" />
     <meta http-equiv="Cache-Control" content="no-cache" />
-    <meta name="live-tide-build" content="moods-v58" />
+    <meta name="live-tide-build" content="moods-v71" />
     <script>
-      if (new URLSearchParams(location.search).has("kiosk")) {
+      const liveTideQuery = new URLSearchParams(location.search);
+      if (liveTideQuery.has("kiosk")) {
         document.documentElement.dataset.kiosk = "1";
+      }
+      if (liveTideQuery.get("shore") === "real") {
+        document.documentElement.dataset.shore = "real";
       }
     </script>
     <style>
@@ -26,7 +30,6 @@
       html[data-kiosk="1"] {
         overflow: hidden;
       }
-      html[data-kiosk="1"] .day-flip,
       html[data-kiosk="1"] .mood-caption,
       html[data-kiosk="1"] .credit,
       html[data-kiosk="1"] .beach-menu,
@@ -135,9 +138,10 @@
         <div id="extremum-labels" class="extremum-labels"></div>
         <p id="status-msg" class="status-msg" hidden></p>
         <div id="chart-hit" class="chart-hit"></div>
-        <button id="day-flip" class="day-flip" type="button" aria-pressed="false">
-          Tomorrow
+        <button id="forecast-toggle" class="forecast-toggle" type="button" aria-pressed="false">
+          Forecast
         </button>
+        <section id="forecast" class="forecast" hidden aria-label="Seven day tide forecast"></section>
       </section>
 
       <p id="credit" class="credit">
