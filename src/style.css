@@ -470,9 +470,10 @@ html[data-light="night"] .extremum {
 
 html[data-shore="real"]:not([data-light="night"]) .extremum {
   text-shadow:
+    0 0 3px rgba(255, 252, 246, 0.98),
     0 0 12px rgba(255, 250, 240, 0.92),
-    0 1px 2px rgba(255, 250, 240, 0.8),
-    0 1px 1px rgba(30, 24, 16, 0.4);
+    0 1px 2px rgba(10, 16, 14, 0.92),
+    0 0 8px rgba(8, 18, 20, 0.78);
 }
 
 html[data-shore="real"]:not([data-light="night"]) .forecast-toggle {

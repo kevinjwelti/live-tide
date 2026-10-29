@@ -7,8 +7,10 @@ import {
   shoreFoamCover,
   shoreFoamWidth,
   shoreLace,
+  shoreFoamShape,
   shoreNightFade,
   shorePalette,
+  shoreWetStep,
 } from "../src/shore.js";
 
 function assert(cond, message) {
@@ -50,5 +52,22 @@ assert(shoreNightFade(0.22) === 1, "the fade waits until the sky is actually dar
 assert(shoreNightFade(1) === 0, "a starry night drops the beach");
 assert(shoreNightFade(0.42) > 0.2 && shoreNightFade(0.42) < 0.8, "late dusk is a partial fade");
 assert(shoreNightFade(0.3) > shoreNightFade(0.5), "the beach thins as the night deepens");
+
+let holes = 0;
+let widths = new Set();
+for (let i = 0; i <= 40; i += 1) {
+  const shape = shoreFoamShape(lineY, i / 40, 2.2, 0.4);
+  if (shape.hole) holes += 1;
+  widths.add(Math.round(shape.body));
+  assert(shape.trail > shape.crest, "the foam has a trailing edge");
+  assert(lineY - shape.crest <= SHORE_ABOVE_LIMIT_PX + 0.01, "the crest stays near the tide line");
+}
+assert(holes > 2, "the foam has holes, not a solid stripe");
+assert(widths.size > 3, "the foam width changes along the shore");
+
+const soaked = shoreWetStep(0.2, 1);
+const drying = shoreWetStep(0.8, 0);
+assert(soaked > 0.2 && soaked < 1, "wet sand catches the rising foam");
+assert(drying < 0.8 && drying > 0.75, "the sheen dries slowly after the foam drains");
 
 console.log("shore tests passed");
