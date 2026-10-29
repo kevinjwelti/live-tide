@@ -1,0 +1,10 @@
+Aerial beach photographs used by the ?shore=real preview.
+
+Source page: https://unsplash.com/photos/aerial-view-of-waves-crashing-on-a-sandy-beach-zWFa7mlQAYk
+Photographer: Hameen Reynolds (https://unsplash.com/@hameen)
+Image: https://images.unsplash.com/photo-1744648617182-519c4bf39e30
+License: Unsplash License, https://unsplash.com/license
+
+The Unsplash License grants an irrevocable, nonexclusive, worldwide copyright license to download, copy, modify, distribute, perform, and use the photo for free, including commercial use, without permission. Attribution is not required. Live Tide records the source here anyway.
+
+beach.jpg is that photo rotated so the shoreline runs horizontally, sand toward the top and water toward the bottom, then cropped to the shore. sand.jpg is a ripple-only strip from the same frame, used where the tide curve leaves the photo's sand behind. Neither file is a procedural drawing.

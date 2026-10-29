@@ -12,7 +12,8 @@ import { canvasStyle } from "./moods.js";
 import { breathLight, breathPeriodMs, breathSwell, tideBreathLevel } from "./breath.js";
 import { washDropPx, washState } from "./wash.js";
 import { getSkyMode } from "./now.js";
-import { shoreFoamShape, shoreLace, shoreNightFade, shorePalette, shoreWetStep } from "./shore.js";
+import { shoreBreathReach, shoreNightFade, shoreWetStep } from "./shore.js";
+import { createShorePhoto } from "./shore-photo.js";
 
 function chartPad(w, h) {
   const phone = Math.min(w, h) < 640;
@@ -106,8 +107,6 @@ export function createChart(stage) {
   const ctx = canvas.getContext("2d");
   const shoreBuffer = document.createElement("canvas");
   const shoreCtx = shoreBuffer.getContext("2d");
-  const foamBuffer = document.createElement("canvas");
-  const foamCtx = foamBuffer.getContext("2d");
   const playhead = stage.querySelector("#playhead");
   const orb = playhead?.querySelector("#playhead-orb");
   const labelsEl = stage.querySelector("#extremum-labels");
@@ -267,43 +266,7 @@ export function createChart(stage) {
     return pts;
   };
 
-  const sandTiles = {};
-  const sandTile = (scene) => {
-    if (sandTiles[scene]) return sandTiles[scene];
-    const tile = document.createElement("canvas");
-    tile.width = 160;
-    tile.height = 160;
-    const s = tile.getContext("2d");
-    const base = scene === "dusk" ? [226, 170, 112] : [236, 214, 168];
-    const img = s.createImageData(160, 160);
-    for (let y = 0; y < 160; y += 1) {
-      for (let x = 0; x < 160; x += 1) {
-        const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
-        const grain = (n - Math.floor(n)) - 0.5;
-        const speck = Math.sin(x * 0.7 + y * 1.3) * Math.sin(y * 0.4) * 0.35;
-        const d = grain * 26 + speck * 10;
-        const i = (y * 160 + x) * 4;
-        img.data[i] = Math.max(0, Math.min(255, base[0] + d));
-        img.data[i + 1] = Math.max(0, Math.min(255, base[1] + d * 0.82));
-        img.data[i + 2] = Math.max(0, Math.min(255, base[2] + d * 0.5));
-        img.data[i + 3] = 255;
-      }
-    }
-    s.putImageData(img, 0, 0);
-    sandTiles[scene] = ctx.createPattern(tile, "repeat");
-    return sandTiles[scene];
-  };
-
-  const traceLine = (g, pts, up, wobble) => {
-    g.beginPath();
-    pts.forEach((p, i) => {
-      const y = p.y - up + (wobble ? wobble(p) : 0);
-      if (i === 0) g.moveTo(0, y);
-      g.lineTo(p.x, y);
-    });
-    const last = pts[pts.length - 1];
-    g.lineTo(stage.clientWidth, last.y - up + (wobble ? wobble(last) : 0));
-  };
+  const shorePhoto = createShorePhoto();
 
   const paintShore = (g, w, h, buffered) => {
     if (buffered) {
@@ -317,174 +280,27 @@ export function createChart(stage) {
     }
     const pts = shoreLine();
     if (pts.length < 2) return;
-    const pal = shorePalette(shoreScene());
     const reduced = motionReduced();
     const phase = reduced ? 0 : breathPhase;
-    const seconds = reduced ? 1.4 : washMs / 1000;
-    g.lineJoin = "round";
-    g.lineCap = "round";
-
-    const reach = reduced ? 0.35 : shoreFoamShape(0, 0.2, seconds, phase).reach;
+    const reach = shoreBreathReach(phase);
     if (!reduced) shoreWet = shoreWetStep(shoreWet, reach);
-    const scene = shoreScene();
-
+    const frame = shorePhoto.frame({
+      w,
+      h,
+      pts,
+      breath: reduced ? 0 : shorePhoto.breathPx(phase),
+      wet: reduced ? 0.45 : shoreWet,
+      dusk: shoreScene() === "dusk" ? 1 : 0,
+    });
+    if (!frame) return;
     g.save();
-    g.fillStyle = sandTile(scene);
-    g.fillRect(0, 0, w, h);
-    const tint = g.createLinearGradient(0, 0, 0, h);
-    tint.addColorStop(0, pal.sandFar);
-    tint.addColorStop(0.45, "rgba(255,255,255,0)");
-    tint.addColorStop(1, pal.sand);
-    g.globalAlpha = 0.45;
-    g.fillStyle = tint;
-    g.fillRect(0, 0, w, h);
-    g.globalAlpha = 1;
+    g.drawImage(frame, 0, 0, w, h);
     g.globalCompositeOperation = "destination-in";
     const veil = g.createLinearGradient(0, 0, 0, Math.max(72, h * 0.16));
     veil.addColorStop(0, "rgba(0,0,0,0)");
     veil.addColorStop(1, "rgba(0,0,0,1)");
     g.fillStyle = veil;
     g.fillRect(0, 0, w, h);
-    g.restore();
-
-    g.save();
-    g.shadowBlur = 22;
-    g.shadowColor = pal.wet;
-    [[34, 70, 0.16], [18, 36, 0.2], [8, 12, 0.12]].forEach(([up, width, alpha]) => {
-      g.globalAlpha = alpha + shoreWet * 0.18;
-      g.lineWidth = width;
-      g.strokeStyle = pal.wet;
-      traceLine(g, pts, up);
-      g.stroke();
-    });
-    g.shadowBlur = 0;
-    g.globalAlpha = 0.05 + shoreWet * 0.16;
-    g.strokeStyle = pal.gloss;
-    g.lineWidth = 5;
-    traceLine(g, pts, 6);
-    g.stroke();
-    g.restore();
-
-    g.save();
-    g.beginPath();
-    g.moveTo(0, pts[0].y);
-    pts.forEach((p) => g.lineTo(p.x, p.y));
-    g.lineTo(w, pts[pts.length - 1].y);
-    g.lineTo(w, h + 4);
-    g.lineTo(0, h + 4);
-    g.closePath();
-    g.clip();
-    g.fillStyle = pal.deep;
-    g.fillRect(0, 0, w, h);
-    g.globalCompositeOperation = "destination-out";
-    g.strokeStyle = "rgba(0,0,0,0.72)";
-    g.lineWidth = 78;
-    traceLine(g, pts, -8);
-    g.stroke();
-    g.globalCompositeOperation = "source-over";
-    g.strokeStyle = pal.shallow;
-    g.lineWidth = 70;
-    traceLine(g, pts, -6);
-    g.stroke();
-    g.strokeStyle = pal.mid;
-    g.lineWidth = 36;
-    traceLine(g, pts, -28);
-    g.stroke();
-    g.lineWidth = 2.2;
-    for (let band = 0; band < 5; band += 1) {
-      const y0 = h * (0.42 + band * 0.1);
-      g.beginPath();
-      for (let x = 0; x <= w; x += 8) {
-        const y = y0
-          + Math.sin(x * (0.02 + band * 0.004) + causticShift * (0.22 + band * 0.03) + band) * (3.2 + band)
-          + Math.sin(x * 0.008 + band * 1.7) * 5;
-        if (x === 0) g.moveTo(x, y);
-        else g.lineTo(x, y);
-      }
-      g.strokeStyle = pal.caustic;
-      g.stroke();
-    }
-    g.fillStyle = pal.spark;
-    for (let i = 0; i < 36; i += 1) {
-      const x = ((i * 97 + seconds * 18) % w);
-      const y = h * (0.5 + (i % 7) * 0.06) + Math.sin(seconds * 0.6 + i) * 8;
-      g.globalAlpha = 0.15 + (i % 4) * 0.1;
-      g.fillRect(x, y, i % 5 === 0 ? 2.2 : 1.2, 1.2);
-    }
-    g.strokeStyle = `rgba(${pal.foam}, 0.28)`;
-    g.lineWidth = 1.2;
-    for (let i = 0; i < 22; i += 1) {
-      const x = ((i * 131 + seconds * 12) % (w - 30));
-      const y = h * (0.58 + (i % 5) * 0.07);
-      g.globalAlpha = 0.12 + (i % 3) * 0.06;
-      g.beginPath();
-      g.moveTo(x, y);
-      g.lineTo(x + 10 + (i % 4) * 4, y + Math.sin(i + seconds) * 2);
-      g.stroke();
-    }
-    g.restore();
-
-    const foam = pts.map((p) => ({ x: p.x, ...shoreFoamShape(p.y, p.u, seconds, phase) }));
-    const dpr = Math.min(1.5, window.devicePixelRatio || 1);
-    if (foamBuffer.width !== canvas.width || foamBuffer.height !== canvas.height) {
-      foamBuffer.width = canvas.width;
-      foamBuffer.height = canvas.height;
-    }
-    foamCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    foamCtx.clearRect(0, 0, w, h);
-    foamCtx.lineJoin = "round";
-    foamCtx.lineCap = "round";
-    foamCtx.beginPath();
-    foamCtx.moveTo(0, foam[0].crest);
-    foam.forEach((spot) => foamCtx.lineTo(spot.x, spot.crest));
-    foamCtx.lineTo(w, foam[foam.length - 1].crest);
-    for (let i = foam.length - 1; i >= 0; i -= 1) foamCtx.lineTo(foam[i].x, foam[i].trail);
-    foamCtx.closePath();
-    foamCtx.fillStyle = `rgba(${pal.foam}, ${0.9 * pal.foamGain})`;
-    foamCtx.fill();
-    foamCtx.fillStyle = `rgba(${pal.foam}, ${0.95 * pal.foamGain})`;
-    foam.forEach((spot) => {
-      const n = shoreLace(spot.x * 0.003 + 2.2, seconds * 0.7);
-      if (n < 0.15) return;
-      const y = spot.crest + (spot.trail - spot.crest) * (0.22 + Math.max(0, n) * 0.4);
-      const rad = 10 + Math.max(0, n) * 16;
-      foamCtx.globalAlpha = 0.55 + Math.max(0, n) * 0.4;
-      foamCtx.beginPath();
-      foamCtx.ellipse(spot.x, y, rad * 1.6, rad * 0.85, n * 0.4, 0, Math.PI * 2);
-      foamCtx.fill();
-      if (spot.filament) {
-        foamCtx.globalAlpha = 0.7;
-        foamCtx.strokeStyle = `rgba(${pal.foam}, 0.9)`;
-        foamCtx.lineWidth = 1.15;
-        foamCtx.beginPath();
-        foamCtx.moveTo(spot.x - 8, spot.crest + 3);
-        foamCtx.quadraticCurveTo(spot.x, (spot.crest + spot.trail) / 2, spot.x + 10, spot.trail - 2);
-        foamCtx.stroke();
-      }
-    });
-    foamCtx.globalCompositeOperation = "destination-out";
-    foamCtx.fillStyle = "#000";
-    foam.forEach((spot) => {
-      const gate = shoreLace(spot.x * 0.006 + 9.1, seconds + 1.6);
-      if (gate < 0.5) return;
-      foamCtx.globalAlpha = 0.88;
-      foamCtx.beginPath();
-      foamCtx.ellipse(
-        spot.x + spot.n * 6,
-        spot.crest + (spot.trail - spot.crest) * (0.35 + Math.abs(spot.n) * 0.3),
-        9 + Math.abs(spot.n) * 14,
-        5 + Math.abs(spot.n) * 6,
-        spot.n * 0.8,
-        0,
-        Math.PI * 2
-      );
-      foamCtx.fill();
-    });
-    foamCtx.globalCompositeOperation = "source-over";
-    foamCtx.globalAlpha = 1;
-    g.save();
-    g.setTransform(1, 0, 0, 1, 0, 0);
-    g.drawImage(foamBuffer, 0, 0);
     g.restore();
   };
 
