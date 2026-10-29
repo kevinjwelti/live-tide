@@ -7,7 +7,7 @@
     "dev": "vite",
     "fetch-boom": "node scripts/fetch-boom-tides.mjs",
     "check-coverage": "node scripts/check-boom-coverage.mjs",
-    "test": "node scripts/test-tide-coverage.mjs && node scripts/test-moods.mjs && node scripts/test-kiosk.mjs && node scripts/test-harmonics.mjs && node scripts/test-beaches.mjs && node scripts/test-breath.mjs && node scripts/test-wash.mjs && node scripts/test-forecast.mjs",
+    "test": "node scripts/test-tide-coverage.mjs && node scripts/test-moods.mjs && node scripts/test-kiosk.mjs && node scripts/test-harmonics.mjs && node scripts/test-beaches.mjs && node scripts/test-breath.mjs && node scripts/test-wash.mjs && node scripts/test-forecast.mjs && node scripts/test-shore.mjs",
     "build": "vite build",
     "preview": "vite preview --host --port 4173"
   },

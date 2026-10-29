@@ -11,6 +11,8 @@ import { moonState, renderMoon, renderSun } from "./moon.js";
 import { canvasStyle } from "./moods.js";
 import { breathLight, breathPeriodMs, breathSwell, tideBreathLevel } from "./breath.js";
 import { washDropPx, washState } from "./wash.js";
+import { getSkyMode } from "./now.js";
+import { shoreEdge, shoreLace, shoreNightFade, shorePalette } from "./shore.js";
 
 function chartPad(w, h) {
   const phone = Math.min(w, h) < 640;
@@ -102,6 +104,8 @@ function closeWater(ctx, series, L, from, to, yShift) {
 export function createChart(stage) {
   const canvas = stage.querySelector("#chart");
   const ctx = canvas.getContext("2d");
+  const shoreBuffer = document.createElement("canvas");
+  const shoreCtx = shoreBuffer.getContext("2d");
   const playhead = stage.querySelector("#playhead");
   const orb = playhead?.querySelector("#playhead-orb");
   const labelsEl = stage.querySelector("#extremum-labels");
@@ -205,6 +209,24 @@ export function createChart(stage) {
       return;
     }
     L = layout(w, h, series, rangeStart, rangeEnd);
+    const cover = beachCover();
+    if (cover <= 0.004) {
+      paintLiving();
+    } else if (cover >= 0.996) {
+      paintShore(ctx, w, h);
+    } else {
+      paintLiving();
+      paintShore(shoreCtx, w, h, true);
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalAlpha = cover;
+      ctx.drawImage(shoreBuffer, 0, 0);
+      ctx.restore();
+    }
+    paintChips();
+  };
+
+  const paintLiving = () => {
     const style = canvasStyle();
     const night = document.documentElement.dataset.light === "night";
     const shift = swellPx;
@@ -214,7 +236,159 @@ export function createChart(stage) {
     paintWashes(shift, style, night);
     paintSoftEdge(shift, style, night);
     paintShimmer(shift);
-    paintChips();
+  };
+
+  const beachCover = () => {
+    if (document.documentElement.dataset.shore !== "real") return 0;
+    const mode = getSkyMode();
+    if (mode === "night") return 0;
+    if (mode === "noon" || mode === "dusk") return 1;
+    return shoreNightFade(skyPalette(new Date(clockMs)).night);
+  };
+
+  const shoreScene = () => {
+    if (getSkyMode() === "dusk" || document.documentElement.dataset.light === "gold") return "dusk";
+    return "day";
+  };
+
+  const shoreLine = () => {
+    const steps = 80;
+    const pts = [];
+    for (let i = 0; i <= steps; i += 1) {
+      const u = i / steps;
+      const t = rangeStart + (rangeEnd - rangeStart) * u;
+      const sample = sampleTide(series, t);
+      if (!sample) continue;
+      pts.push({ x: L.x(t), y: L.y(sample.height), u });
+    }
+    return pts;
+  };
+
+  const traceLine = (g, pts, up, wobble) => {
+    g.beginPath();
+    pts.forEach((p, i) => {
+      const y = p.y - up + (wobble ? wobble(p) : 0);
+      if (i === 0) g.moveTo(0, y);
+      g.lineTo(p.x, y);
+    });
+    const last = pts[pts.length - 1];
+    g.lineTo(stage.clientWidth, last.y - up + (wobble ? wobble(last) : 0));
+  };
+
+  const paintShore = (g, w, h, buffered) => {
+    if (buffered) {
+      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+      if (shoreBuffer.width !== canvas.width || shoreBuffer.height !== canvas.height) {
+        shoreBuffer.width = canvas.width;
+        shoreBuffer.height = canvas.height;
+      }
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.clearRect(0, 0, w, h);
+    }
+    const pts = shoreLine();
+    if (pts.length < 2) return;
+    const pal = shorePalette(shoreScene());
+    const reduced = motionReduced();
+    const phase = reduced ? 0 : breathPhase;
+    const seconds = reduced ? 1.4 : washMs / 1000;
+    g.lineJoin = "round";
+    g.lineCap = "round";
+
+    g.save();
+    const sand = g.createLinearGradient(0, 0, 0, h);
+    sand.addColorStop(0, pal.sandFar);
+    sand.addColorStop(1, pal.sand);
+    g.fillStyle = sand;
+    g.fillRect(0, 0, w, h);
+    g.globalCompositeOperation = "destination-in";
+    const veil = g.createLinearGradient(0, 0, 0, Math.max(72, h * 0.16));
+    veil.addColorStop(0, "rgba(0,0,0,0)");
+    veil.addColorStop(1, "rgba(0,0,0,1)");
+    g.fillStyle = veil;
+    g.fillRect(0, 0, w, h);
+    g.restore();
+
+    g.save();
+    g.beginPath();
+    g.moveTo(0, pts[0].y);
+    pts.forEach((p) => g.lineTo(p.x, p.y));
+    g.lineTo(w, pts[pts.length - 1].y);
+    g.lineTo(w, h + 4);
+    g.lineTo(0, h + 4);
+    g.closePath();
+    g.clip();
+    const sea = g.createLinearGradient(0, 0, 0, h);
+    sea.addColorStop(0, pal.water);
+    sea.addColorStop(1, pal.deep);
+    g.fillStyle = sea;
+    g.fillRect(0, 0, w, h);
+    g.strokeStyle = pal.lip;
+    g.lineWidth = 22;
+    traceLine(g, pts, 0);
+    g.stroke();
+    g.lineWidth = 1.15;
+    for (let band = 0; band < 4; band += 1) {
+      const y0 = h * (0.38 + band * 0.13);
+      g.beginPath();
+      for (let x = 0; x <= w; x += 10) {
+        const y = y0 + Math.sin(x * (0.011 + band * 0.003) + causticShift * (0.28 + band * 0.04) + band * 1.4) * (2.2 + band * 0.6);
+        if (x === 0) g.moveTo(x, y);
+        else g.lineTo(x, y);
+      }
+      g.strokeStyle = pal.caustic;
+      g.stroke();
+    }
+    g.restore();
+
+    g.strokeStyle = pal.wet;
+    g.lineWidth = 26;
+    traceLine(g, pts, 18);
+    g.stroke();
+
+    g.lineWidth = 1.15;
+    g.strokeStyle = pal.swash;
+    [70, 104].forEach((up, index) => {
+      g.globalAlpha = 0.7 - index * 0.25;
+      traceLine(g, pts, up, (p) => shoreLace(p.u + index * 0.2, index * 3) * 3.2);
+      g.stroke();
+    });
+    g.globalAlpha = 1;
+
+    const edges = pts.map((p) => ({ x: p.x, ...shoreEdge(p.y, p.u, seconds, phase) }));
+    let run = [];
+    const flush = () => {
+      if (run.length < 2) {
+        run = [];
+        return;
+      }
+      g.beginPath();
+      run.forEach((e, i) => (i === 0 ? g.moveTo(e.x, e.y) : g.lineTo(e.x, e.y)));
+      const cover = run.reduce((sum, e) => sum + e.cover, 0) / run.length;
+      const thin = 1 - run[0].reach * 0.45;
+      g.strokeStyle = `rgba(${pal.foam}, ${((0.72 + cover * 0.28) * pal.foamGain).toFixed(3)})`;
+      g.lineWidth = (5.5 + cover * 7) * thin;
+      g.stroke();
+      g.strokeStyle = `rgba(${pal.foam}, ${pal.foamGain.toFixed(3)})`;
+      g.lineWidth = (1.6 + cover * 2.4) * thin;
+      g.stroke();
+      run = [];
+    };
+    edges.forEach((edge) => {
+      if (edge.cover < 0.08) flush();
+      else run.push(edge);
+    });
+    flush();
+
+    edges.forEach((edge, index) => {
+      if (edge.lace < 0.55 || index % 2 !== 0) return;
+      const up = 5 + edge.lace * 6;
+      g.strokeStyle = `rgba(${pal.foam}, ${(0.8 * edge.cover * pal.foamGain).toFixed(3)})`;
+      g.lineWidth = 1.4;
+      g.beginPath();
+      g.moveTo(edge.x - 5, edge.y - up);
+      g.lineTo(edge.x + 6, edge.y - up - 1.4);
+      g.stroke();
+    });
   };
 
   const paintHaze = (shift, night) => {
