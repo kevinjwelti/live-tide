@@ -11,16 +11,15 @@ void main() {
 `;
 
 const FRAG = `
-precision mediump float;
+precision highp float;
 varying vec2 vUv;
 uniform sampler2D uPhoto;
-uniform sampler2D uFoam;
 uniform sampler2D uCurve;
 uniform vec2 uView;
 uniform vec2 uPhotoSize;
 uniform float uScale;
+uniform float uFoamRow;
 uniform float uBreath;
-uniform float uWet;
 uniform float uDusk;
 
 float curveAt(float x) {
@@ -30,29 +29,19 @@ float curveAt(float x) {
 
 void main() {
   vec2 screen = vec2(vUv.x, vUv.y) * uView;
-  vec2 photoPx = (screen - uView * 0.5) / uScale + uPhotoSize * 0.5;
-  vec2 uv = clamp(photoPx / uPhotoSize, vec2(0.001), vec2(0.999));
-  vec3 color = texture2D(uPhoto, vec2(uv.x, 1.0 - uv.y)).rgb;
+  float shore = curveAt(vUv.x) * uView.y + uBreath;
+  // One vertical shift per column. The foam row lands on the tide curve.
+  // Water is toward the top of the photo, sand toward the bottom, so the
+  // same shift puts water above the curve and sand below it.
+  float photoX = (screen.x - uView.x * 0.5) / uScale + uPhotoSize.x * 0.5;
+  float photoY = uFoamRow - (screen.y - shore) / uScale;
+  vec2 uv = clamp(vec2(photoX, photoY) / uPhotoSize, vec2(0.001), vec2(0.999));
+  vec3 color = texture2D(uPhoto, uv).rgb;
 
   float waterish = smoothstep(0.0, 0.1, color.g - color.r);
   vec3 turq = vec3(color.r * 0.74, min(1.0, color.g * 1.04), min(1.0, color.b * 1.16));
   turq = mix(turq, vec3(0.05, 0.64, 0.66), 0.16);
   color = mix(color, turq, waterish);
-
-  float curve = curveAt(vUv.x);
-  float dy = (vUv.y - curve) * uView.y;
-  float across = (dy + uBreath) / 72.0 + 0.5;
-  if (across > 0.0 && across < 1.0) {
-    vec3 foam = texture2D(uFoam, vec2(uv.x, 1.0 - across)).rgb;
-    float hi = max(foam.r, max(foam.g, foam.b));
-    float lo = min(foam.r, min(foam.g, foam.b));
-    float lace = smoothstep(0.46, 0.8, hi) * (1.0 - smoothstep(0.04, 0.28, hi - lo));
-    float fade = smoothstep(0.0, 0.08, across) * (1.0 - smoothstep(0.9, 1.0, across));
-    color = mix(color, vec3(1.0), lace * fade);
-  }
-
-  float wetBand = smoothstep(2.0, -4.0, dy) * (1.0 - smoothstep(-6.0, -26.0, dy));
-  color *= mix(1.0, 0.84, wetBand * uWet);
 
   float warm = uDusk * mix(0.55, 0.16, waterish);
   color *= mix(vec3(1.0), vec3(1.14, 0.88, 0.7), warm);
@@ -93,11 +82,11 @@ export function createShorePhoto() {
     preserveDrawingBuffer: true,
   });
   let photoTex = null;
-  let foamTex = null;
   let photoW = 4032;
-  let photoH = 1280;
+  let photoH = 1594;
+  const foamRow = 514;
   let curveTex = null;
-  const curveW = 256;
+  const curveW = 2048;
   const curveBytes = new Uint8Array(curveW * 4);
   let program = null;
   const loc = {};
@@ -138,11 +127,10 @@ export function createShorePhoto() {
       gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, stride, 0);
       gl.enableVertexAttribArray(aUv);
       gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, stride, 8);
-      for (const name of ["uView", "uPhotoSize", "uScale", "uBreath", "uWet", "uDusk"]) {
+      for (const name of ["uView", "uPhotoSize", "uScale", "uFoamRow", "uBreath", "uDusk"]) {
         loc[name] = gl.getUniformLocation(program, name);
       }
       loc.photo = gl.getUniformLocation(program, "uPhoto");
-      loc.foam = gl.getUniformLocation(program, "uFoam");
       loc.curve = gl.getUniformLocation(program, "uCurve");
       curveTex = gl.createTexture();
       gl.activeTexture(gl.TEXTURE2);
@@ -151,16 +139,11 @@ export function createShorePhoto() {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      Promise.all([
-        loadImage(`${base}shore/beach.jpg`),
-        loadImage(`${base}shore/foam.jpg`),
-      ]).then(([photoImg, foamImg]) => {
+      loadImage(`${base}shore/beach.jpg`).then((photoImg) => {
         photoW = photoImg.width;
         photoH = photoImg.height;
         gl.activeTexture(gl.TEXTURE0);
         photoTex = makeTexture(gl, photoImg);
-        gl.activeTexture(gl.TEXTURE1);
-        foamTex = makeTexture(gl, foamImg);
       }).catch((error) => {
         console.warn(error);
       });
@@ -189,7 +172,7 @@ export function createShorePhoto() {
 
   return {
     ready() {
-      return Boolean(gl && photoTex && foamTex && program);
+      return Boolean(gl && photoTex && program);
     },
     frame({ w, h, pts, breath, wet, dusk }) {
       if (!this.ready() || w < 2 || h < 2) return null;
@@ -200,7 +183,8 @@ export function createShorePhoto() {
         canvas.width = bw;
         canvas.height = bh;
       }
-      const cover = Math.min(1, Math.max(w / photoW, h / photoH));
+      // 1 screen pixel = 1 photo pixel. Never enlarge; a wider view crops instead.
+      const cover = Math.min(1, photoW / w);
       gl.viewport(0, 0, bw, bh);
       gl.useProgram(program);
       for (let i = 0; i < curveW; i += 1) {
@@ -219,16 +203,13 @@ export function createShorePhoto() {
       gl.uniform2f(loc.uView, w, h);
       gl.uniform2f(loc.uPhotoSize, photoW, photoH);
       gl.uniform1f(loc.uScale, cover);
+      gl.uniform1f(loc.uFoamRow, foamRow);
       gl.uniform1f(loc.uBreath, breath);
-      gl.uniform1f(loc.uWet, wet);
       gl.uniform1f(loc.uDusk, dusk);
       gl.uniform1i(loc.photo, 0);
-      gl.uniform1i(loc.foam, 1);
       gl.uniform1i(loc.curve, 2);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, photoTex);
-      gl.activeTexture(gl.TEXTURE1);
-      gl.bindTexture(gl.TEXTURE_2D, foamTex);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       return canvas;
     },
