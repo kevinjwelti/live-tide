@@ -1,11 +1,11 @@
-Aerial beach photographs used by the ?shore=real preview.
+Aerial beach photograph used by the ?shore=real preview.
 
 Source page: https://unsplash.com/photos/aerial-view-of-waves-crashing-on-a-sandy-beach-zWFa7mlQAYk
 Photographer: Hameen Reynolds (https://unsplash.com/@hameen)
 Image: https://images.unsplash.com/photo-1744648617182-519c4bf39e30
+Native file used here: 4032 × 1280 pixels, from the photographer's 3024 × 4032 frame.
 License: Unsplash License, https://unsplash.com/license
 
 The Unsplash License grants an irrevocable, nonexclusive, worldwide copyright license to download, copy, modify, distribute, perform, and use the photo for free, including commercial use, without permission. Attribution is not required. Live Tide records the source here anyway.
 
-beach.jpg is that photo rotated so the shoreline runs horizontally, then cropped.
-sand.jpg, water.jpg, and foam.jpg are undistorted crops of the same frame: ripple sand, open water, and the real foam edge. The preview tiles those crops and masks them with the tide curve. It does not stretch the photograph along the curve.
+beach.jpg is that photo rotated so the shoreline runs horizontally, sand toward the top, then cropped above the mid-frame sandbar. It is shown once, cover-scaled, and never enlarged past these pixels. foam.jpg is the real foam band from the same frame, laid along the tide curve. The preview does not tile the photograph.
