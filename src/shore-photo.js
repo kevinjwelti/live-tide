@@ -83,8 +83,8 @@ export function createShorePhoto() {
   });
   let photoTex = null;
   let photoW = 4032;
-  let photoH = 1594;
-  const foamRow = 514;
+  let photoH = 1686;
+  const foamRow = 606;
   let curveTex = null;
   const curveW = 2048;
   const curveBytes = new Uint8Array(curveW * 4);
