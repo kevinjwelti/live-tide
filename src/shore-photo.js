@@ -13,12 +13,14 @@ void main() {
 const FRAG = `
 precision highp float;
 varying vec2 vUv;
-uniform sampler2D uPhoto;
+uniform sampler2D uWater;
+uniform sampler2D uSand;
+uniform sampler2D uFoam;
 uniform sampler2D uCurve;
 uniform vec2 uView;
-uniform vec2 uPhotoSize;
-uniform float uScale;
-uniform float uFoamRow;
+uniform vec2 uWaterSize;
+uniform vec2 uSandSize;
+uniform vec2 uFoamSize;
 uniform float uBreath;
 uniform float uDusk;
 
@@ -27,23 +29,54 @@ float curveAt(float x) {
   return (e.r * 255.0 * 256.0 + e.g * 255.0) / 65535.0;
 }
 
+vec3 samplePlate(sampler2D tex, vec2 size, vec2 screen, float top) {
+  vec2 px = vec2(screen.x - uView.x * 0.5 + size.x * 0.5, screen.y - top);
+  vec2 uv = clamp(px / size, vec2(0.001), vec2(0.999));
+  return texture2D(tex, uv).rgb;
+}
+
 void main() {
   vec2 screen = vec2(vUv.x, vUv.y) * uView;
   float shore = curveAt(vUv.x) * uView.y + uBreath;
-  // One vertical shift per column. The foam row lands on the tide curve.
-  // Water is toward the top of the photo, sand toward the bottom, so the
-  // same shift puts water above the curve and sand below it.
-  float photoX = (screen.x - uView.x * 0.5) / uScale + uPhotoSize.x * 0.5;
-  float photoY = uFoamRow - (screen.y - shore) / uScale;
-  vec2 uv = clamp(vec2(photoX, photoY) / uPhotoSize, vec2(0.001), vec2(0.999));
-  vec3 color = texture2D(uPhoto, uv).rgb;
+  float dy = screen.y - shore;
 
-  float waterish = smoothstep(0.0, 0.1, color.g - color.r);
-  vec3 turq = vec3(color.r * 0.74, min(1.0, color.g * 1.04), min(1.0, color.b * 1.16));
-  turq = mix(turq, vec3(0.05, 0.64, 0.66), 0.16);
-  color = mix(color, turq, waterish);
+  float waterTop = max(0.0, (uView.y - uWaterSize.y) * 0.5);
+  float sandTop = max(0.0, uView.y - uSandSize.y);
+  vec3 water = samplePlate(uWater, uWaterSize, screen, waterTop);
+  vec3 sand = samplePlate(uSand, uSandSize, screen, sandTop);
+  water = vec3(water.r * 0.82, min(1.0, water.g * 1.06), min(1.0, water.b * 1.16));
+  float sandL = dot(sand, vec3(0.299, 0.587, 0.114));
+  sandL = mix(sandL, 0.48, smoothstep(0.52, 0.78, sandL));
+  vec3 warmSand = vec3(min(1.0, sandL * 1.36 + 0.05), sandL * 1.02, sandL * 0.7);
+  sand = mix(sand, warmSand, 0.7);
 
-  float warm = uDusk * mix(0.55, 0.16, waterish);
+  float waterSide = smoothstep(8.0, -8.0, dy);
+  vec3 color = mix(sand, water, waterSide);
+
+  if (abs(dy) < 26.0) {
+    float xpx = screen.x - uView.x * 0.5 + uFoamSize.x * 0.5;
+    float lace = 0.0;
+    float weight = 0.0;
+    for (int k = -4; k <= 4; k++) {
+      float col = 0.0;
+      for (int i = 0; i < 4; i++) {
+        float fy = (float(i) + 0.5) / 4.0 * uFoamSize.y;
+        vec3 foam = texture2D(uFoam, clamp(vec2(xpx + float(k) * 8.0, fy) / uFoamSize, vec2(0.001), vec2(0.999))).rgb;
+        float hi = max(foam.r, max(foam.g, foam.b));
+        float lo = min(foam.r, min(foam.g, foam.b));
+        col = max(col, smoothstep(0.5, 0.84, hi) * (1.0 - smoothstep(0.02, 0.28, hi - lo)));
+      }
+      float wk = 1.0 - abs(float(k)) / 5.0;
+      lace += col * wk;
+      weight += wk;
+    }
+    lace /= weight;
+    float sigma = mix(10.0, 13.0, lace);
+    float band = exp(-dy * dy / (2.0 * sigma * sigma));
+    color = mix(color, vec3(0.96, 0.97, 0.95), clamp(band * mix(0.45, 1.0, lace), 0.0, 0.9));
+  }
+
+  float warm = uDusk * mix(0.55, 0.14, waterSide);
   color *= mix(vec3(1.0), vec3(1.14, 0.88, 0.7), warm);
   gl_FragColor = vec4(color, 1.0);
 }
@@ -81,10 +114,15 @@ export function createShorePhoto() {
     premultipliedAlpha: false,
     preserveDrawingBuffer: true,
   });
-  let photoTex = null;
-  let photoW = 4032;
-  let photoH = 1686;
-  const foamRow = 606;
+  let waterTex = null;
+  let sandTex = null;
+  let foamTex = null;
+  let waterW = 4032;
+  let waterH = 604;
+  let sandW = 4032;
+  let sandH = 660;
+  let foamW = 2200;
+  let foamH = 36;
   let curveTex = null;
   const curveW = 2048;
   const curveBytes = new Uint8Array(curveW * 4);
@@ -127,23 +165,37 @@ export function createShorePhoto() {
       gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, stride, 0);
       gl.enableVertexAttribArray(aUv);
       gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, stride, 8);
-      for (const name of ["uView", "uPhotoSize", "uScale", "uFoamRow", "uBreath", "uDusk"]) {
+      for (const name of ["uView", "uWaterSize", "uSandSize", "uFoamSize", "uBreath", "uDusk"]) {
         loc[name] = gl.getUniformLocation(program, name);
       }
-      loc.photo = gl.getUniformLocation(program, "uPhoto");
+      loc.water = gl.getUniformLocation(program, "uWater");
+      loc.sand = gl.getUniformLocation(program, "uSand");
+      loc.foam = gl.getUniformLocation(program, "uFoam");
       loc.curve = gl.getUniformLocation(program, "uCurve");
       curveTex = gl.createTexture();
-      gl.activeTexture(gl.TEXTURE2);
+      gl.activeTexture(gl.TEXTURE3);
       gl.bindTexture(gl.TEXTURE_2D, curveTex);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      loadImage(`${base}shore/beach.jpg`).then((photoImg) => {
-        photoW = photoImg.width;
-        photoH = photoImg.height;
+      Promise.all([
+        loadImage(`${base}shore/water.jpg`),
+        loadImage(`${base}shore/sand.jpg`),
+        loadImage(`${base}shore/foam.jpg`),
+      ]).then(([waterImg, sandImg, foamImg]) => {
+        waterW = waterImg.width;
+        waterH = waterImg.height;
+        sandW = sandImg.width;
+        sandH = sandImg.height;
+        foamW = foamImg.width;
+        foamH = foamImg.height;
         gl.activeTexture(gl.TEXTURE0);
-        photoTex = makeTexture(gl, photoImg);
+        waterTex = makeTexture(gl, waterImg);
+        gl.activeTexture(gl.TEXTURE1);
+        sandTex = makeTexture(gl, sandImg);
+        gl.activeTexture(gl.TEXTURE2);
+        foamTex = makeTexture(gl, foamImg);
       }).catch((error) => {
         console.warn(error);
       });
@@ -172,9 +224,9 @@ export function createShorePhoto() {
 
   return {
     ready() {
-      return Boolean(gl && photoTex && program);
+      return Boolean(gl && waterTex && sandTex && foamTex && program);
     },
-    frame({ w, h, pts, breath, wet, dusk }) {
+    frame({ w, h, pts, breath, dusk }) {
       if (!this.ready() || w < 2 || h < 2) return null;
       const dpr = Math.min(1.5, window.devicePixelRatio || 1);
       const bw = Math.max(2, Math.round(w * dpr));
@@ -183,8 +235,6 @@ export function createShorePhoto() {
         canvas.width = bw;
         canvas.height = bh;
       }
-      // 1 screen pixel = 1 photo pixel. Never enlarge; a wider view crops instead.
-      const cover = Math.min(1, photoW / w);
       gl.viewport(0, 0, bw, bh);
       gl.useProgram(program);
       for (let i = 0; i < curveW; i += 1) {
@@ -197,19 +247,25 @@ export function createShorePhoto() {
         curveBytes[o + 2] = 0;
         curveBytes[o + 3] = 255;
       }
-      gl.activeTexture(gl.TEXTURE2);
+      gl.activeTexture(gl.TEXTURE3);
       gl.bindTexture(gl.TEXTURE_2D, curveTex);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, curveW, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, curveBytes);
       gl.uniform2f(loc.uView, w, h);
-      gl.uniform2f(loc.uPhotoSize, photoW, photoH);
-      gl.uniform1f(loc.uScale, cover);
-      gl.uniform1f(loc.uFoamRow, foamRow);
+      gl.uniform2f(loc.uWaterSize, waterW, waterH);
+      gl.uniform2f(loc.uSandSize, sandW, sandH);
+      gl.uniform2f(loc.uFoamSize, foamW, foamH);
       gl.uniform1f(loc.uBreath, breath);
       gl.uniform1f(loc.uDusk, dusk);
-      gl.uniform1i(loc.photo, 0);
-      gl.uniform1i(loc.curve, 2);
+      gl.uniform1i(loc.water, 0);
+      gl.uniform1i(loc.sand, 1);
+      gl.uniform1i(loc.foam, 2);
+      gl.uniform1i(loc.curve, 3);
       gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, photoTex);
+      gl.bindTexture(gl.TEXTURE_2D, waterTex);
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, sandTex);
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, foamTex);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       return canvas;
     },

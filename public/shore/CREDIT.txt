@@ -3,9 +3,8 @@ Aerial beach photograph used by the ?shore=real preview.
 Source page: https://unsplash.com/photos/aerial-view-of-waves-crashing-on-a-sandy-beach-zWFa7mlQAYk
 Photographer: Hameen Reynolds (https://unsplash.com/@hameen)
 Image: https://images.unsplash.com/photo-1744648617182-519c4bf39e30
-Native file used here: 4032 × 1686 pixels, from the photographer's 3024 × 4032 frame.
 License: Unsplash License, https://unsplash.com/license
 
 The Unsplash License grants an irrevocable, nonexclusive, worldwide copyright license to download, copy, modify, distribute, perform, and use the photo for free, including commercial use, without permission. Attribution is not required. Live Tide records the source here anyway.
 
-beach.jpg is that photo rotated so the shoreline runs horizontally, then cropped from the dry sand through the shallow water, stopping before the offshore sandbar. A short continuation of the dry sand is folded onto the sand side so the high-tide peak still has beach under it. The preview shifts each column vertically, at 1:1, so the photo's own foam sits on the tide curve: water above, sand below. It is never enlarged and it does not tile.
+The preview does not warp or tile the photograph. water.jpg is one undistorted turquoise crop (4032 × 604) filling above the tide curve. sand.jpg is one undistorted rippled-sand crop (4032 × 660) filling below it. foam.jpg is a single lace band (2200 × 36); its brightness draws one soft shoreline on the curve. None of the crops is enlarged past its own pixels.
