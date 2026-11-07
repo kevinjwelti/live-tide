@@ -288,7 +288,7 @@ export function createChart(stage) {
       w,
       h,
       pts,
-      breath: reduced ? 0 : shorePhoto.breathPx(phase),
+      reach: reduced ? 0.5 : shoreBreathReach(phase),
       wet: reduced ? 0.45 : shoreWet,
       dusk: shoreScene() === "dusk" ? 1 : 0,
     });
