@@ -1,0 +1,10 @@
+Aerial beach photograph used by the ?shore=real preview.
+
+Source page: https://unsplash.com/photos/aerial-view-of-waves-crashing-on-a-sandy-beach-zWFa7mlQAYk
+Photographer: Hameen Reynolds (https://unsplash.com/@hameen)
+Image: https://images.unsplash.com/photo-1744648617182-519c4bf39e30
+License: Unsplash License, https://unsplash.com/license
+
+The Unsplash License grants an irrevocable, nonexclusive, worldwide copyright license to download, copy, modify, distribute, perform, and use the photo for free, including commercial use, without permission. Attribution is not required. Live Tide records the source here anyway.
+
+The preview does not warp or tile the photograph. water.jpg is one undistorted turquoise crop (2700 × 764) filling the chart. sand.jpg is one undistorted rippled-sand crop (4032 × 660), shown only as a thin lip on the tide curve. foam.jpg is a single lace band (2200 × 36) that washes up from the bottom of the chart to that curve. None of the crops is enlarged past its own pixels.

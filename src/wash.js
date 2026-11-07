@@ -1,36 +1,40 @@
-/** One breath is one set: three washes that fall short, then one that meets the shore. */
-export const WASH_SLOTS = [
-  { start: 0, end: 0.28, reach: 0.46 },
-  { start: 0.22, end: 0.5, reach: 0.62 },
-  { start: 0.44, end: 0.72, reach: 0.78 },
-  { start: 0.62, end: 1, reach: 1 },
-];
-
-const RISE = 0.55;
-
-export function washUnit(phase) {
-  const tau = Math.PI * 2;
-  return (((phase % tau) + tau) % tau) / tau;
-}
+/** One slow sheet. Run up, rest on the shore, then drain. */
+export const WASH_RUN_MS = 7000;
+export const WASH_PAUSE_MS = 1600;
+export const WASH_DRAIN_MS = 9000;
+export const WASH_REST_MS = 2400;
+export const WASH_CYCLE_MS = WASH_RUN_MS + WASH_PAUSE_MS + WASH_DRAIN_MS + WASH_REST_MS;
 
 function smoothstep(t) {
   const x = Math.max(0, Math.min(1, t));
   return x * x * (3 - 2 * x);
 }
 
-/** 0 outside the window. Rises through the first 55% of the window, then recedes. */
-export function washProgress(unit, slot) {
-  if (unit < slot.start || unit > slot.end) return 0;
-  const span = slot.end - slot.start;
-  if (span <= 0) return 0;
-  const u = (unit - slot.start) / span;
-  if (u <= RISE) return smoothstep(u / RISE);
-  return smoothstep(1 - (u - RISE) / (1 - RISE));
-}
-
-/** How far this wash has climbed, as a fraction of the water column. Never past the slot. */
-export function washReach(unit, slot) {
-  return washProgress(unit, slot) * slot.reach;
+/**
+ * Where the single wash is in its cycle.
+ * Reach 1 meets the shoreline. Foam is only near that edge. Reach never leaves 0..1.
+ */
+export function washState(elapsedMs) {
+  const cycle = WASH_CYCLE_MS;
+  const t = ((elapsedMs % cycle) + cycle) % cycle;
+  const pauseAt = WASH_RUN_MS;
+  const drainAt = pauseAt + WASH_PAUSE_MS;
+  const restAt = drainAt + WASH_DRAIN_MS;
+  if (t < pauseAt) {
+    const reach = smoothstep(t / WASH_RUN_MS);
+    const foam = reach > 0.78 ? smoothstep((reach - 0.78) / 0.22) : 0;
+    return { reach, foam, wet: 0.35 + reach * 0.4, phase: "run" };
+  }
+  if (t < drainAt) {
+    return { reach: 1, foam: 1, wet: 0.85, phase: "pause" };
+  }
+  if (t < restAt) {
+    const u = (t - drainAt) / WASH_DRAIN_MS;
+    const reach = 1 - smoothstep(u);
+    const foam = reach > 0.88 ? (reach - 0.88) / 0.12 : 0;
+    return { reach, foam, wet: 1, phase: "drain" };
+  }
+  return { reach: 0, foam: 0, wet: 0.7, phase: "rest" };
 }
 
 /**
