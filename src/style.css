@@ -102,14 +102,18 @@ body {
   pointer-events: none;
 }
 
-.stars {
+.stars,
+.shore-bleed {
   position: absolute;
   inset: 0;
   display: block;
   width: 100%;
   height: 100%;
-  opacity: var(--star-opacity, 0);
   pointer-events: none;
+}
+
+.stars {
+  opacity: var(--star-opacity, 0);
 }
 
 .scene::after {
@@ -438,6 +442,13 @@ html[data-light="night"] .playhead-line {
   pointer-events: none;
 }
 
+.day-tides {
+  display: none;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 .extremum {
   --whisper-gap: 28px;
   --whisper-x: 0px;
@@ -468,11 +479,13 @@ html[data-light="night"] .extremum {
     0 0 18px rgba(255, 214, 170, 0.32);
 }
 
-html[data-shore="real"] .extremum-labels {
+html[data-shore="real"] .extremum-labels,
+html[data-shore="tropic"] .extremum-labels {
   z-index: 8;
 }
 
-html[data-shore="real"]:not([data-light="night"]) .extremum {
+html[data-shore="real"]:not([data-light="night"]) .extremum,
+html[data-shore="tropic"]:not([data-light="night"]) .extremum {
   z-index: 8;
   opacity: 1;
   color: #fff;
@@ -487,14 +500,25 @@ html[data-shore="real"]:not([data-light="night"]) .extremum {
 html[data-shore="real"]:not([data-light="night"]) .extremum .t-time,
 html[data-shore="real"]:not([data-light="night"]) .extremum .t-ht,
 html[data-shore="real"]:not([data-light="night"]) .extremum .t-kind,
-html[data-shore="real"]:not([data-light="night"]) .extremum .t-unit {
+html[data-shore="real"]:not([data-light="night"]) .extremum .t-unit,
+html[data-shore="tropic"]:not([data-light="night"]) .extremum .t-time,
+html[data-shore="tropic"]:not([data-light="night"]) .extremum .t-ht,
+html[data-shore="tropic"]:not([data-light="night"]) .extremum .t-kind,
+html[data-shore="tropic"]:not([data-light="night"]) .extremum .t-unit {
   color: #fff;
   text-shadow: none;
   opacity: 1;
 }
 
-html[data-shore="real"]:not([data-light="night"]) .forecast-toggle {
+html[data-shore="real"]:not([data-light="night"]) .forecast-toggle,
+html[data-shore="tropic"]:not([data-light="night"]) .forecast-toggle {
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32);
+}
+
+html[data-shore="tropic"]:not([data-light="night"]) .playhead.is-sun .orb {
+  filter:
+    drop-shadow(0 0 1.5px rgba(8, 16, 22, 0.9))
+    drop-shadow(0 0 10px rgba(255, 210, 80, 0.95));
 }
 
 .extremum.is-low {
@@ -838,6 +862,232 @@ html[data-shore="real"]:not([data-light="night"]) .forecast-toggle {
     font-size: 0.55rem;
     letter-spacing: 0.08em;
     padding: 0.22rem 0.5rem;
+  }
+}
+
+/* Phone portrait: compact header, curve gets the screen, tides listed under it. */
+@media (max-width: 700px) and (orientation: portrait) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  html:not([data-kiosk="1"]) .frame {
+    gap: 0.2rem;
+    padding:
+      max(0.55rem, env(safe-area-inset-top))
+      max(0.75rem, env(safe-area-inset-right))
+      max(0.45rem, env(safe-area-inset-bottom))
+      max(0.75rem, env(safe-area-inset-left));
+  }
+
+  html:not([data-kiosk="1"]) .tagline,
+  html:not([data-kiosk="1"]) .moon,
+  html:not([data-kiosk="1"]) .mood-caption,
+  html:not([data-kiosk="1"]) .extremum {
+    display: none !important;
+  }
+
+  html:not([data-kiosk="1"]) .mast {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "mark clock"
+      "place date"
+      "now now";
+    align-items: end;
+    gap: 0.12rem 0.6rem;
+  }
+
+  html:not([data-kiosk="1"]) .mast-left,
+  html:not([data-kiosk="1"]) .mast-right {
+    display: contents;
+  }
+
+  html:not([data-kiosk="1"]) .wordmark {
+    grid-area: mark;
+    font-size: 1.35rem;
+    letter-spacing: 0.08em;
+  }
+
+  html:not([data-kiosk="1"]) .clock-line {
+    grid-area: clock;
+    margin: 0;
+    font-size: 1.28rem;
+    line-height: 1;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  html:not([data-kiosk="1"]) .place {
+    grid-area: place;
+    width: auto;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    text-align: left;
+  }
+
+  html:not([data-kiosk="1"]) .place-name {
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    line-height: 1.25;
+  }
+
+  html:not([data-kiosk="1"]) .date-line {
+    grid-area: date;
+    margin: 0;
+    font-size: 0.78rem;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  html:not([data-kiosk="1"]) .current {
+    grid-area: now;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "eye height"
+      "status height";
+    align-items: center;
+    column-gap: 0.65rem;
+    margin: 0.05rem 0 0;
+  }
+
+  html:not([data-kiosk="1"]) .current .eyebrow {
+    grid-area: eye;
+    font-size: 0.62rem;
+    letter-spacing: 0.16em;
+  }
+
+  html:not([data-kiosk="1"]) .status-row {
+    grid-area: status;
+    margin: 0;
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+  }
+
+  html:not([data-kiosk="1"]) .height-row {
+    grid-area: height;
+    margin: 0;
+    justify-self: end;
+  }
+
+  html:not([data-kiosk="1"]) .height {
+    font-size: 3.15rem;
+  }
+
+  html:not([data-kiosk="1"]) .day-tides {
+    display: grid;
+    position: absolute;
+    z-index: 8;
+    left: 0.2rem;
+    right: 0.2rem;
+    bottom: 3.45rem;
+    grid-template-columns: repeat(auto-fit, minmax(4.3rem, 1fr));
+    gap: 0.28rem;
+    pointer-events: none;
+  }
+
+  html:not([data-kiosk="1"]) .day-tides li {
+    min-width: 0;
+    padding: 0.28rem 0.15rem 0.32rem;
+    border-radius: 0.55rem;
+    background: rgba(8, 14, 16, 0.78);
+    color: #fff;
+    text-align: center;
+    line-height: 1.15;
+    font-family: "Playfair Display", Palatino, Georgia, serif;
+  }
+
+  html:not([data-kiosk="1"]) .day-tides .d-time,
+  html:not([data-kiosk="1"]) .day-tides .d-kind {
+    display: block;
+    font-size: 0.58rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  html:not([data-kiosk="1"]) .day-tides .d-ht {
+    display: block;
+    margin-top: 0.08rem;
+    font-size: 0.82rem;
+  }
+
+  html:not([data-kiosk="1"]) .forecast-toggle {
+    top: auto;
+    left: 0.15rem;
+    right: 0.15rem;
+    bottom: 0.1rem;
+    width: auto;
+    min-height: 48px;
+    padding: 0.45rem 1rem;
+    font-size: 0.95rem;
+  }
+
+  html:not([data-kiosk="1"]) .credit {
+    font-size: 0.56rem;
+    letter-spacing: 0.06em;
+    max-width: calc(100% - 0.4rem);
+  }
+}
+
+/* Landscape phone: one tide strip and a thumb-side forecast control. */
+@media (max-height: 500px) and (orientation: landscape) {
+  html:not([data-kiosk="1"]) .frame {
+    gap: 0.35rem;
+  }
+
+  html:not([data-kiosk="1"]) .tagline,
+  html:not([data-kiosk="1"]) .moon,
+  html:not([data-kiosk="1"]) .mood-caption,
+  html:not([data-kiosk="1"]) .extremum {
+    display: none !important;
+  }
+
+  html:not([data-kiosk="1"]) .day-tides {
+    display: flex;
+    position: absolute;
+    z-index: 8;
+    left: 0.15rem;
+    right: 7.2rem;
+    bottom: 1.65rem;
+    gap: 0.28rem;
+    pointer-events: none;
+  }
+
+  html:not([data-kiosk="1"]) .day-tides li {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.18rem 0.2rem 0.2rem;
+    border-radius: 0.45rem;
+    background: rgba(8, 14, 16, 0.78);
+    color: #fff;
+    text-align: center;
+    line-height: 1.1;
+    font-family: "Playfair Display", Palatino, Georgia, serif;
+  }
+
+  html:not([data-kiosk="1"]) .day-tides .d-time,
+  html:not([data-kiosk="1"]) .day-tides .d-kind {
+    display: block;
+    font-size: 0.55rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  html:not([data-kiosk="1"]) .day-tides .d-ht {
+    display: block;
+    font-size: 0.72rem;
+  }
+
+  html:not([data-kiosk="1"]) .forecast-toggle {
+    top: auto;
+    bottom: 1.65rem;
+    right: 0.15rem;
+    min-height: 44px;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.82rem;
   }
 }
 

@@ -12,18 +12,17 @@ import { canvasStyle } from "./moods.js";
 import { breathLight, breathPeriodMs, breathSwell, tideBreathLevel } from "./breath.js";
 import { washDropPx, washState } from "./wash.js";
 import { getSkyMode } from "./now.js";
+import { washWeights } from "./swell.js";
 import { shoreBreathReach, shoreNightFade, shoreWetStep } from "./shore.js";
 import { createShorePhoto } from "./shore-photo.js";
+import { createTropicPhoto } from "./tropic-photo.js";
 
 function chartPad(w, h) {
   const phone = Math.min(w, h) < 640;
   const portrait = h > w;
-  return {
-    top: phone && !portrait ? 0.1 : phone ? 0.14 : 0.2,
-    bottom: phone ? (portrait ? 0.32 : 0.36) : 0.26,
-    left: phone ? 0.045 : 0.03,
-    right: phone ? 0.09 : 0.07,
-  };
+  if (phone && portrait) return { top: 0.05, bottom: 0.3, left: 0.03, right: 0.04 };
+  if (phone) return { top: 0.06, bottom: 0.34, left: 0.02, right: 0.03 };
+  return { top: 0.2, bottom: 0.26, left: 0.03, right: 0.07 };
 }
 
 function layout(w, h, series, rangeStart, rangeEnd) {
@@ -105,6 +104,8 @@ function closeWater(ctx, series, L, from, to, yShift) {
 export function createChart(stage) {
   const canvas = stage.querySelector("#chart");
   const ctx = canvas.getContext("2d");
+  const bleed = document.querySelector("#shore-bleed");
+  const bleedCtx = bleed?.getContext("2d");
   const shoreBuffer = document.createElement("canvas");
   const shoreCtx = shoreBuffer.getContext("2d");
   const playhead = stage.querySelector("#playhead");
@@ -203,17 +204,59 @@ export function createChart(stage) {
 
   const liveCursor = (now = new Date()) => now.getTime();
 
+  const fitCanvas = (node, g, width, height) => {
+    const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+    const bw = Math.max(2, Math.round(width * dpr));
+    const bh = Math.max(2, Math.round(height * dpr));
+    if (node.width !== bw || node.height !== bh) {
+      node.width = bw;
+      node.height = bh;
+    }
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, width, height);
+  };
+
+  const sceneSize = () => {
+    const scene = bleed?.parentElement;
+    if (!scene) return null;
+    return { w: scene.clientWidth, h: scene.clientHeight };
+  };
+
   const paint = () => {
     const { w, h } = size();
     ctx.clearRect(0, 0, w, h);
+    const scene = sceneSize();
+    if (bleed && bleedCtx && scene) fitCanvas(bleed, bleedCtx, scene.w, scene.h);
     if (series.length < 2) {
       labelsEl?.replaceChildren();
       return;
     }
     L = layout(w, h, series, rangeStart, rangeEnd);
     const cover = beachCover();
-    if (cover <= 0.004) {
+    const tropic = tropicCover();
+    if (tropic > 0.004 && bleedCtx && scene) {
+      bleedCtx.save();
+      bleedCtx.globalAlpha = tropic >= 0.996 ? 1 : tropic;
+      const painted = paintTropic(bleedCtx, scene.w, scene.h, false, false);
+      bleedCtx.restore();
+      if (!painted) paintLiving();
+      else if (tropic >= 0.996) paintTropicCurve(ctx);
+      else paintLiving();
+    } else if (tropic > 0.004) {
+      if (tropic >= 0.996) {
+        paintTropic(ctx, w, h);
+      } else {
+        paintLiving();
+        paintTropic(shoreCtx, w, h, true);
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalAlpha = tropic;
+        ctx.drawImage(shoreBuffer, 0, 0);
+        ctx.restore();
+      }
+    } else if (cover <= 0.004) {
       paintLiving();
+      paintNightReach();
     } else if (cover >= 0.996) {
       paintShore(ctx, w, h);
     } else {
@@ -228,12 +271,60 @@ export function createChart(stage) {
     paintChips();
   };
 
+  const nightReachesEdges = () => (
+    document.documentElement.dataset.shore === "tropic"
+    && document.documentElement.dataset.light === "night"
+    && tropicCover() < 0.05
+  );
+
+  const paintNightReach = () => {
+    if (!bleed || !bleedCtx || !L || !nightReachesEdges()) return;
+    const scene = bleed.parentElement;
+    if (!scene) return;
+    const sw = scene.clientWidth;
+    const sh = scene.clientHeight;
+    const stageBox = stage.getBoundingClientRect();
+    const sceneBox = scene.getBoundingClientRect();
+    const ox = stageBox.left - sceneBox.left;
+    const oy = stageBox.top - sceneBox.top;
+    const steps = 64;
+    const pts = [];
+    for (let i = 0; i <= steps; i += 1) {
+      const t = rangeStart + ((rangeEnd - rangeStart) * i) / steps;
+      const sample = sampleTide(series, t);
+      if (!sample) continue;
+      pts.push({ x: L.x(t), y: L.y(sample.height) - swellPx });
+    }
+    if (pts.length < 2) return;
+    const tint = moodColor(canvasStyle(), true);
+    const surface = 0.2 + breathGlow * 0.08;
+    const deep = 0.04 + breathGlow * 0.03;
+    const floor = sh - oy;
+    bleedCtx.save();
+    bleedCtx.translate(ox, oy);
+    bleedCtx.beginPath();
+    bleedCtx.moveTo(-ox, pts[0].y);
+    pts.forEach((p) => bleedCtx.lineTo(p.x, p.y));
+    bleedCtx.lineTo(sw - ox, pts[pts.length - 1].y);
+    bleedCtx.lineTo(sw - ox, floor);
+    bleedCtx.lineTo(-ox, floor);
+    bleedCtx.closePath();
+    const body = bleedCtx.createLinearGradient(0, L.top, 0, Math.max(L.bottom + 2, floor));
+    body.addColorStop(0, withAlpha(tint, surface));
+    body.addColorStop(0.42, withAlpha(tint, deep));
+    body.addColorStop(0.72, withAlpha(tint, deep * 0.35));
+    body.addColorStop(1, withAlpha(tint, 0));
+    bleedCtx.fillStyle = body;
+    bleedCtx.fill();
+    bleedCtx.restore();
+  };
+
   const paintLiving = () => {
     const style = canvasStyle();
     const night = document.documentElement.dataset.light === "night";
     const shift = swellPx;
     paintHaze(shift, night);
-    paintWater(shift, style, night);
+    if (!nightReachesEdges()) paintWater(shift, style, night);
     paintCaustics();
     paintWashes(shift, style, night);
     paintSoftEdge(shift, style, night);
@@ -247,6 +338,34 @@ export function createChart(stage) {
     if (mode === "noon" || mode === "dusk") return 1;
     return shoreNightFade(skyPalette(new Date(clockMs)).night);
   };
+
+  const tropicCover = () => {
+    if (document.documentElement.dataset.shore !== "tropic") return 0;
+    const mode = getSkyMode();
+    if (mode === "night") return 0;
+    if (mode === "noon" || mode === "dusk") return 1;
+    return shoreNightFade(skyPalette(new Date(clockMs)).night);
+  };
+
+  const tropicGold = () => {
+    const mode = getSkyMode();
+    if (mode === "night") return 0;
+    const light = skyPalette(new Date(clockMs));
+    const pinnedDusk = mode === "dusk";
+    if (!pinnedDusk && isNightScene(light)) return 0;
+    const weights = pinnedDusk ? { earth: 1 } : washWeights(light.elevation);
+    return weights.earth;
+  };
+
+  const tropicHorizon = () => {
+    const value = new URLSearchParams(location.search).get("horizon");
+    if (value === "sea" || value === "surf") return value;
+    return "haze";
+  };
+
+  const tropicLayout = () => (
+    new URLSearchParams(location.search).get("layout") === "thirds" ? "thirds" : ""
+  );
 
   const shoreScene = () => {
     if (getSkyMode() === "dusk" || document.documentElement.dataset.light === "gold") return "dusk";
@@ -267,6 +386,169 @@ export function createChart(stage) {
   };
 
   const shorePhoto = createShorePhoto();
+  const tropicPhoto = createTropicPhoto();
+
+  const paintTropicCurve = (g) => {
+    if (!L) return;
+    const span = Math.max(1, L.right - L.left);
+    const core = Math.min(3.2, Math.max(2.2, span / 520));
+    g.save();
+    g.lineJoin = "round";
+    g.lineCap = "round";
+    curvePath(g, series, L, rangeStart, rangeEnd, 0);
+    g.strokeStyle = "rgba(8, 16, 22, 0.78)";
+    g.lineWidth = core + 5.5;
+    g.stroke();
+    curvePath(g, series, L, rangeStart, rangeEnd, 0);
+    g.strokeStyle = "rgba(255, 250, 242, 0.97)";
+    g.lineWidth = core;
+    g.stroke();
+    g.restore();
+  };
+
+  const mixRgb = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  const rgba = (c, a) => `rgba(${c[0] | 0}, ${c[1] | 0}, ${c[2] | 0}, ${a})`;
+
+  const paintTropicSea = (g, w, y, frameH, gold, surf, phase) => {
+    // About 5% of the frame: a distant ocean you can actually see.
+    const bandH = Math.max(40, frameH * 0.05);
+    const top = y;
+    // Noon is sapphire. Dusk keeps a navy body and only warms the far edge to peach.
+    const edge = mixRgb([14, 74, 158], [196, 124, 122], gold);
+    const far = mixRgb([4, 28, 114], [34, 44, 112], gold);
+    const near = mixRgb([10, 62, 142], [86, 74, 124], gold);
+
+    const mistH = Math.max(36, frameH * 0.055);
+    const mistTop = top - mistH * 0.78;
+    const mistColor = mixRgb([176, 206, 226], [236, 184, 166], gold);
+    const mist = g.createLinearGradient(0, mistTop, 0, top + bandH * 0.2);
+    mist.addColorStop(0, rgba(mistColor, 0));
+    mist.addColorStop(0.62, rgba(mistColor, 0.2));
+    mist.addColorStop(1, rgba(mistColor, 0));
+    g.fillStyle = mist;
+    g.fillRect(0, mistTop, w, mistH);
+
+    const sea = g.createLinearGradient(0, top - 4, 0, top + bandH);
+    sea.addColorStop(0, rgba(edge, 0));
+    sea.addColorStop(0.06, rgba(edge, 0.72));
+    sea.addColorStop(0.16, rgba(far, 0.96));
+    sea.addColorStop(0.58, rgba(far, 0.94));
+    sea.addColorStop(0.82, rgba(near, 0.5));
+    sea.addColorStop(1, rgba(near, 0));
+    g.fillStyle = sea;
+    g.fillRect(0, top - 6, w, bandH + 8);
+
+    if (!surf) return;
+    const foam = mixRgb([255, 255, 252], [255, 214, 176], gold);
+    const spark = mixRgb([255, 252, 238], [255, 178, 64], gold);
+    const foamY = top + bandH * 0.36;
+    const drift = Math.sin(phase * 0.4) * 16;
+    g.save();
+    g.lineCap = "round";
+    const washTop = foamY - bandH * 0.12;
+    const wash = g.createLinearGradient(0, washTop, 0, washTop + bandH * 0.28);
+    wash.addColorStop(0, rgba(foam, 0));
+    wash.addColorStop(0.42, rgba(foam, 0.72));
+    wash.addColorStop(1, rgba(foam, 0));
+    g.fillStyle = wash;
+    g.fillRect(0, washTop, w, bandH * 0.3);
+
+    for (let i = 0; i < 46; i += 1) {
+      const frac = Math.abs(Math.sin(i * 12.9898));
+      const x = ((i * 67.4 + frac * 48 + drift) % (w + 36)) - 18;
+      const gy = foamY + Math.sin(i * 2.15 + phase * 0.55) * 2.6;
+      const len = 10 + frac * 34;
+      g.strokeStyle = rgba(foam, 0.5 + frac * 0.45);
+      g.lineWidth = 1.7 + (1 - frac) * 2.6;
+      g.beginPath();
+      g.moveTo(x, gy);
+      g.quadraticCurveTo(x + len * 0.45, gy - 2.2, x + len, gy + Math.sin(i * 1.4) * 1.4);
+      g.stroke();
+    }
+
+    for (let i = 0; i < 36; i += 1) {
+      const pulse = Math.sin(phase * 2.15 + i * 1.87);
+      const tw = pulse > 0 ? Math.pow(pulse, 1.35) : 0;
+      const x = ((i * 109.5 + phase * 22) % (w + 24)) - 12;
+      const gy = foamY + Math.sin(i * 1.63 + phase * 0.5) * bandH * 0.1;
+      const bright = 0.34 + tw * 0.66;
+      g.fillStyle = rgba(spark, bright);
+      g.beginPath();
+      g.arc(x, gy, 1.5 + tw * 2.4, 0, Math.PI * 2);
+      g.fill();
+      g.strokeStyle = rgba(spark, 0.25 + tw * 0.75);
+      g.lineWidth = 1.35;
+      g.beginPath();
+      g.moveTo(x - 4 - tw * 5, gy);
+      g.lineTo(x + 4 + tw * 7, gy);
+      g.stroke();
+    }
+    g.restore();
+  };
+
+  const paintTropic = (g, w, h, buffered, withCurve = true) => {
+    if (buffered) {
+      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+      if (shoreBuffer.width !== canvas.width || shoreBuffer.height !== canvas.height) {
+        shoreBuffer.width = canvas.width;
+        shoreBuffer.height = canvas.height;
+      }
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.clearRect(0, 0, w, h);
+    }
+    const reduced = motionReduced();
+    const frame = tropicPhoto.frame({
+      w,
+      h,
+      phase: reduced ? 1.2 : breathPhase,
+      gold: tropicGold(),
+      layout: tropicLayout(),
+    });
+    if (!frame) {
+      if (!buffered && g === ctx) paintLiving();
+      return false;
+    }
+    g.save();
+    g.drawImage(frame, 0, 0, w, h);
+    g.globalCompositeOperation = "destination-in";
+    const frameEl = stage.closest(".frame");
+    const frameBox = frameEl ? frameEl.getBoundingClientRect() : { top: 0, height: window.innerHeight };
+    const hostTop = g.canvas?.getBoundingClientRect?.().top ?? stage.getBoundingClientRect().top;
+    const frameH = Math.max(1, frameBox.height);
+    // Water and sand stay at or below the middle of the frame. The ramp
+    // starts there (or at the chart top, if the chart itself is lower)
+    // and dissolves downward so the edge is not a hard box.
+    const thirds = tropicLayout() === "thirds";
+    const split = thirds ? frameH / 3 : frameH * 0.5;
+    const midpoint = frameBox.top + split - hostTop;
+    const horizon = tropicHorizon();
+    const feather = horizon === "haze"
+      ? (thirds ? Math.max(150, frameH * 0.22) : Math.max(220, frameH * 0.36))
+      : Math.max(128, frameH * 0.2);
+    const start = Math.max(0, midpoint);
+    const veil = g.createLinearGradient(0, start, 0, start + feather);
+    if (horizon === "haze") {
+      veil.addColorStop(0, "rgba(0,0,0,0)");
+      veil.addColorStop(0.2, "rgba(0,0,0,0.05)");
+      veil.addColorStop(0.46, "rgba(0,0,0,0.18)");
+      veil.addColorStop(0.7, "rgba(0,0,0,0.46)");
+      veil.addColorStop(0.88, "rgba(0,0,0,0.78)");
+      veil.addColorStop(1, "rgba(0,0,0,1)");
+    } else {
+      veil.addColorStop(0, "rgba(0,0,0,0)");
+      veil.addColorStop(0.42, "rgba(0,0,0,0.14)");
+      veil.addColorStop(0.72, "rgba(0,0,0,0.62)");
+      veil.addColorStop(1, "rgba(0,0,0,1)");
+    }
+    g.fillStyle = veil;
+    g.fillRect(0, 0, w, h);
+    g.restore();
+    if (horizon === "sea" || horizon === "surf") {
+      paintTropicSea(g, w, start, frameH, tropicGold(), horizon === "surf", reduced ? 1.2 : breathPhase);
+    }
+    if (withCurve) paintTropicCurve(g);
+    return true;
+  };
 
   const paintShore = (g, w, h, buffered) => {
     if (buffered) {
@@ -534,6 +816,15 @@ export function createChart(stage) {
     const w = stage.clientWidth;
     const h = stage.clientHeight;
     const dayExtrema = extrema.filter((e) => e.t >= rangeStart && e.t <= rangeEnd);
+    const dayList = document.querySelector("#day-tides");
+    if (dayList) {
+      dayList.replaceChildren(...dayExtrema.map((e) => {
+        const li = document.createElement("li");
+        const low = e.type !== "H";
+        li.innerHTML = `<span class="d-time">${formatClock(new Date(e.t))}</span><span class="d-ht">${e.v.toFixed(1)} ft</span><span class="d-kind">${low ? "Low" : "High"}</span>`;
+        return li;
+      }));
+    }
     const cursor = sampleTide(series, viewTime);
     const orbPx = cursor
       ? L.x(Math.min(rangeEnd, Math.max(rangeStart, viewTime)))

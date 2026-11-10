@@ -1,4 +1,37 @@
-Aerial beach photograph used by the ?shore=real preview.
+Photographs used by the shore previews. Attribution is not required by either license. Live Tide records the sources here anyway.
+
+?shore=real
+
+Aerial beach photograph.
+
+Source page: https://unsplash.com/photos/aerial-view-of-waves-crashing-on-a-sandy-beach-zWFa7mlQAYk
+Photographer: Hameen Reynolds (https://unsplash.com/@hameen)
+Image: https://images.unsplash.com/photo-1744648617182-519c4bf39e30
+License: Unsplash License, https://unsplash.com/license
+
+The Unsplash License grants an irrevocable, nonexclusive, worldwide copyright license to download, copy, modify, distribute, perform, and use the photo for free, including commercial use, without permission.
+
+The real preview does not warp or tile the photograph. water.jpg is one undistorted turquoise crop (2700 × 764) filling the chart. sand.jpg is one undistorted rippled-sand crop (4032 × 660), shown only as a thin lip on the tide curve. foam.jpg is a single lace band (2200 × 36) that washes up from the bottom of the chart to that curve. None of the crops is enlarged past its own pixels.
+
+?shore=tropic
+
+Two photographs, blended in the chart. Neither is tiled or enlarged past its own pixels.
+
+Tropical water, bottom left. Top-down turquoise pool water with sharp sunlight caustics.
+Source page: https://www.pexels.com/photo/turquoise-water-in-pool-20774773/
+Photographer: Komet Flicker
+Image: https://images.pexels.com/photos/20774773/pexels-photo-20774773.jpeg
+File: tropic-water.jpg, a 4096 × 2200 crop of that photograph.
+License: Pexels License, https://www.pexels.com/license/
+
+Beach sand, bottom right. Close top-down pale warm-beige fine sand with wind ripples.
+Source page: https://www.pexels.com/photo/photo-of-a-sandy-surface-with-ripples-24380166/
+Photographer: Natalia S
+Image: https://images.pexels.com/photos/24380166/pexels-photo-24380166.jpeg
+File: tropic-sand.jpg, a 3024 × 2200 crop of that photograph.
+License: Pexels License, https://www.pexels.com/license/
+
+The Pexels License allows the photos to be downloaded, copied, modified, and used for free, including commercial use, without permission.
 
 Source page: https://unsplash.com/photos/aerial-view-of-waves-crashing-on-a-sandy-beach-zWFa7mlQAYk
 Photographer: Hameen Reynolds (https://unsplash.com/@hameen)

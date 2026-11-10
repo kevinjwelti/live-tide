@@ -12,14 +12,17 @@
     <meta name="apple-mobile-web-app-title" content="LIVE TIDE" />
     <meta name="theme-color" content="#000000" />
     <meta http-equiv="Cache-Control" content="no-cache" />
-    <meta name="live-tide-build" content="moods-v75" />
+    <meta name="live-tide-build" content="moods-v87" />
     <script>
       const liveTideQuery = new URLSearchParams(location.search);
       if (liveTideQuery.has("kiosk")) {
         document.documentElement.dataset.kiosk = "1";
       }
-      if (liveTideQuery.get("shore") === "real") {
+      const shore = liveTideQuery.get("shore");
+      if (shore === "real") {
         document.documentElement.dataset.shore = "real";
+      } else if (shore !== "classic") {
+        document.documentElement.dataset.shore = "tropic";
       }
     </script>
     <style>
@@ -80,6 +83,7 @@
     </video>
     <div class="scene" aria-hidden="true">
       <canvas id="stars" class="stars"></canvas>
+      <canvas id="shore-bleed" class="shore-bleed"></canvas>
     </div>
 
     <main class="frame">
@@ -136,6 +140,7 @@
         </div>
         <div id="y-axis" class="y-axis"></div>
         <div id="extremum-labels" class="extremum-labels"></div>
+        <ol id="day-tides" class="day-tides" aria-label="Today's highs and lows"></ol>
         <p id="status-msg" class="status-msg" hidden></p>
         <div id="chart-hit" class="chart-hit"></div>
         <button id="forecast-toggle" class="forecast-toggle" type="button" aria-pressed="false">
