@@ -281,6 +281,12 @@ export function createChart(stage) {
     return weights.earth;
   };
 
+  const tropicHorizon = () => {
+    const value = new URLSearchParams(location.search).get("horizon");
+    if (value === "sea" || value === "surf" || value === "haze") return value;
+    return "";
+  };
+
   const shoreScene = () => {
     if (getSkyMode() === "dusk" || document.documentElement.dataset.light === "gold") return "dusk";
     return "day";
@@ -320,6 +326,56 @@ export function createChart(stage) {
     g.restore();
   };
 
+  const mixRgb = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  const rgba = (c, a) => `rgba(${c[0] | 0}, ${c[1] | 0}, ${c[2] | 0}, ${a})`;
+
+  const paintTropicSea = (g, w, y, frameH, gold, glints, phase) => {
+    const mistH = Math.max(120, frameH * 0.18);
+    const mistTop = y - mistH * 0.35;
+    const mistColor = mixRgb([176, 208, 228], [232, 186, 166], gold);
+    const mist = g.createLinearGradient(0, mistTop, 0, mistTop + mistH);
+    mist.addColorStop(0, rgba(mistColor, 0));
+    mist.addColorStop(0.4, rgba(mistColor, 0.16 + gold * 0.1));
+    mist.addColorStop(0.72, rgba(mistColor, 0.08));
+    mist.addColorStop(1, rgba(mistColor, 0));
+    g.fillStyle = mist;
+    g.fillRect(0, mistTop, w, mistH);
+
+    const band = Math.max(16, frameH * 0.026);
+    const deep = mixRgb([4, 96, 176], [12, 56, 118], gold);
+    const sea = g.createLinearGradient(0, y - band * 1.15, 0, y + band * 1.9);
+    sea.addColorStop(0, rgba(deep, 0));
+    sea.addColorStop(0.3, rgba(deep, 0.1));
+    sea.addColorStop(0.5, rgba(deep, 0.48));
+    sea.addColorStop(0.72, rgba(deep, 0.14));
+    sea.addColorStop(1, rgba(deep, 0));
+    g.fillStyle = sea;
+    g.fillRect(0, y - band * 1.2, w, band * 3.2);
+
+    if (!glints) return;
+    const ink = mixRgb([255, 252, 244], [255, 196, 150], gold);
+    g.save();
+    g.lineCap = "round";
+    const travel = phase * 0.22;
+    for (let i = 0; i < 48; i += 1) {
+      const twinkle = Math.pow(Math.max(0, Math.sin(i * 2.4 + travel * 1.15)), 8);
+      if (twinkle < 0.16) continue;
+      const x = ((i * 113.5 + travel * 14) % (w + 24)) - 12;
+      const gy = y + Math.sin(i * 1.35 + travel) * band * 0.16;
+      g.fillStyle = rgba(ink, twinkle * 0.72);
+      g.beginPath();
+      g.arc(x, gy, 0.7 + twinkle * 0.9, 0, Math.PI * 2);
+      g.fill();
+      g.strokeStyle = rgba(ink, twinkle * 0.22);
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(x - 2.5, gy);
+      g.lineTo(x + 2.5 + twinkle * 3, gy);
+      g.stroke();
+    }
+    g.restore();
+  };
+
   const paintTropic = (g, w, h, buffered) => {
     if (buffered) {
       const dpr = Math.min(1.5, window.devicePixelRatio || 1);
@@ -352,16 +408,29 @@ export function createChart(stage) {
     // starts there (or at the chart top, if the chart itself is lower)
     // and dissolves downward so the edge is not a hard box.
     const midpoint = frameBox.top + frameH * 0.5 - stageTop;
-    const feather = Math.max(128, frameH * 0.2);
+    const horizon = tropicHorizon();
+    const feather = horizon === "haze" ? Math.max(220, frameH * 0.36) : Math.max(128, frameH * 0.2);
     const start = Math.max(0, midpoint);
     const veil = g.createLinearGradient(0, start, 0, start + feather);
-    veil.addColorStop(0, "rgba(0,0,0,0)");
-    veil.addColorStop(0.42, "rgba(0,0,0,0.14)");
-    veil.addColorStop(0.72, "rgba(0,0,0,0.62)");
-    veil.addColorStop(1, "rgba(0,0,0,1)");
+    if (horizon === "haze") {
+      veil.addColorStop(0, "rgba(0,0,0,0)");
+      veil.addColorStop(0.2, "rgba(0,0,0,0.05)");
+      veil.addColorStop(0.46, "rgba(0,0,0,0.18)");
+      veil.addColorStop(0.7, "rgba(0,0,0,0.46)");
+      veil.addColorStop(0.88, "rgba(0,0,0,0.78)");
+      veil.addColorStop(1, "rgba(0,0,0,1)");
+    } else {
+      veil.addColorStop(0, "rgba(0,0,0,0)");
+      veil.addColorStop(0.42, "rgba(0,0,0,0.14)");
+      veil.addColorStop(0.72, "rgba(0,0,0,0.62)");
+      veil.addColorStop(1, "rgba(0,0,0,1)");
+    }
     g.fillStyle = veil;
     g.fillRect(0, 0, w, h);
     g.restore();
+    if (horizon === "sea" || horizon === "surf") {
+      paintTropicSea(g, w, start, frameH, tropicGold(), horizon === "surf", reduced ? 1.2 : breathPhase);
+    }
     paintTropicCurve(g);
   };
 
