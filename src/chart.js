@@ -283,8 +283,8 @@ export function createChart(stage) {
 
   const tropicHorizon = () => {
     const value = new URLSearchParams(location.search).get("horizon");
-    if (value === "sea" || value === "surf" || value === "haze") return value;
-    return "";
+    if (value === "sea" || value === "surf") return value;
+    return "haze";
   };
 
   const shoreScene = () => {
