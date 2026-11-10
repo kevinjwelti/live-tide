@@ -119,16 +119,19 @@ void main() {
   float waterSide = 1.0 - sandAmt;
   float hi = smoothstep(0.28, 0.82, luma(water));
   vec3 causTint = mix(vec3(0.78, 0.96, 1.0), vec3(1.0, 0.72, 0.42), gold);
-  water += causTint * web * (0.16 + hi * 0.2) * waterSide;
-  water += causTint * knot * 0.55 * waterSide;
+  water += causTint * web * (0.14 + hi * 0.16) * waterSide;
+  water += causTint * knot * 0.28 * waterSide;
 
-  // Pinpoint flashes on the brightest ridges. Hard on/off, a couple of frames.
-  float seed = fract(sin(dot(floor(screen), vec2(127.1, 311.7))) * 43758.5453);
-  float ph = fract(uPhase * 5.4 + seed * 29.0);
-  float burst = step(ph, 0.15);
-  float gate = step(0.986, seed) * step(0.55, max(web, knot * 3.0));
-  vec3 glintTint = mix(vec3(1.0), vec3(1.0, 0.78, 0.46), gold);
-  water += glintTint * burst * gate * waterSide;
+  // 1–3px hard flashes on the bright ridges. On for a couple of frames, then off.
+  vec2 gid = floor(screen / 18.0);
+  vec2 gf = fract(screen / 18.0) - 0.5;
+  float seed = fract(sin(dot(gid, vec2(127.1, 311.7))) * 43758.5453);
+  float ph = fract(uPhase * 4.6 + seed * 19.0);
+  float burst = step(ph, 0.2);
+  float dot = step(length(gf) * 18.0, 1.6);
+  float gate = step(0.78, seed) * step(0.42, max(web, knot * 2.5));
+  vec3 glintTint = mix(vec3(1.0), vec3(1.0, 0.8, 0.48), gold);
+  water += glintTint * burst * dot * gate * 1.15 * waterSide;
 
   vec3 color = mix(clamp(water, 0.0, 1.0), sand, sandAmt);
   gl_FragColor = vec4(color, 1.0);
