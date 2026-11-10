@@ -77,7 +77,31 @@ void main() {
 
   float along = xN + (1.0 - yN) * 0.15;
   float sandAmt = smoothstep(0.20, 0.80, along);
-  vec3 color = mix(water, sand, sandAmt);
+  float waterSide = 1.0 - sandAmt;
+
+  // Slow caustic light. A few sines, no extra textures, so a TV stick stays fine.
+  vec2 p = screen / vec2(168.0, 128.0);
+  float t = uPhase;
+  float a = sin(p.x * 1.65 + p.y * 0.55 + t * 0.46);
+  float b = sin(p.x * -0.85 + p.y * 1.85 - t * 0.3);
+  float c = sin(p.x * 1.25 + p.y * 1.05 + t * 0.36);
+  float field = a * 0.5 + b * 0.34 + c * 0.24;
+  float lines = pow(max(0.0, field), 2.4);
+  float rip = (field * 0.5 + 0.5) * 0.055 + lines * 0.13;
+  float hi = smoothstep(0.32, 0.82, luma(water));
+  vec3 light = mix(vec3(0.58, 0.94, 1.0), vec3(1.0, 0.66, 0.38), gold);
+  water += light * rip * (0.4 + hi) * waterSide;
+
+  // Occasional glints. Most cells never light; the ones that do fade in and out.
+  vec2 cell = floor(screen / vec2(118.0, 92.0));
+  vec2 f = fract(screen / vec2(118.0, 92.0)) - 0.5;
+  float n = fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453);
+  float tw = pow(max(0.0, sin(t * 0.95 + n * 6.28318)), 8.0);
+  float glint = smoothstep(0.15, 0.0, length(vec2(f.x * 1.5, f.y * 4.2)));
+  vec3 sparkCol = mix(vec3(0.9, 0.98, 1.0), vec3(1.0, 0.78, 0.42), gold);
+  water += sparkCol * glint * tw * step(0.84, n) * waterSide;
+
+  vec3 color = mix(clamp(water, 0.0, 1.0), sand, sandAmt);
   gl_FragColor = vec4(color, 1.0);
 }
 `;

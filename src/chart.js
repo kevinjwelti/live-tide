@@ -329,48 +329,78 @@ export function createChart(stage) {
   const mixRgb = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
   const rgba = (c, a) => `rgba(${c[0] | 0}, ${c[1] | 0}, ${c[2] | 0}, ${a})`;
 
-  const paintTropicSea = (g, w, y, frameH, gold, glints, phase) => {
-    const mistH = Math.max(120, frameH * 0.18);
-    const mistTop = y - mistH * 0.35;
-    const mistColor = mixRgb([176, 208, 228], [232, 186, 166], gold);
-    const mist = g.createLinearGradient(0, mistTop, 0, mistTop + mistH);
+  const paintTropicSea = (g, w, y, frameH, gold, surf, phase) => {
+    // About 5% of the frame: a distant ocean you can actually see.
+    const bandH = Math.max(40, frameH * 0.05);
+    const top = y;
+    // Noon is sapphire. Dusk keeps a navy body and only warms the far edge to peach.
+    const edge = mixRgb([14, 74, 158], [196, 124, 122], gold);
+    const far = mixRgb([4, 28, 114], [34, 44, 112], gold);
+    const near = mixRgb([10, 62, 142], [86, 74, 124], gold);
+
+    const mistH = Math.max(36, frameH * 0.055);
+    const mistTop = top - mistH * 0.78;
+    const mistColor = mixRgb([176, 206, 226], [236, 184, 166], gold);
+    const mist = g.createLinearGradient(0, mistTop, 0, top + bandH * 0.2);
     mist.addColorStop(0, rgba(mistColor, 0));
-    mist.addColorStop(0.4, rgba(mistColor, 0.16 + gold * 0.1));
-    mist.addColorStop(0.72, rgba(mistColor, 0.08));
+    mist.addColorStop(0.62, rgba(mistColor, 0.2));
     mist.addColorStop(1, rgba(mistColor, 0));
     g.fillStyle = mist;
     g.fillRect(0, mistTop, w, mistH);
 
-    const band = Math.max(16, frameH * 0.026);
-    const deep = mixRgb([4, 96, 176], [12, 56, 118], gold);
-    const sea = g.createLinearGradient(0, y - band * 1.15, 0, y + band * 1.9);
-    sea.addColorStop(0, rgba(deep, 0));
-    sea.addColorStop(0.3, rgba(deep, 0.1));
-    sea.addColorStop(0.5, rgba(deep, 0.48));
-    sea.addColorStop(0.72, rgba(deep, 0.14));
-    sea.addColorStop(1, rgba(deep, 0));
+    const sea = g.createLinearGradient(0, top - 4, 0, top + bandH);
+    sea.addColorStop(0, rgba(edge, 0));
+    sea.addColorStop(0.06, rgba(edge, 0.72));
+    sea.addColorStop(0.16, rgba(far, 0.96));
+    sea.addColorStop(0.58, rgba(far, 0.94));
+    sea.addColorStop(0.82, rgba(near, 0.5));
+    sea.addColorStop(1, rgba(near, 0));
     g.fillStyle = sea;
-    g.fillRect(0, y - band * 1.2, w, band * 3.2);
+    g.fillRect(0, top - 6, w, bandH + 8);
 
-    if (!glints) return;
-    const ink = mixRgb([255, 252, 244], [255, 196, 150], gold);
+    if (!surf) return;
+    const foam = mixRgb([255, 255, 252], [255, 214, 176], gold);
+    const spark = mixRgb([255, 252, 238], [255, 178, 64], gold);
+    const foamY = top + bandH * 0.36;
+    const drift = Math.sin(phase * 0.4) * 16;
     g.save();
     g.lineCap = "round";
-    const travel = phase * 0.22;
-    for (let i = 0; i < 48; i += 1) {
-      const twinkle = Math.pow(Math.max(0, Math.sin(i * 2.4 + travel * 1.15)), 8);
-      if (twinkle < 0.16) continue;
-      const x = ((i * 113.5 + travel * 14) % (w + 24)) - 12;
-      const gy = y + Math.sin(i * 1.35 + travel) * band * 0.16;
-      g.fillStyle = rgba(ink, twinkle * 0.72);
+    const washTop = foamY - bandH * 0.12;
+    const wash = g.createLinearGradient(0, washTop, 0, washTop + bandH * 0.28);
+    wash.addColorStop(0, rgba(foam, 0));
+    wash.addColorStop(0.42, rgba(foam, 0.72));
+    wash.addColorStop(1, rgba(foam, 0));
+    g.fillStyle = wash;
+    g.fillRect(0, washTop, w, bandH * 0.3);
+
+    for (let i = 0; i < 46; i += 1) {
+      const frac = Math.abs(Math.sin(i * 12.9898));
+      const x = ((i * 67.4 + frac * 48 + drift) % (w + 36)) - 18;
+      const gy = foamY + Math.sin(i * 2.15 + phase * 0.55) * 2.6;
+      const len = 10 + frac * 34;
+      g.strokeStyle = rgba(foam, 0.5 + frac * 0.45);
+      g.lineWidth = 1.7 + (1 - frac) * 2.6;
       g.beginPath();
-      g.arc(x, gy, 0.7 + twinkle * 0.9, 0, Math.PI * 2);
+      g.moveTo(x, gy);
+      g.quadraticCurveTo(x + len * 0.45, gy - 2.2, x + len, gy + Math.sin(i * 1.4) * 1.4);
+      g.stroke();
+    }
+
+    for (let i = 0; i < 36; i += 1) {
+      const pulse = Math.sin(phase * 2.15 + i * 1.87);
+      const tw = pulse > 0 ? Math.pow(pulse, 1.35) : 0;
+      const x = ((i * 109.5 + phase * 22) % (w + 24)) - 12;
+      const gy = foamY + Math.sin(i * 1.63 + phase * 0.5) * bandH * 0.1;
+      const bright = 0.34 + tw * 0.66;
+      g.fillStyle = rgba(spark, bright);
+      g.beginPath();
+      g.arc(x, gy, 1.5 + tw * 2.4, 0, Math.PI * 2);
       g.fill();
-      g.strokeStyle = rgba(ink, twinkle * 0.22);
-      g.lineWidth = 1;
+      g.strokeStyle = rgba(spark, 0.25 + tw * 0.75);
+      g.lineWidth = 1.35;
       g.beginPath();
-      g.moveTo(x - 2.5, gy);
-      g.lineTo(x + 2.5 + twinkle * 3, gy);
+      g.moveTo(x - 4 - tw * 5, gy);
+      g.lineTo(x + 4 + tw * 7, gy);
       g.stroke();
     }
     g.restore();
