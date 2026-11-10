@@ -55,51 +55,80 @@ vec3 gradeSand(vec3 c, float g) {
   return mix(c, clamp(graded, 0.0, 1.0), g);
 }
 
+vec2 hash2(vec2 p) {
+  p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+  return fract(sin(p) * 43758.5453);
+}
+
+// Cells orbit in place. x = border brightness, yz = offset toward the nearest site.
+vec3 causticCell(vec2 x, float t) {
+  vec2 n = floor(x);
+  vec2 f = fract(x);
+  float f1 = 8.0;
+  float f2 = 8.0;
+  vec2 near = vec2(0.0);
+  for (int j = 0; j < 3; j++) {
+    for (int i = 0; i < 3; i++) {
+      vec2 g = vec2(float(i - 1), float(j - 1));
+      vec2 o = hash2(n + g);
+      o = 0.5 + 0.46 * sin(t + 6.2831853 * o);
+      vec2 r = g + o - f;
+      float d = dot(r, r);
+      if (d < f1) {
+        f2 = f1;
+        f1 = d;
+        near = r;
+      } else if (d < f2) {
+        f2 = d;
+      }
+    }
+  }
+  float edge = sqrt(f2) - sqrt(f1);
+  float line = pow(1.0 - smoothstep(0.0, 0.05, edge), 1.6);
+  return vec3(line, near);
+}
+
 void main() {
   vec2 screen = vec2(vUv.x, vUv.y) * uView;
   float xN = screen.x / max(uView.x, 1.0);
   float yN = screen.y / max(uView.y, 1.0);
-
-  float sway = sin(uPhase);
-  float glide = cos(uPhase * 0.85);
-  vec2 drift = vec2(sway * 5.0, glide * 3.5);
-  vec3 waterA = samplePlate(uWater, uWaterSize, screen, drift, vec2(0.5, 0.46));
-  vec3 waterB = samplePlate(uWater, uWaterSize, screen, -drift * 0.65, vec2(0.5, 0.46));
-  float flick = 0.5 + 0.5 * sin(uPhase * 2.0);
-  vec3 water = mix(waterA, waterB, 0.22 + 0.16 * flick);
-  water *= 0.985 + 0.03 * sway;
-
-  vec3 sand = samplePlate(uSand, uSandSize, screen, vec2(0.0), vec2(0.62, 0.28));
-
   float gold = clamp(uGold, 0.0, 1.0);
+
+  // Two webs, different scales and phases. Points move inside their cells,
+  // so the lines split and close without the picture sliding.
+  float t = uPhase * 1.7;
+  vec2 uv = screen / vec2(112.0, 96.0);
+  vec2 bend = vec2(
+    sin(uv.y * 2.2 + t * 0.37) + 0.55 * sin(uv.x * 1.6 - t * 0.21),
+    cos(uv.x * 1.9 - t * 0.29) + 0.55 * cos(uv.y * 2.5 + t * 0.24)
+  ) * 0.22;
+  vec3 a = causticCell(uv + bend, t);
+  vec2 rot = vec2(uv.x * 0.8 + uv.y * 0.6, -uv.x * 0.6 + uv.y * 0.8);
+  vec3 b = causticCell(rot * 1.85 - bend.yx, t * 1.35 + 2.4);
+  float web = max(a.x, b.x * 0.82);
+  float knot = a.x * b.x;
+  vec2 refr = a.yz * 4.2 + b.yz * 2.4;
+
+  vec3 water = samplePlate(uWater, uWaterSize, screen, refr, vec2(0.5, 0.46));
+  vec3 sand = samplePlate(uSand, uSandSize, screen, vec2(0.0), vec2(0.62, 0.28));
   water = gradeWater(water, gold);
   sand = gradeSand(sand, gold);
 
   float along = xN + (1.0 - yN) * 0.15;
   float sandAmt = smoothstep(0.20, 0.80, along);
   float waterSide = 1.0 - sandAmt;
+  float hi = smoothstep(0.28, 0.82, luma(water));
+  vec3 causTint = mix(vec3(0.78, 0.96, 1.0), vec3(1.0, 0.72, 0.42), gold);
+  water += causTint * web * (0.16 + hi * 0.2) * waterSide;
+  water += causTint * knot * 0.55 * waterSide;
 
-  // Slow caustic light. A few sines, no extra textures, so a TV stick stays fine.
-  vec2 p = screen / vec2(168.0, 128.0);
-  float t = uPhase;
-  float a = sin(p.x * 1.65 + p.y * 0.55 + t * 0.46);
-  float b = sin(p.x * -0.85 + p.y * 1.85 - t * 0.3);
-  float c = sin(p.x * 1.25 + p.y * 1.05 + t * 0.36);
-  float field = a * 0.5 + b * 0.34 + c * 0.24;
-  float lines = pow(max(0.0, field), 2.4);
-  float rip = (field * 0.5 + 0.5) * 0.055 + lines * 0.13;
-  float hi = smoothstep(0.32, 0.82, luma(water));
-  vec3 light = mix(vec3(0.58, 0.94, 1.0), vec3(1.0, 0.66, 0.38), gold);
-  water += light * rip * (0.4 + hi) * waterSide;
-
-  // Occasional glints. Most cells never light; the ones that do fade in and out.
-  vec2 cell = floor(screen / vec2(118.0, 92.0));
-  vec2 f = fract(screen / vec2(118.0, 92.0)) - 0.5;
-  float n = fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453);
-  float tw = pow(max(0.0, sin(t * 0.95 + n * 6.28318)), 8.0);
-  float glint = smoothstep(0.15, 0.0, length(vec2(f.x * 1.5, f.y * 4.2)));
-  vec3 sparkCol = mix(vec3(0.9, 0.98, 1.0), vec3(1.0, 0.78, 0.42), gold);
-  water += sparkCol * glint * tw * step(0.84, n) * waterSide;
+  // Pinpoint flashes on the brightest ridges. Hard on/off, a couple of frames.
+  float seed = fract(sin(dot(floor(screen), vec2(127.1, 311.7))) * 43758.5453);
+  float ph = fract(uPhase * 5.4 + seed * 29.0);
+  float burst = step(ph, 0.15);
+  float gate = step(0.986, seed) * step(0.55, max(web, knot * 3.0));
+  vec3 glintTint = mix(vec3(1.0), vec3(1.0, 0.78, 0.46), gold);
+  water += glintTint * burst * gate * waterSide;
 
   vec3 color = mix(clamp(water, 0.0, 1.0), sand, sandAmt);
   gl_FragColor = vec4(color, 1.0);
