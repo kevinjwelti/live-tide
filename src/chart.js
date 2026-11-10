@@ -363,6 +363,10 @@ export function createChart(stage) {
     return "haze";
   };
 
+  const tropicLayout = () => (
+    new URLSearchParams(location.search).get("layout") === "thirds" ? "thirds" : ""
+  );
+
   const shoreScene = () => {
     if (getSkyMode() === "dusk" || document.documentElement.dataset.light === "gold") return "dusk";
     return "day";
@@ -498,6 +502,7 @@ export function createChart(stage) {
       h,
       phase: reduced ? 1.2 : breathPhase,
       gold: tropicGold(),
+      layout: tropicLayout(),
     });
     if (!frame) {
       if (!buffered && g === ctx) paintLiving();
@@ -513,9 +518,13 @@ export function createChart(stage) {
     // Water and sand stay at or below the middle of the frame. The ramp
     // starts there (or at the chart top, if the chart itself is lower)
     // and dissolves downward so the edge is not a hard box.
-    const midpoint = frameBox.top + frameH * 0.5 - hostTop;
+    const thirds = tropicLayout() === "thirds";
+    const split = thirds ? frameH / 3 : frameH * 0.5;
+    const midpoint = frameBox.top + split - hostTop;
     const horizon = tropicHorizon();
-    const feather = horizon === "haze" ? Math.max(220, frameH * 0.36) : Math.max(128, frameH * 0.2);
+    const feather = horizon === "haze"
+      ? (thirds ? Math.max(150, frameH * 0.22) : Math.max(220, frameH * 0.36))
+      : Math.max(128, frameH * 0.2);
     const start = Math.max(0, midpoint);
     const veil = g.createLinearGradient(0, start, 0, start + feather);
     if (horizon === "haze") {

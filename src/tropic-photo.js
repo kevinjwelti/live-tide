@@ -18,6 +18,7 @@ uniform vec2 uWaterSize;
 uniform vec2 uSandSize;
 uniform float uPhase;
 uniform float uGold;
+uniform float uLayout;
 
 vec3 samplePlate(sampler2D tex, vec2 size, vec2 screen, vec2 drift, vec2 anchor) {
   float cover = max(uView.x / size.x, uView.y / size.y);
@@ -110,12 +111,16 @@ void main() {
   vec2 refr = a.yz * 4.2 + b.yz * 2.4;
 
   vec3 water = samplePlate(uWater, uWaterSize, screen, refr, vec2(0.5, 0.46));
-  vec3 sand = samplePlate(uSand, uSandSize, screen, vec2(0.0), vec2(0.62, 0.28));
+  vec2 sandAnchor = mix(vec2(0.62, 0.28), vec2(0.50, 0.42), step(0.5, uLayout));
+  vec3 sand = samplePlate(uSand, uSandSize, screen, vec2(0.0), sandAnchor);
   water = gradeWater(water, gold);
   sand = gradeSand(sand, gold);
 
   float along = xN + (1.0 - yN) * 0.15;
-  float sandAmt = smoothstep(0.20, 0.80, along);
+  float sandDiag = smoothstep(0.20, 0.80, along);
+  float wobble = sin(xN * 8.0) * 0.012 + sin(xN * 19.0 + 1.7) * 0.006;
+  float sandBand = smoothstep(0.50, 0.88, yN + wobble);
+  float sandAmt = mix(sandDiag, sandBand, step(0.5, uLayout));
   float waterSide = 1.0 - sandAmt;
   float hi = smoothstep(0.28, 0.82, luma(water));
   vec3 causTint = mix(vec3(0.78, 0.96, 1.0), vec3(1.0, 0.72, 0.42), gold);
@@ -217,7 +222,7 @@ export function createTropicPhoto() {
       gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, stride, 0);
       gl.enableVertexAttribArray(aUv);
       gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, stride, 8);
-      for (const name of ["uView", "uWaterSize", "uSandSize", "uPhase", "uGold"]) {
+      for (const name of ["uView", "uWaterSize", "uSandSize", "uPhase", "uGold", "uLayout"]) {
         loc[name] = gl.getUniformLocation(program, name);
       }
       loc.water = gl.getUniformLocation(program, "uWater");
@@ -247,7 +252,7 @@ export function createTropicPhoto() {
     ready() {
       return Boolean(gl && waterTex && sandTex && program);
     },
-    frame({ w, h, phase, gold }) {
+    frame({ w, h, phase, gold, layout }) {
       if (!this.ready() || w < 2 || h < 2) return null;
       const dpr = Math.min(1.5, window.devicePixelRatio || 1);
       const bw = Math.max(2, Math.round(w * dpr));
@@ -263,6 +268,7 @@ export function createTropicPhoto() {
       gl.uniform2f(loc.uSandSize, sandW, sandH);
       gl.uniform1f(loc.uPhase, Number.isFinite(phase) ? phase : 0);
       gl.uniform1f(loc.uGold, Number.isFinite(gold) ? gold : 0);
+      gl.uniform1f(loc.uLayout, layout === "thirds" ? 1 : 0);
       gl.uniform1i(loc.water, 0);
       gl.uniform1i(loc.sand, 1);
       gl.activeTexture(gl.TEXTURE0);
