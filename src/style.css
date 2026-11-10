@@ -102,14 +102,18 @@ body {
   pointer-events: none;
 }
 
-.stars {
+.stars,
+.shore-bleed {
   position: absolute;
   inset: 0;
   display: block;
   width: 100%;
   height: 100%;
-  opacity: var(--star-opacity, 0);
   pointer-events: none;
+}
+
+.stars {
+  opacity: var(--star-opacity, 0);
 }
 
 .scene::after {

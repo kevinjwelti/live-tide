@@ -107,6 +107,8 @@ function closeWater(ctx, series, L, from, to, yShift) {
 export function createChart(stage) {
   const canvas = stage.querySelector("#chart");
   const ctx = canvas.getContext("2d");
+  const bleed = document.querySelector("#shore-bleed");
+  const bleedCtx = bleed?.getContext("2d");
   const shoreBuffer = document.createElement("canvas");
   const shoreCtx = shoreBuffer.getContext("2d");
   const playhead = stage.querySelector("#playhead");
@@ -205,9 +207,29 @@ export function createChart(stage) {
 
   const liveCursor = (now = new Date()) => now.getTime();
 
+  const fitCanvas = (node, g, width, height) => {
+    const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+    const bw = Math.max(2, Math.round(width * dpr));
+    const bh = Math.max(2, Math.round(height * dpr));
+    if (node.width !== bw || node.height !== bh) {
+      node.width = bw;
+      node.height = bh;
+    }
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, width, height);
+  };
+
+  const sceneSize = () => {
+    const scene = bleed?.parentElement;
+    if (!scene) return null;
+    return { w: scene.clientWidth, h: scene.clientHeight };
+  };
+
   const paint = () => {
     const { w, h } = size();
     ctx.clearRect(0, 0, w, h);
+    const scene = sceneSize();
+    if (bleed && bleedCtx && scene) fitCanvas(bleed, bleedCtx, scene.w, scene.h);
     if (series.length < 2) {
       labelsEl?.replaceChildren();
       return;
@@ -215,7 +237,15 @@ export function createChart(stage) {
     L = layout(w, h, series, rangeStart, rangeEnd);
     const cover = beachCover();
     const tropic = tropicCover();
-    if (tropic > 0.004) {
+    if (tropic > 0.004 && bleedCtx && scene) {
+      bleedCtx.save();
+      bleedCtx.globalAlpha = tropic >= 0.996 ? 1 : tropic;
+      const painted = paintTropic(bleedCtx, scene.w, scene.h, false, false);
+      bleedCtx.restore();
+      if (!painted) paintLiving();
+      else if (tropic >= 0.996) paintTropicCurve(ctx);
+      else paintLiving();
+    } else if (tropic > 0.004) {
       if (tropic >= 0.996) {
         paintTropic(ctx, w, h);
       } else {
@@ -229,6 +259,7 @@ export function createChart(stage) {
       }
     } else if (cover <= 0.004) {
       paintLiving();
+      paintNightReach();
     } else if (cover >= 0.996) {
       paintShore(ctx, w, h);
     } else {
@@ -243,12 +274,60 @@ export function createChart(stage) {
     paintChips();
   };
 
+  const nightReachesEdges = () => (
+    document.documentElement.dataset.shore === "tropic"
+    && document.documentElement.dataset.light === "night"
+    && tropicCover() < 0.05
+  );
+
+  const paintNightReach = () => {
+    if (!bleed || !bleedCtx || !L || !nightReachesEdges()) return;
+    const scene = bleed.parentElement;
+    if (!scene) return;
+    const sw = scene.clientWidth;
+    const sh = scene.clientHeight;
+    const stageBox = stage.getBoundingClientRect();
+    const sceneBox = scene.getBoundingClientRect();
+    const ox = stageBox.left - sceneBox.left;
+    const oy = stageBox.top - sceneBox.top;
+    const steps = 64;
+    const pts = [];
+    for (let i = 0; i <= steps; i += 1) {
+      const t = rangeStart + ((rangeEnd - rangeStart) * i) / steps;
+      const sample = sampleTide(series, t);
+      if (!sample) continue;
+      pts.push({ x: L.x(t), y: L.y(sample.height) - swellPx });
+    }
+    if (pts.length < 2) return;
+    const tint = moodColor(canvasStyle(), true);
+    const surface = 0.2 + breathGlow * 0.08;
+    const deep = 0.04 + breathGlow * 0.03;
+    const floor = sh - oy;
+    bleedCtx.save();
+    bleedCtx.translate(ox, oy);
+    bleedCtx.beginPath();
+    bleedCtx.moveTo(-ox, pts[0].y);
+    pts.forEach((p) => bleedCtx.lineTo(p.x, p.y));
+    bleedCtx.lineTo(sw - ox, pts[pts.length - 1].y);
+    bleedCtx.lineTo(sw - ox, floor);
+    bleedCtx.lineTo(-ox, floor);
+    bleedCtx.closePath();
+    const body = bleedCtx.createLinearGradient(0, L.top, 0, Math.max(L.bottom + 2, floor));
+    body.addColorStop(0, withAlpha(tint, surface));
+    body.addColorStop(0.42, withAlpha(tint, deep));
+    body.addColorStop(0.72, withAlpha(tint, deep * 0.35));
+    body.addColorStop(1, withAlpha(tint, 0));
+    bleedCtx.fillStyle = body;
+    bleedCtx.fill();
+    bleedCtx.restore();
+  };
+
   const paintLiving = () => {
     const style = canvasStyle();
     const night = document.documentElement.dataset.light === "night";
     const shift = swellPx;
     paintHaze(shift, night);
-    paintWater(shift, style, night);
+    if (!nightReachesEdges()) paintWater(shift, style, night);
     paintCaustics();
     paintWashes(shift, style, night);
     paintSoftEdge(shift, style, night);
@@ -406,7 +485,7 @@ export function createChart(stage) {
     g.restore();
   };
 
-  const paintTropic = (g, w, h, buffered) => {
+  const paintTropic = (g, w, h, buffered, withCurve = true) => {
     if (buffered) {
       const dpr = Math.min(1.5, window.devicePixelRatio || 1);
       if (shoreBuffer.width !== canvas.width || shoreBuffer.height !== canvas.height) {
@@ -424,20 +503,20 @@ export function createChart(stage) {
       gold: tropicGold(),
     });
     if (!frame) {
-      if (!buffered) paintLiving();
-      return;
+      if (!buffered && g === ctx) paintLiving();
+      return false;
     }
     g.save();
     g.drawImage(frame, 0, 0, w, h);
     g.globalCompositeOperation = "destination-in";
     const frameEl = stage.closest(".frame");
     const frameBox = frameEl ? frameEl.getBoundingClientRect() : { top: 0, height: window.innerHeight };
-    const stageTop = stage.getBoundingClientRect().top;
+    const hostTop = g.canvas?.getBoundingClientRect?.().top ?? stage.getBoundingClientRect().top;
     const frameH = Math.max(1, frameBox.height);
     // Water and sand stay at or below the middle of the frame. The ramp
     // starts there (or at the chart top, if the chart itself is lower)
     // and dissolves downward so the edge is not a hard box.
-    const midpoint = frameBox.top + frameH * 0.5 - stageTop;
+    const midpoint = frameBox.top + frameH * 0.5 - hostTop;
     const horizon = tropicHorizon();
     const feather = horizon === "haze" ? Math.max(220, frameH * 0.36) : Math.max(128, frameH * 0.2);
     const start = Math.max(0, midpoint);
@@ -461,7 +540,8 @@ export function createChart(stage) {
     if (horizon === "sea" || horizon === "surf") {
       paintTropicSea(g, w, start, frameH, tropicGold(), horizon === "surf", reduced ? 1.2 : breathPhase);
     }
-    paintTropicCurve(g);
+    if (withCurve) paintTropicCurve(g);
+    return true;
   };
 
   const paintShore = (g, w, h, buffered) => {

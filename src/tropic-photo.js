@@ -21,7 +21,7 @@ uniform float uGold;
 
 vec3 samplePlate(sampler2D tex, vec2 size, vec2 screen, vec2 drift, vec2 anchor) {
   float cover = max(uView.x / size.x, uView.y / size.y);
-  float scale = min(1.0, cover);
+  float scale = max(cover, 0.0001);
   vec2 shown = uView / max(scale, 0.0001);
   vec2 origin = (size - shown) * anchor;
   vec2 px = origin + (screen + drift) / max(scale, 0.0001);
