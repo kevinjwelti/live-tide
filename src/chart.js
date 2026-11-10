@@ -12,6 +12,7 @@ import { canvasStyle } from "./moods.js";
 import { breathLight, breathPeriodMs, breathSwell, tideBreathLevel } from "./breath.js";
 import { washDropPx, washState } from "./wash.js";
 import { getSkyMode } from "./now.js";
+import { washWeights } from "./swell.js";
 import { shoreBreathReach, shoreNightFade, shoreWetStep } from "./shore.js";
 import { createShorePhoto } from "./shore-photo.js";
 import { createTropicPhoto } from "./tropic-photo.js";
@@ -270,6 +271,16 @@ export function createChart(stage) {
     return shoreNightFade(skyPalette(new Date(clockMs)).night);
   };
 
+  const tropicGold = () => {
+    const mode = getSkyMode();
+    if (mode === "night") return 0;
+    const light = skyPalette(new Date(clockMs));
+    const pinnedDusk = mode === "dusk";
+    if (!pinnedDusk && isNightScene(light)) return 0;
+    const weights = pinnedDusk ? { earth: 1 } : washWeights(light.elevation);
+    return weights.earth;
+  };
+
   const shoreScene = () => {
     if (getSkyMode() === "dusk" || document.documentElement.dataset.light === "gold") return "dusk";
     return "day";
@@ -324,7 +335,7 @@ export function createChart(stage) {
       w,
       h,
       phase: reduced ? 1.2 : breathPhase,
-      dusk: shoreScene() === "dusk" ? 1 : 0,
+      gold: tropicGold(),
     });
     if (!frame) {
       if (!buffered) paintLiving();

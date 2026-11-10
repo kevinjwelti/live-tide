@@ -17,7 +17,7 @@ uniform vec2 uView;
 uniform vec2 uWaterSize;
 uniform vec2 uSandSize;
 uniform float uPhase;
-uniform float uDusk;
+uniform float uGold;
 
 vec3 samplePlate(sampler2D tex, vec2 size, vec2 screen, vec2 drift, vec2 anchor) {
   float cover = max(uView.x / size.x, uView.y / size.y);
@@ -27,6 +27,32 @@ vec3 samplePlate(sampler2D tex, vec2 size, vec2 screen, vec2 drift, vec2 anchor)
   vec2 px = origin + (screen + drift) / max(scale, 0.0001);
   vec2 uv = clamp(px / size, vec2(0.002), vec2(0.998));
   return texture2D(tex, uv).rgb;
+}
+
+float luma(vec3 c) {
+  return dot(c, vec3(0.299, 0.587, 0.114));
+}
+
+vec3 gradeWater(vec3 c, float g) {
+  float l = luma(c);
+  float hi = smoothstep(0.5, 0.88, l);
+  vec3 grain = c - vec3(l);
+  vec3 body = vec3(l * 0.4 + 0.02, l * 0.64 + 0.035, l * 0.74 + 0.04) + grain * vec3(0.32, 0.72, 0.9);
+  vec3 spark = vec3(l * 0.82 + 0.34, l * 0.55 + 0.16, l * 0.5 + 0.12) + grain * vec3(0.4, 0.28, 0.32);
+  vec3 graded = mix(body, spark, hi) * 0.9;
+  return mix(c, clamp(graded, 0.0, 1.0), g);
+}
+
+vec3 gradeSand(vec3 c, float g) {
+  float l = luma(c);
+  float hi = smoothstep(0.48, 0.86, l);
+  float sh = 1.0 - smoothstep(0.06, 0.4, l);
+  vec3 grain = c - vec3(l);
+  vec3 body = vec3(l * 1.05 + 0.12, l * 0.78 + 0.07, l * 0.5 + 0.04) + grain * vec3(0.72, 0.55, 0.38);
+  body = mix(body, body * vec3(0.86, 0.7, 0.58), sh * 0.45);
+  vec3 crest = vec3(l * 0.98 + 0.2, l * 0.8 + 0.1, l * 0.55 + 0.06) + grain * vec3(0.42, 0.32, 0.22);
+  vec3 graded = mix(body, crest, hi) * 0.93;
+  return mix(c, clamp(graded, 0.0, 1.0), g);
 }
 
 void main() {
@@ -45,11 +71,13 @@ void main() {
 
   vec3 sand = samplePlate(uSand, uSandSize, screen, vec2(0.0), vec2(0.62, 0.28));
 
+  float gold = clamp(uGold, 0.0, 1.0);
+  water = gradeWater(water, gold);
+  sand = gradeSand(sand, gold);
+
   float along = xN + (1.0 - yN) * 0.15;
   float sandAmt = smoothstep(0.20, 0.80, along);
   vec3 color = mix(water, sand, sandAmt);
-
-  color *= mix(vec3(1.0), vec3(1.06, 0.94, 0.82), uDusk * 0.5);
   gl_FragColor = vec4(color, 1.0);
 }
 `;
@@ -131,7 +159,7 @@ export function createTropicPhoto() {
       gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, stride, 0);
       gl.enableVertexAttribArray(aUv);
       gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, stride, 8);
-      for (const name of ["uView", "uWaterSize", "uSandSize", "uPhase", "uDusk"]) {
+      for (const name of ["uView", "uWaterSize", "uSandSize", "uPhase", "uGold"]) {
         loc[name] = gl.getUniformLocation(program, name);
       }
       loc.water = gl.getUniformLocation(program, "uWater");
@@ -161,7 +189,7 @@ export function createTropicPhoto() {
     ready() {
       return Boolean(gl && waterTex && sandTex && program);
     },
-    frame({ w, h, phase, dusk }) {
+    frame({ w, h, phase, gold }) {
       if (!this.ready() || w < 2 || h < 2) return null;
       const dpr = Math.min(1.5, window.devicePixelRatio || 1);
       const bw = Math.max(2, Math.round(w * dpr));
@@ -176,7 +204,7 @@ export function createTropicPhoto() {
       gl.uniform2f(loc.uWaterSize, waterW, waterH);
       gl.uniform2f(loc.uSandSize, sandW, sandH);
       gl.uniform1f(loc.uPhase, Number.isFinite(phase) ? phase : 0);
-      gl.uniform1f(loc.uDusk, dusk ? 1 : 0);
+      gl.uniform1f(loc.uGold, Number.isFinite(gold) ? gold : 0);
       gl.uniform1i(loc.water, 0);
       gl.uniform1i(loc.sand, 1);
       gl.activeTexture(gl.TEXTURE0);
