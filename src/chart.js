@@ -20,12 +20,9 @@ import { createTropicPhoto } from "./tropic-photo.js";
 function chartPad(w, h) {
   const phone = Math.min(w, h) < 640;
   const portrait = h > w;
-  return {
-    top: phone && !portrait ? 0.1 : phone ? 0.14 : 0.2,
-    bottom: phone ? (portrait ? 0.32 : 0.36) : 0.26,
-    left: phone ? 0.045 : 0.03,
-    right: phone ? 0.09 : 0.07,
-  };
+  if (phone && portrait) return { top: 0.05, bottom: 0.3, left: 0.03, right: 0.04 };
+  if (phone) return { top: 0.06, bottom: 0.34, left: 0.02, right: 0.03 };
+  return { top: 0.2, bottom: 0.26, left: 0.03, right: 0.07 };
 }
 
 function layout(w, h, series, rangeStart, rangeEnd) {
@@ -810,6 +807,15 @@ export function createChart(stage) {
     const w = stage.clientWidth;
     const h = stage.clientHeight;
     const dayExtrema = extrema.filter((e) => e.t >= rangeStart && e.t <= rangeEnd);
+    const dayList = document.querySelector("#day-tides");
+    if (dayList) {
+      dayList.replaceChildren(...dayExtrema.map((e) => {
+        const li = document.createElement("li");
+        const low = e.type !== "H";
+        li.innerHTML = `<span class="d-time">${formatClock(new Date(e.t))}</span><span class="d-ht">${e.v.toFixed(1)} ft</span><span class="d-kind">${low ? "Low" : "High"}</span>`;
+        return li;
+      }));
+    }
     const cursor = sampleTide(series, viewTime);
     const orbPx = cursor
       ? L.x(Math.min(rangeEnd, Math.max(rangeStart, viewTime)))

@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-title" content="LIVE TIDE" />
     <meta name="theme-color" content="#000000" />
     <meta http-equiv="Cache-Control" content="no-cache" />
-    <meta name="live-tide-build" content="moods-v85" />
+    <meta name="live-tide-build" content="moods-v86" />
     <script>
       const liveTideQuery = new URLSearchParams(location.search);
       if (liveTideQuery.has("kiosk")) {
@@ -140,6 +140,7 @@
         </div>
         <div id="y-axis" class="y-axis"></div>
         <div id="extremum-labels" class="extremum-labels"></div>
+        <ol id="day-tides" class="day-tides" aria-label="Today's highs and lows"></ol>
         <p id="status-msg" class="status-msg" hidden></p>
         <div id="chart-hit" class="chart-hit"></div>
         <button id="forecast-toggle" class="forecast-toggle" type="button" aria-pressed="false">
