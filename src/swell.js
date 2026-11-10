@@ -159,7 +159,7 @@ export function createSwell() {
 
   const apply = (light) => {
     palette = light;
-    const shoreDusk = root.dataset.shore === "real" && getSkyMode() === "dusk";
+    const shoreDusk = (root.dataset.shore === "real" || root.dataset.shore === "tropic") && getSkyMode() === "dusk";
     const night = !shoreDusk && isNightScene(light);
     const w = shoreDusk ? { starry: 0, earth: 1, day: 0 } : washWeights(light.elevation);
     root.dataset.light = night ? "night" : w.earth > 0.45 ? "gold" : "day";

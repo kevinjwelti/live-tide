@@ -14,6 +14,7 @@ import { washDropPx, washState } from "./wash.js";
 import { getSkyMode } from "./now.js";
 import { shoreBreathReach, shoreNightFade, shoreWetStep } from "./shore.js";
 import { createShorePhoto } from "./shore-photo.js";
+import { createTropicPhoto } from "./tropic-photo.js";
 
 function chartPad(w, h) {
   const phone = Math.min(w, h) < 640;
@@ -212,7 +213,20 @@ export function createChart(stage) {
     }
     L = layout(w, h, series, rangeStart, rangeEnd);
     const cover = beachCover();
-    if (cover <= 0.004) {
+    const tropic = tropicCover();
+    if (tropic > 0.004) {
+      if (tropic >= 0.996) {
+        paintTropic(ctx, w, h);
+      } else {
+        paintLiving();
+        paintTropic(shoreCtx, w, h, true);
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalAlpha = tropic;
+        ctx.drawImage(shoreBuffer, 0, 0);
+        ctx.restore();
+      }
+    } else if (cover <= 0.004) {
       paintLiving();
     } else if (cover >= 0.996) {
       paintShore(ctx, w, h);
@@ -248,6 +262,14 @@ export function createChart(stage) {
     return shoreNightFade(skyPalette(new Date(clockMs)).night);
   };
 
+  const tropicCover = () => {
+    if (document.documentElement.dataset.shore !== "tropic") return 0;
+    const mode = getSkyMode();
+    if (mode === "night") return 0;
+    if (mode === "noon" || mode === "dusk") return 1;
+    return shoreNightFade(skyPalette(new Date(clockMs)).night);
+  };
+
   const shoreScene = () => {
     if (getSkyMode() === "dusk" || document.documentElement.dataset.light === "gold") return "dusk";
     return "day";
@@ -267,6 +289,58 @@ export function createChart(stage) {
   };
 
   const shorePhoto = createShorePhoto();
+  const tropicPhoto = createTropicPhoto();
+
+  const paintTropicCurve = (g) => {
+    if (!L) return;
+    const span = Math.max(1, L.right - L.left);
+    const core = Math.min(3.2, Math.max(2.2, span / 520));
+    g.save();
+    g.lineJoin = "round";
+    g.lineCap = "round";
+    curvePath(g, series, L, rangeStart, rangeEnd, 0);
+    g.strokeStyle = "rgba(8, 16, 22, 0.78)";
+    g.lineWidth = core + 5.5;
+    g.stroke();
+    curvePath(g, series, L, rangeStart, rangeEnd, 0);
+    g.strokeStyle = "rgba(255, 250, 242, 0.97)";
+    g.lineWidth = core;
+    g.stroke();
+    g.restore();
+  };
+
+  const paintTropic = (g, w, h, buffered) => {
+    if (buffered) {
+      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+      if (shoreBuffer.width !== canvas.width || shoreBuffer.height !== canvas.height) {
+        shoreBuffer.width = canvas.width;
+        shoreBuffer.height = canvas.height;
+      }
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.clearRect(0, 0, w, h);
+    }
+    const reduced = motionReduced();
+    const frame = tropicPhoto.frame({
+      w,
+      h,
+      phase: reduced ? 1.2 : breathPhase,
+      dusk: shoreScene() === "dusk" ? 1 : 0,
+    });
+    if (!frame) {
+      if (!buffered) paintLiving();
+      return;
+    }
+    g.save();
+    g.drawImage(frame, 0, 0, w, h);
+    g.globalCompositeOperation = "destination-in";
+    const veil = g.createLinearGradient(0, 0, 0, Math.max(72, h * 0.16));
+    veil.addColorStop(0, "rgba(0,0,0,0)");
+    veil.addColorStop(1, "rgba(0,0,0,1)");
+    g.fillStyle = veil;
+    g.fillRect(0, 0, w, h);
+    g.restore();
+    paintTropicCurve(g);
+  };
 
   const paintShore = (g, w, h, buffered) => {
     if (buffered) {

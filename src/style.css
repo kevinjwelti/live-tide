@@ -468,11 +468,13 @@ html[data-light="night"] .extremum {
     0 0 18px rgba(255, 214, 170, 0.32);
 }
 
-html[data-shore="real"] .extremum-labels {
+html[data-shore="real"] .extremum-labels,
+html[data-shore="tropic"] .extremum-labels {
   z-index: 8;
 }
 
-html[data-shore="real"]:not([data-light="night"]) .extremum {
+html[data-shore="real"]:not([data-light="night"]) .extremum,
+html[data-shore="tropic"]:not([data-light="night"]) .extremum {
   z-index: 8;
   opacity: 1;
   color: #fff;
@@ -487,14 +489,25 @@ html[data-shore="real"]:not([data-light="night"]) .extremum {
 html[data-shore="real"]:not([data-light="night"]) .extremum .t-time,
 html[data-shore="real"]:not([data-light="night"]) .extremum .t-ht,
 html[data-shore="real"]:not([data-light="night"]) .extremum .t-kind,
-html[data-shore="real"]:not([data-light="night"]) .extremum .t-unit {
+html[data-shore="real"]:not([data-light="night"]) .extremum .t-unit,
+html[data-shore="tropic"]:not([data-light="night"]) .extremum .t-time,
+html[data-shore="tropic"]:not([data-light="night"]) .extremum .t-ht,
+html[data-shore="tropic"]:not([data-light="night"]) .extremum .t-kind,
+html[data-shore="tropic"]:not([data-light="night"]) .extremum .t-unit {
   color: #fff;
   text-shadow: none;
   opacity: 1;
 }
 
-html[data-shore="real"]:not([data-light="night"]) .forecast-toggle {
+html[data-shore="real"]:not([data-light="night"]) .forecast-toggle,
+html[data-shore="tropic"]:not([data-light="night"]) .forecast-toggle {
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32);
+}
+
+html[data-shore="tropic"]:not([data-light="night"]) .playhead.is-sun .orb {
+  filter:
+    drop-shadow(0 0 1.5px rgba(8, 16, 22, 0.9))
+    drop-shadow(0 0 10px rgba(255, 210, 80, 0.95));
 }
 
 .extremum.is-low {
