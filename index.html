@@ -12,15 +12,16 @@
     <meta name="apple-mobile-web-app-title" content="LIVE TIDE" />
     <meta name="theme-color" content="#000000" />
     <meta http-equiv="Cache-Control" content="no-cache" />
-    <meta name="live-tide-build" content="moods-v81" />
+    <meta name="live-tide-build" content="moods-v82" />
     <script>
       const liveTideQuery = new URLSearchParams(location.search);
       if (liveTideQuery.has("kiosk")) {
         document.documentElement.dataset.kiosk = "1";
       }
-      if (liveTideQuery.get("shore") === "real") {
+      const shore = liveTideQuery.get("shore");
+      if (shore === "real") {
         document.documentElement.dataset.shore = "real";
-      } else if (liveTideQuery.get("shore") === "tropic") {
+      } else if (shore !== "classic") {
         document.documentElement.dataset.shore = "tropic";
       }
     </script>
