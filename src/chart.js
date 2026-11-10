@@ -333,8 +333,20 @@ export function createChart(stage) {
     g.save();
     g.drawImage(frame, 0, 0, w, h);
     g.globalCompositeOperation = "destination-in";
-    const veil = g.createLinearGradient(0, 0, 0, Math.max(72, h * 0.16));
+    const frameEl = stage.closest(".frame");
+    const frameBox = frameEl ? frameEl.getBoundingClientRect() : { top: 0, height: window.innerHeight };
+    const stageTop = stage.getBoundingClientRect().top;
+    const frameH = Math.max(1, frameBox.height);
+    // Water and sand stay at or below the middle of the frame. The ramp
+    // starts there (or at the chart top, if the chart itself is lower)
+    // and dissolves downward so the edge is not a hard box.
+    const midpoint = frameBox.top + frameH * 0.5 - stageTop;
+    const feather = Math.max(128, frameH * 0.2);
+    const start = Math.max(0, midpoint);
+    const veil = g.createLinearGradient(0, start, 0, start + feather);
     veil.addColorStop(0, "rgba(0,0,0,0)");
+    veil.addColorStop(0.42, "rgba(0,0,0,0.14)");
+    veil.addColorStop(0.72, "rgba(0,0,0,0.62)");
     veil.addColorStop(1, "rgba(0,0,0,1)");
     g.fillStyle = veil;
     g.fillRect(0, 0, w, h);
