@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-title" content="LIVE TIDE" />
     <meta name="theme-color" content="#000000" />
     <meta http-equiv="Cache-Control" content="no-cache" />
-    <meta name="live-tide-build" content="moods-v88" />
+    <meta name="live-tide-build" content="moods-v89" />
     <script>
       const liveTideQuery = new URLSearchParams(location.search);
       if (liveTideQuery.has("kiosk")) {
@@ -27,6 +27,10 @@
       const theme = liveTideQuery.get("theme");
       if (theme === "shells" || theme === "palms" || theme === "sunset-cove" || theme === "driftwood") {
         document.documentElement.dataset.theme = theme;
+      }
+      const scene = liveTideQuery.get("scene");
+      if (scene === "tidepool" || scene === "reef" || scene === "lagoon" || scene === "blacksand") {
+        document.documentElement.dataset.scene = scene;
       }
     </script>
     <style>

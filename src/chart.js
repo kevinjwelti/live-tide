@@ -16,6 +16,7 @@ import { washWeights } from "./swell.js";
 import { shoreBreathReach, shoreNightFade, shoreWetStep } from "./shore.js";
 import { createShorePhoto } from "./shore-photo.js";
 import { createTropicPhoto } from "./tropic-photo.js";
+import { createScenePhoto } from "./scene-photo.js";
 
 function chartPad(w, h) {
   const phone = Math.min(w, h) < 640;
@@ -367,6 +368,14 @@ export function createChart(stage) {
     new URLSearchParams(location.search).get("layout") === "thirds" ? "thirds" : ""
   );
 
+  const sceneName = () => {
+    const value = new URLSearchParams(location.search).get("scene");
+    if (value === "tidepool" || value === "reef" || value === "lagoon" || value === "blacksand") {
+      return value;
+    }
+    return "";
+  };
+
   const shoreScene = () => {
     if (getSkyMode() === "dusk" || document.documentElement.dataset.light === "gold") return "dusk";
     return "day";
@@ -387,6 +396,7 @@ export function createChart(stage) {
 
   const shorePhoto = createShorePhoto();
   const tropicPhoto = createTropicPhoto();
+  const scenePhoto = createScenePhoto();
 
   const paintTropicCurve = (g) => {
     if (!L) return;
@@ -497,13 +507,22 @@ export function createChart(stage) {
       g.clearRect(0, 0, w, h);
     }
     const reduced = motionReduced();
-    const frame = tropicPhoto.frame({
-      w,
-      h,
-      phase: reduced ? 1.2 : breathPhase,
-      gold: tropicGold(),
-      layout: tropicLayout(),
-    });
+    const scene = sceneName();
+    const frame = scene
+      ? scenePhoto.frame({
+        w,
+        h,
+        phase: reduced ? 1.2 : breathPhase,
+        gold: tropicGold(),
+        scene,
+      })
+      : tropicPhoto.frame({
+        w,
+        h,
+        phase: reduced ? 1.2 : breathPhase,
+        gold: tropicGold(),
+        layout: tropicLayout(),
+      });
     if (!frame) {
       if (!buffered && g === ctx) paintLiving();
       return false;

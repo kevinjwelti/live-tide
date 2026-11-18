@@ -33,6 +33,47 @@ License: Pexels License, https://www.pexels.com/license/
 
 The Pexels License allows the photos to be downloaded, copied, modified, and used for free, including commercial use, without permission.
 
+?scene= previews
+
+These replace the lower water and sand plates. The default page does not use them. The sky, haze, tide curve, and labels stay the same. At night the scene is off and the starry chart shows.
+
+?scene=tidepool
+Rocky tide pool, bottom left. Clear shallow water over wet rock, with the cliff and sky reflected in the surface.
+Source page: https://www.pexels.com/photo/rocky-shoreline-with-calm-tide-pools-29561931/
+Photographer: Wilson Edgardo Benitez Del Puerto
+Image: https://images.pexels.com/photos/29561931/pexels-photo-29561931.jpeg
+File: scene/tidepool.jpg, the lower portion of that photograph.
+The bottom right is the same beach sand as ?shore=tropic (tropic-sand.jpg, Natalia S, Pexels).
+License: Pexels License, https://www.pexels.com/license/
+
+?scene=reef
+Bottom left, a drone view of a shallow coral reef. Bottom right, dark open ocean. They blend across the middle.
+Reef source page: https://www.pexels.com/photo/aerial-view-of-coral-reef-in-clear-blue-ocean-28408438/
+Photographer: Asad Photo Maldives
+Image: https://images.pexels.com/photos/28408438/pexels-photo-28408438.jpeg
+File: scene/reef.jpg
+Ocean source page: https://www.pexels.com/photo/dark-blue-water-15305604/
+Photographer: Diego F. Parra
+Image: https://images.pexels.com/photos/15305604/pexels-photo-15305604.jpeg
+File: scene/ocean.jpg
+License: Pexels License, https://www.pexels.com/license/
+
+?scene=lagoon
+Top-down shallow turquoise water over pale sand, with palm shadows across the sand. A swimmer in the source frame was painted out with a nearby patch of water.
+Source page: https://www.pexels.com/photo/green-palm-tree-casting-shadow-on-beach-shore-5231851/
+Photographer: Jess Loiterton
+Image: https://images.pexels.com/photos/5231851/pexels-photo-5231851.jpeg
+File: scene/lagoon.jpg, the left portion of that photograph, with the swimmer removed.
+License: Pexels License, https://www.pexels.com/license/
+
+?scene=blacksand
+Dark volcanic sand with white surf foam washing in from the water side. The photograph is Reynisfjara, Iceland. It is the black-sand look, not a photograph of Nicaragua.
+Source page: https://www.pexels.com/photo/aerial-view-of-waves-on-black-sand-beach-in-iceland-28842593/
+Photographer: Hub Jacqu
+Image: https://images.pexels.com/photos/28842593/pexels-photo-28842593.jpeg
+File: scene/blacksand.jpg
+License: Pexels License, https://www.pexels.com/license/
+
 Source page: https://unsplash.com/photos/aerial-view-of-waves-crashing-on-a-sandy-beach-zWFa7mlQAYk
 Photographer: Hameen Reynolds (https://unsplash.com/@hameen)
 Image: https://images.unsplash.com/photo-1744648617182-519c4bf39e30
