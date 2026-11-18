@@ -104,6 +104,26 @@ float causticWeb(vec2 x, float t) {
   return pow(1.0 - smoothstep(0.0, 0.055, edge), 1.5);
 }
 
+float coolWater(vec3 c) {
+  return smoothstep(0.02, 0.18, c.b - c.r);
+}
+
+vec3 driftOnlyWhere(sampler2D tex, vec2 size, vec2 screen, vec2 drift, vec2 anchor, float mask) {
+  vec3 still = samplePlate(tex, size, screen, vec2(0.0), anchor);
+  if (mask <= 0.001) return still;
+  vec3 moved = samplePlate(tex, size, screen, drift, anchor);
+  return mix(still, moved, clamp(mask, 0.0, 1.0));
+}
+
+float lagoonShore(float yN) {
+  return 0.642 + (yN - 0.9) * 0.05;
+}
+
+float lagoonWaterMask(float xN, float yN) {
+  float shore = lagoonShore(yN);
+  return 1.0 - smoothstep(shore - 0.09, shore - 0.012, xN);
+}
+
 void main() {
   vec2 screen = vUv * uView;
   float xN = screen.x / max(uView.x, 1.0);
@@ -117,26 +137,27 @@ void main() {
 
   vec3 color = vec3(0.0);
   if (uMode < 0.5) {
-    vec3 pool = samplePlate(uWater, uWaterSize, screen, rip * 9.0, vec2(0.48, 0.78));
+    vec3 still = samplePlate(uWater, uWaterSize, screen, vec2(0.0), vec2(0.48, 0.78));
+    float wet = coolWater(still);
+    vec3 pool = driftOnlyWhere(uWater, uWaterSize, screen, rip * 9.0, vec2(0.48, 0.78), wet);
     vec3 sand = samplePlate(uSand, uSandSize, screen, vec2(0.0), vec2(0.62, 0.28));
     float along = xN + (1.0 - yN) * 0.14;
     float sandAmt = smoothstep(0.22, 0.8, along);
     float sheen = pow(max(0.0, sin(screen.y * 0.018 + t * 0.65)), 10.0);
-    pool += vec3(0.9, 0.95, 1.0) * sheen * 0.07;
+    pool += vec3(0.9, 0.95, 1.0) * sheen * 0.07 * wet * (1.0 - sandAmt);
     color = mix(pool, sand, sandAmt);
   } else if (uMode < 1.5) {
-    vec2 uv = screen / vec2(140.0, 120.0);
-    float web = causticWeb(uv + rip * 0.15, t * 1.4);
-    vec3 reef = samplePlate(uWater, uWaterSize, screen, rip * 5.0, vec2(0.22, 0.82));
+    vec3 reef = samplePlate(uWater, uWaterSize, screen, vec2(0.0), vec2(0.22, 0.82));
     vec2 drift = vec2(sin(t * 0.28) * 28.0, cos(t * 0.19) * 12.0);
     vec3 deep = samplePlate(uSand, uSandSize, screen, drift, vec2(0.55, 0.42));
     float ocean = smoothstep(0.3, 0.72, xN);
+    float web = causticWeb(screen / vec2(140.0, 120.0), t * 1.4);
     vec3 tint = mix(vec3(0.75, 0.95, 1.0), vec3(1.0, 0.74, 0.42), gold);
-    reef += tint * web * 0.16;
+    deep += tint * web * 0.16;
     color = mix(reef, deep, ocean);
   } else if (uMode < 2.5) {
-    color = samplePlate(uWater, uWaterSize, screen, rip * 4.5, vec2(0.4, 0.96));
-    float water = 1.0 - smoothstep(0.34, 0.62, xN);
+    float water = lagoonWaterMask(xN, yN);
+    color = driftOnlyWhere(uWater, uWaterSize, screen, rip * 4.5, vec2(0.4, 0.96), water);
     float web = causticWeb(screen / vec2(160.0, 140.0), t * 1.1);
     vec3 tint = mix(vec3(0.8, 0.96, 1.0), vec3(1.0, 0.78, 0.5), gold);
     color += tint * web * 0.1 * water;
@@ -144,26 +165,25 @@ void main() {
   } else if (uMode < 3.5) {
     vec3 still = samplePlate(uWater, uWaterSize, screen, vec2(0.0), vec2(0.46, 0.5));
     vec2 wash = vec2(sin(t * 0.62) * 22.0, sin(screen.y * 0.01 + t * 0.4) * 6.0);
-    vec3 moved = samplePlate(uWater, uWaterSize, screen, wash, vec2(0.46, 0.5));
-    float bright = smoothstep(0.45, 0.82, luma(still));
-    float sea = 1.0 - smoothstep(0.34, 0.7, xN);
-    color = mix(still, moved, bright * sea * 0.85);
+    float sea = 1.0 - smoothstep(0.40, 0.55, xN);
+    color = driftOnlyWhere(uWater, uWaterSize, screen, wash, vec2(0.46, 0.5), sea);
     float band = smoothstep(0.22, 0.0, abs(fract(xN * 0.45 - t * 0.045) - 0.5));
-    color += vec3(0.95, 0.97, 1.0) * band * bright * sea * 0.16;
+    float foam = smoothstep(0.55, 0.82, luma(still));
+    color += vec3(0.95, 0.97, 1.0) * band * foam * sea * 0.16;
   } else if (uMode < 4.5) {
-    vec2 uv = screen / vec2(150.0, 128.0);
-    float web = causticWeb(uv + rip * 0.12, t * 1.25);
-    vec3 reef = samplePlate(uWater, uWaterSize, screen, rip * 4.0, uAnchor);
+    vec3 reef = samplePlate(uWater, uWaterSize, screen, vec2(0.0), uAnchor);
     vec2 drift = vec2(sin(t * 0.28) * 24.0, cos(t * 0.19) * 10.0);
     vec3 deep = samplePlate(uSand, uSandSize, screen, drift, uSandAnchor);
     float ocean = smoothstep(uSplit, uSplit + 0.32, xN);
+    float web = causticWeb(screen / vec2(150.0, 128.0), t * 1.25);
     vec3 tint = mix(vec3(0.8, 0.96, 1.0), vec3(1.0, 0.74, 0.46), gold);
-    reef += tint * web * 0.1 * (1.0 - ocean);
+    deep += tint * web * 0.1;
     color = mix(reef, deep, ocean);
   } else {
-    vec3 pool = samplePlate(uWater, uWaterSize, screen, rip * 5.0, uAnchor);
+    vec3 still = samplePlate(uWater, uWaterSize, screen, vec2(0.0), uAnchor);
+    float wet = coolWater(still);
+    vec3 pool = driftOnlyWhere(uWater, uWaterSize, screen, rip * 5.0, uAnchor, wet);
     float web = causticWeb(screen / vec2(170.0, 150.0), t);
-    float wet = smoothstep(0.28, 0.62, pool.b - pool.r * 0.25);
     vec3 tint = mix(vec3(0.86, 0.95, 1.0), vec3(1.0, 0.78, 0.5), gold);
     pool += tint * web * 0.07 * wet;
     color = pool;
