@@ -1,0 +1,4 @@
+import"./modulepreload-polyfill-B5Qt9EMX.js";import{S as o,e as r,d as l}from"./scenes-D80dAU8v.js";const a="/live-tide/",d=document.querySelector("#scene-list");o.forEach(e=>{const s=document.createElement("a");s.className="scene-link",s.href=r(e.id,a);const t=document.createElement("span");if(t.className="scene-thumb",e.id==="classic")t.classList.add("is-classic"),t.innerHTML=`
+      <svg viewBox="0 0 160 90" aria-hidden="true">
+        <path d="M0 58 C 24 40, 40 40, 64 58 S 104 76, 128 58 S 152 40, 160 46" fill="none" stroke="#f7f1e6" stroke-width="2.4"/>
+      </svg>`;else if(e.sand){t.classList.add("is-split");const c=document.createElement("img");c.alt="",c.src=l(e.file,a);const i=document.createElement("img");i.alt="",i.src=l(e.sand,a),t.append(c,i)}else t.style.backgroundImage=`url("${l(e.file,a)}")`;const n=document.createElement("span");n.className="scene-title",n.textContent=e.title,s.append(t,n),d==null||d.append(s)});

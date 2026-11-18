@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en" data-light="night">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="LIVE TIDE" />
+    <meta name="theme-color" content="#000000" />
+    <meta http-equiv="Cache-Control" content="no-cache" />
+    <meta name="live-tide-build" content="moods-v97" />
+    <script>
+      const liveTideQuery = new URLSearchParams(location.search);
+      if (liveTideQuery.has("kiosk")) {
+        document.documentElement.dataset.kiosk = "1";
+      }
+      if (liveTideQuery.has("tv")) {
+        document.documentElement.dataset.tv = "1";
+      }
+      const theme = liveTideQuery.get("theme");
+      if (theme === "shells" || theme === "palms" || theme === "sunset-cove" || theme === "driftwood") {
+        document.documentElement.dataset.theme = theme;
+      }
+      const photoScenes = ["tidepool", "tidepool2", "tidepool3", "tidepool4", "reef", "reef2", "reef3", "reef4", "lagoon", "blacksand"];
+      const shoreName = liveTideQuery.get("shore");
+      let choice = "lagoon";
+      if (liveTideQuery.has("scene")) {
+        const named = liveTideQuery.get("scene") || "";
+        if (named === "tropic" || named === "classic") choice = named;
+        else if (photoScenes.indexOf(named) !== -1) choice = named;
+      } else if (shoreName === "classic" || shoreName === "real") {
+        choice = shoreName;
+      } else {
+        try {
+          const saved = localStorage.getItem("live-tide-scene");
+          if (saved === "tropic" || saved === "classic" || photoScenes.indexOf(saved) !== -1) choice = saved;
+        } catch (error) { /* private mode */ }
+      }
+      if (choice === "real") document.documentElement.dataset.shore = "real";
+      else if (choice !== "classic") document.documentElement.dataset.shore = "tropic";
+      if (photoScenes.indexOf(choice) !== -1) document.documentElement.dataset.scene = choice;
+      document.documentElement.dataset.sceneChoice = choice;
+    </script>
+    <style>
+      html[data-kiosk="1"],
+      html[data-kiosk="1"] * {
+        cursor: none !important;
+      }
+      html[data-kiosk="1"] {
+        overflow: hidden;
+      }
+      html[data-kiosk="1"] .mood-caption,
+      html[data-kiosk="1"] .credit,
+      html[data-kiosk="1"] .beach-menu,
+      html[data-kiosk="1"] .scene-picker,
+      html[data-kiosk="1"] button:not(#place-name) {
+        display: none !important;
+      }
+      html[data-kiosk="1"][data-tv="1"][data-tv-awake="1"] #forecast-toggle,
+      html[data-kiosk="1"][data-tv="1"][data-tv-awake="1"] #scene-toggle {
+        display: inline-flex !important;
+      }
+      html[data-kiosk="1"][data-tv="1"] #scene-picker:not([hidden]) {
+        display: flex !important;
+      }
+      html[data-kiosk="1"][data-tv="1"] #scene-picker:not([hidden]) button {
+        display: inline-flex !important;
+      }
+      .kiosk-wake {
+        display: none;
+      }
+      html[data-kiosk="1"] .kiosk-wake {
+        display: block;
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        width: 2px;
+        height: 2px;
+        opacity: 0.02;
+        pointer-events: none;
+      }
+    </style>
+    <meta
+      name="description"
+      content="Living tide wall art. The ocean is always in motion."
+    />
+    <title>LIVE TIDE</title>
+    <link rel="icon" href="/live-tide/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/live-tide/manifest.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&family=Oswald:wght@400;600&family=Outfit:wght@200;300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" crossorigin src="/live-tide/assets/main-EekCjIR2.js"></script>
+    <link rel="modulepreload" crossorigin href="/live-tide/assets/modulepreload-polyfill-B5Qt9EMX.js">
+    <link rel="modulepreload" crossorigin href="/live-tide/assets/moods-BCGNyqYk.js">
+    <link rel="modulepreload" crossorigin href="/live-tide/assets/scenes-D80dAU8v.js">
+    <link rel="stylesheet" crossorigin href="/live-tide/assets/main-B5bf5ovN.css">
+  </head>
+  <body>
+    <video
+      id="kiosk-wake"
+      class="kiosk-wake"
+      muted
+      loop
+      playsinline
+      autoplay
+      preload="auto"
+      aria-hidden="true"
+      disableRemotePlayback
+    >
+      <source src="/live-tide/kiosk-wake.mp4" type="video/mp4" />
+    </video>
+    <div class="scene" aria-hidden="true">
+      <canvas id="stars" class="stars"></canvas>
+      <canvas id="shore-bleed" class="shore-bleed"></canvas>
+      <div class="theme-art" aria-hidden="true">
+        <svg class="deco shell-a" viewBox="0 0 80 64"><path class="ink" d="M8 54C20 16 60 16 72 54 52 44 28 44 8 54Z"/><path class="line" d="M40 50V24M26 48 30 28M54 48 50 28"/></svg>
+        <svg class="deco shell-b" viewBox="0 0 64 64"><path class="line" d="M34 36c10-2 14-14 4-18-14-6-26 10-16 20 12 12 34 4 30-12"/></svg>
+        <svg class="deco shell-c" viewBox="0 0 80 64"><path class="ink" d="M10 50C22 18 58 14 72 48 50 40 28 42 10 50Z"/><path class="line" d="M40 46V22M28 44l2-16M52 44l-2-16"/></svg>
+        <svg class="deco star" viewBox="0 0 70 70"><polygon class="ink" points="35,6 42,26 64,26 46,38 54,60 35,48 16,60 24,38 6,26 28,26"/></svg>
+        <svg class="deco palm-left" viewBox="0 0 220 300"><path class="trunk" d="M46 292C78 220 28 150 78 48"/><g transform="translate(78 52)"><ellipse class="ink" rx="78" ry="13" transform="rotate(-28)"/><ellipse class="ink" rx="70" ry="12" transform="rotate(8)"/><ellipse class="ink" rx="64" ry="11" transform="rotate(42)"/><ellipse class="ink" rx="66" ry="11" transform="rotate(-62)"/><ellipse class="ink" rx="48" ry="10" transform="rotate(78)"/></g></svg>
+        <svg class="deco palm-right" viewBox="0 0 220 300"><path class="trunk" d="M170 292C140 214 188 146 142 46"/><g transform="translate(140 50)"><ellipse class="ink" rx="74" ry="12" transform="rotate(24)"/><ellipse class="ink" rx="66" ry="11" transform="rotate(-12)"/><ellipse class="ink" rx="60" ry="10" transform="rotate(-48)"/><ellipse class="ink" rx="62" ry="11" transform="rotate(58)"/><ellipse class="ink" rx="44" ry="9" transform="rotate(-80)"/></g></svg>
+        <svg class="deco isle" viewBox="0 0 140 48"><path class="ink" d="M4 36C28 34 46 14 70 16c24 2 40 16 66 18"/><circle class="ink" cx="68" cy="16" r="7"/></svg>
+        <svg class="deco frond" viewBox="0 0 280 160"><g transform="translate(210 8)"><ellipse class="ink" rx="92" ry="14" transform="rotate(108)"/><ellipse class="ink" rx="78" ry="12" transform="rotate(78)"/><ellipse class="ink" rx="70" ry="11" transform="rotate(142)"/><ellipse class="ink" rx="54" ry="10" transform="rotate(48)"/></g></svg>
+        <div class="cove-wash"></div>
+        <svg class="deco wood" viewBox="0 0 240 70"><path class="wood" d="M8 46C48 22 92 58 140 30c32-16 62 8 92-6"/><path class="wood" d="M36 50c22-10 18-24 42-16"/></svg>
+        <svg class="deco grass-l" viewBox="0 0 48 80"><path class="grass" d="M24 76C20 46 8 28 14 6M24 76c4-28 16-46 10-66M24 76c8-24 22-36 18-54"/></svg>
+        <svg class="deco grass-r" viewBox="0 0 48 80"><path class="grass" d="M22 76C18 48 6 30 12 8M22 76c6-26 18-44 12-64M22 76c10-22 24-34 20-52"/></svg>
+      </div>
+    </div>
+
+    <main class="frame">
+      <header class="mast">
+        <div class="mast-left">
+          <h1 class="wordmark">LIVE TIDE</h1>
+          <p class="tagline">THE OCEAN IS ALWAYS IN MOTION</p>
+          <div class="current">
+            <span id="tide-eyebrow" class="eyebrow">CURRENT TIDE</span>
+            <div class="status-row">
+              <span id="direction">—</span>
+              <span id="dir-mark" class="dir-mark" aria-hidden="true"></span>
+            </div>
+            <div class="height-row">
+              <span id="height" class="height">—</span>
+              <span class="unit">ft</span>
+            </div>
+            <p id="scrub-note" class="scrub-note" hidden></p>
+            <div class="moon">
+              <svg id="moon-icon" class="moon-icon" viewBox="0 0 48 48" aria-hidden="true"></svg>
+              <div>
+                <span class="eyebrow">MOON PHASE</span>
+                <p id="moon-name" class="moon-name">—</p>
+                <p id="moon-pct" class="moon-pct"></p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mast-right">
+          <p class="place" aria-label="Tide station">
+            <svg class="pin" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M12 2.2c-3.7 0-6.7 2.9-6.7 6.6 0 4.9 6.7 12.9 6.7 12.9s6.7-8 6.7-12.9c0-3.7-3-6.6-6.7-6.6zm0 9a2.4 2.4 0 1 1 0-4.8 2.4 2.4 0 0 1 0 4.8z"
+              />
+            </svg>
+            <button id="place-name" class="place-name" type="button" aria-haspopup="dialog" aria-expanded="false">
+              THE BOOM, NICARAGUA
+            </button>
+          </p>
+          <p id="date-line" class="date-line"></p>
+          <p id="clock-line" class="clock-line"></p>
+        </div>
+      </header>
+
+      <section class="chart-stage" id="chart-stage" aria-label="Today's tide curve">
+        <canvas id="chart" class="chart-canvas"></canvas>
+        <div id="now-line" class="now-line" aria-hidden="true"></div>
+        <div id="playhead-line" class="playhead-line" aria-hidden="true"></div>
+        <div id="playhead" class="playhead" aria-hidden="true">
+          <span class="orb-glow"></span>
+          <svg id="playhead-orb" class="orb" viewBox="0 0 48 48"></svg>
+        </div>
+        <div id="y-axis" class="y-axis"></div>
+        <div id="extremum-labels" class="extremum-labels"></div>
+        <ol id="day-tides" class="day-tides" aria-label="Today's highs and lows"></ol>
+        <p id="status-msg" class="status-msg" hidden></p>
+        <div id="chart-hit" class="chart-hit"></div>
+        <div class="chart-tools">
+          <button id="forecast-toggle" class="forecast-toggle" type="button" aria-pressed="false">
+            Forecast
+          </button>
+          <button id="scene-toggle" class="scene-toggle" type="button" aria-haspopup="dialog" aria-expanded="false">
+            Scenes
+          </button>
+        </div>
+        <section id="forecast" class="forecast" hidden aria-label="Seven day tide forecast"></section>
+      </section>
+
+      <p id="credit" class="credit">
+        Tide predictions in feet · Surfline · Corinto, Isla Cardon
+      </p>
+    </main>
+    <p id="mood-caption" class="mood-caption"></p>
+
+  </body>
+</html>

@@ -1,0 +1,133 @@
+Photographs used by the shore previews. Attribution is not required by either license. Live Tide records the sources here anyway.
+
+?shore=real
+
+Aerial beach photograph.
+
+Source page: https://unsplash.com/photos/aerial-view-of-waves-crashing-on-a-sandy-beach-zWFa7mlQAYk
+Photographer: Hameen Reynolds (https://unsplash.com/@hameen)
+Image: https://images.unsplash.com/photo-1744648617182-519c4bf39e30
+License: Unsplash License, https://unsplash.com/license
+
+The Unsplash License grants an irrevocable, nonexclusive, worldwide copyright license to download, copy, modify, distribute, perform, and use the photo for free, including commercial use, without permission.
+
+The real preview does not warp or tile the photograph. water.jpg is one undistorted turquoise crop (2700 × 764) filling the chart. sand.jpg is one undistorted rippled-sand crop (4032 × 660), shown only as a thin lip on the tide curve. foam.jpg is a single lace band (2200 × 36) that washes up from the bottom of the chart to that curve. None of the crops is enlarged past its own pixels.
+
+?shore=tropic
+
+Two photographs, blended in the chart. Neither is tiled or enlarged past its own pixels.
+
+Tropical water, bottom left. Top-down turquoise pool water with sharp sunlight caustics.
+Source page: https://www.pexels.com/photo/turquoise-water-in-pool-20774773/
+Photographer: Komet Flicker
+Image: https://images.pexels.com/photos/20774773/pexels-photo-20774773.jpeg
+File: tropic-water.jpg, a 4096 × 2200 crop of that photograph.
+License: Pexels License, https://www.pexels.com/license/
+
+Beach sand, bottom right. Close top-down pale warm-beige fine sand with wind ripples.
+Source page: https://www.pexels.com/photo/photo-of-a-sandy-surface-with-ripples-24380166/
+Photographer: Natalia S
+Image: https://images.pexels.com/photos/24380166/pexels-photo-24380166.jpeg
+File: tropic-sand.jpg, a 3024 × 2200 crop of that photograph.
+License: Pexels License, https://www.pexels.com/license/
+
+The Pexels License allows the photos to be downloaded, copied, modified, and used for free, including commercial use, without permission.
+
+?scene= previews
+
+These replace the lower water and sand plates. The lagoon is the default. The Scenes button and scenes.html list each one by name: Lagoon (default), Tropic Shore, Black Sand, Reef, Colorful Reef I, Colorful Reef II, Colorful Reef III, Tide Pool, Starfish Pool, Anemone Pool, Mirror Pool, and Classic. The sky, haze, tide curve, and labels stay the same. At night the scene is off and the starry chart shows.
+
+?scene=tidepool
+Rocky tide pool, bottom left. Clear shallow water over wet rock, with the cliff and sky reflected in the surface.
+Source page: https://www.pexels.com/photo/rocky-shoreline-with-calm-tide-pools-29561931/
+Photographer: Wilson Edgardo Benitez Del Puerto
+Image: https://images.pexels.com/photos/29561931/pexels-photo-29561931.jpeg
+File: scene/tidepool.jpg, the lower portion of that photograph.
+The bottom right is the same beach sand as ?shore=tropic (tropic-sand.jpg, Natalia S, Pexels).
+License: Pexels License, https://www.pexels.com/license/
+
+?scene=reef
+Bottom left, a drone view of a shallow coral reef. Bottom right, dark open ocean. They blend across the middle.
+Reef source page: https://www.pexels.com/photo/aerial-view-of-coral-reef-in-clear-blue-ocean-28408438/
+Photographer: Asad Photo Maldives
+Image: https://images.pexels.com/photos/28408438/pexels-photo-28408438.jpeg
+File: scene/reef.jpg
+Ocean source page: https://www.pexels.com/photo/dark-blue-water-15305604/
+Photographer: Diego F. Parra
+Image: https://images.pexels.com/photos/15305604/pexels-photo-15305604.jpeg
+File: scene/ocean.jpg
+License: Pexels License, https://www.pexels.com/license/
+
+?scene=lagoon
+This is the default page for every beach. ?scene=tropic opts back to the turquoise water and rippled sand. ?shore=classic keeps the drawn chart.
+Top-down shallow turquoise water over pale sand, with palm shadows across the sand. A swimmer in the source frame was painted out with a nearby patch of water.
+Source page: https://www.pexels.com/photo/green-palm-tree-casting-shadow-on-beach-shore-5231851/
+Photographer: Jess Loiterton
+Image: https://images.pexels.com/photos/5231851/pexels-photo-5231851.jpeg
+File: scene/lagoon.jpg, the left portion of that photograph, with the swimmer removed.
+The sand and the palm shadow are the photograph itself. They are not redrawn, and they are not warped. The shadow in the photograph is the tree's own soft shadow. A wash is drawn only along the waterline: irregular foam from layered noise, a thin sheet of water, and a darker wet band that lingers as the water slips back. One wash takes about 10 seconds. A slower second wash changes how far each set reaches, so they are not identical. The water's movement is the same kind of noise, a few pixels, only on the turquoise side of the line. It is not a video of water. A calm top-down lagoon clip that matched this photograph was not available, and pasting a different sea onto it looked like a second picture.
+License: Pexels License, https://www.pexels.com/license/
+
+?scene=blacksand
+Dark volcanic sand with white surf foam washing in from the water side. The photograph is Reynisfjara, Iceland. It is the black-sand look, not a photograph of Nicaragua.
+Source page: https://www.pexels.com/photo/aerial-view-of-waves-on-black-sand-beach-in-iceland-28842593/
+Photographer: Hub Jacqu
+Image: https://images.pexels.com/photos/28842593/pexels-photo-28842593.jpeg
+File: scene/blacksand.jpg
+License: Pexels License, https://www.pexels.com/license/
+
+?scene=reef2
+Colorful Reef I. Kept as the snorkel photograph Kevin liked: purple, orange, and green coral with tropical fish, lower left, blending into the same dark ocean plate as ?scene=reef. The colorful coral sways a few pixels in the current. The pale rock and the dark ocean plate are not warped; the ocean plate still drifts, because it is open water.
+Source page: https://www.pexels.com/photo/vibrant-underwater-coral-reef-with-tropical-fish-35449035/
+Photographer: Lorenzo Manera
+Image: https://images.pexels.com/photos/35449035/pexels-photo-35449035.jpeg
+File: scene/reef2.jpg, a 16:9 crop with the fish and purple coral in the lower left.
+License: Pexels License, https://www.pexels.com/license/
+A matching free video of this same close reef was not available. Cut-out fish pasted on top of it looked like stickers, so they were not added.
+
+?scene=reef3
+Colorful Reef II. A wide view of a Red Sea reef: coral heads across the slope, a school of blue fish, and Moorish idols and butterflyfish in the open water. The earlier tight photograph (Tom Fisk, pink sea whip, Pexels 4603283) is retired.
+Source page: https://mixkit.co/free-stock-video/coral-reef-in-the-red-sea-with-moorish-idol-fish-44869/
+File: scene/reef3.mp4, an 8 second seamless loop, 1920×1080 H.264, about 2.6 MB. scene/reef3.jpg is the still poster until the video has loaded. The video is requested only while this scene is on screen.
+The camera in the source drifts slowly. The loop point is a half-second crossfade back to the opening frame.
+License: Mixkit Stock Video Free License, https://mixkit.co/license/#videoFree
+
+?scene=reef4
+Colorful Reef III. A wider reef landscape: a coral wall, a pale sand channel, and open blue water falling away, with butterflyfish over the coral. The earlier tighter photograph (Francesco Ungaro, Pexels 17100727) is retired.
+Source page: https://mixkit.co/free-stock-video/beautiful-coral-reef-with-exotic-reef-fish-44868/
+File: scene/reef4.mp4, an 8 second seamless loop, 1920×1080 H.264, about 3.4 MB. scene/reef4.jpg is the still poster until the video has loaded. The video is requested only while this scene is on screen.
+The camera is nearly still. The loop point is a half-second crossfade back to the opening frame.
+License: Mixkit Stock Video Free License, https://mixkit.co/license/#videoFree
+
+?scene=tidepool2
+Orange and purple sea stars with green anemones on wet rock in a Cannon Beach tide pool. The whole lower field is this photograph.
+Source page: https://www.pexels.com/photo/vibrant-tide-pool-at-cannon-beach-37697139/
+Photographer: Veronika Andrews
+Image: https://images.pexels.com/photos/37697139/pexels-photo-37697139.jpeg
+File: scene/tidepool2.jpg
+License: Pexels License, https://www.pexels.com/license/
+
+?scene=tidepool3
+Green anemones in a clear rocky pool, seen from above.
+Source page: https://www.pexels.com/photo/white-flower-on-brown-rock-13519642/
+Photographer: Benjamin Farren
+Image: https://images.pexels.com/photos/13519642/pexels-photo-13519642.jpeg
+File: scene/tidepool3.jpg, a 16:9 crop with the anemones in the lower part of the frame.
+License: Pexels License, https://www.pexels.com/license/
+
+?scene=tidepool4
+One green anemone in a small reflective pool, with wet rock around it and sky mirrored in the water.
+Source page: https://www.pexels.com/photo/vibrant-sea-anemone-in-a-natural-tide-pool-35829814/
+Photographer: Thomas Parker
+Image: https://images.pexels.com/photos/35829814/pexels-photo-35829814.jpeg
+File: scene/tidepool4.jpg
+License: Pexels License, https://www.pexels.com/license/
+
+Source page: https://unsplash.com/photos/aerial-view-of-waves-crashing-on-a-sandy-beach-zWFa7mlQAYk
+Photographer: Hameen Reynolds (https://unsplash.com/@hameen)
+Image: https://images.unsplash.com/photo-1744648617182-519c4bf39e30
+License: Unsplash License, https://unsplash.com/license
+
+The Unsplash License grants an irrevocable, nonexclusive, worldwide copyright license to download, copy, modify, distribute, perform, and use the photo for free, including commercial use, without permission. Attribution is not required. Live Tide records the source here anyway.
+
+The preview does not warp or tile the photograph. water.jpg is one undistorted turquoise crop (2700 × 764) filling the chart. sand.jpg is one undistorted rippled-sand crop (4032 × 660), shown only as a thin lip on the tide curve. foam.jpg is a single lace band (2200 × 36) that washes up from the bottom of the chart to that curve. None of the crops is enlarged past its own pixels.
