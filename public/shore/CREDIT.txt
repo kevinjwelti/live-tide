@@ -74,6 +74,55 @@ Image: https://images.pexels.com/photos/28842593/pexels-photo-28842593.jpeg
 File: scene/blacksand.jpg
 License: Pexels License, https://www.pexels.com/license/
 
+?scene=reef2
+Snorkel view of a vivid reef: purple, orange, and green coral with tropical fish, lower left, blending into the same dark ocean plate as ?scene=reef.
+Source page: https://www.pexels.com/photo/vibrant-underwater-coral-reef-with-tropical-fish-35449035/
+Photographer: Lorenzo Manera
+Image: https://images.pexels.com/photos/35449035/pexels-photo-35449035.jpeg
+File: scene/reef2.jpg, a 16:9 crop with the fish and purple coral in the lower left.
+License: Pexels License, https://www.pexels.com/license/
+
+?scene=reef3
+Pink sea whip and orange sponge on a reef, lower left, blending into dark ocean on the right.
+Source page: https://www.pexels.com/photo/colorful-underwater-corals-4603283/
+Photographer: Tom Fisk
+Image: https://images.pexels.com/photos/4603283/pexels-photo-4603283.jpeg
+West Papua, Indonesia.
+File: scene/reef3.jpg
+License: Pexels License, https://www.pexels.com/license/
+
+?scene=reef4
+Wide underwater reef with tan, pink, and purple coral and a few fish. The coral sits in the lower part of the frame. The right side blends into the dark ocean plate.
+Source page: https://www.pexels.com/photo/underwater-photo-of-a-coral-reef-and-tropical-fish-17100727/
+Photographer: Francesco Ungaro
+Image: https://images.pexels.com/photos/17100727/pexels-photo-17100727.jpeg
+File: scene/reef4.jpg
+License: Pexels License, https://www.pexels.com/license/
+
+?scene=tidepool2
+Orange and purple sea stars with green anemones on wet rock in a Cannon Beach tide pool. The whole lower field is this photograph.
+Source page: https://www.pexels.com/photo/vibrant-tide-pool-at-cannon-beach-37697139/
+Photographer: Veronika Andrews
+Image: https://images.pexels.com/photos/37697139/pexels-photo-37697139.jpeg
+File: scene/tidepool2.jpg
+License: Pexels License, https://www.pexels.com/license/
+
+?scene=tidepool3
+Green anemones in a clear rocky pool, seen from above.
+Source page: https://www.pexels.com/photo/white-flower-on-brown-rock-13519642/
+Photographer: Benjamin Farren
+Image: https://images.pexels.com/photos/13519642/pexels-photo-13519642.jpeg
+File: scene/tidepool3.jpg, a 16:9 crop with the anemones in the lower part of the frame.
+License: Pexels License, https://www.pexels.com/license/
+
+?scene=tidepool4
+One green anemone in a small reflective pool, with wet rock around it and sky mirrored in the water.
+Source page: https://www.pexels.com/photo/vibrant-sea-anemone-in-a-natural-tide-pool-35829814/
+Photographer: Thomas Parker
+Image: https://images.pexels.com/photos/35829814/pexels-photo-35829814.jpeg
+File: scene/tidepool4.jpg
+License: Pexels License, https://www.pexels.com/license/
+
 Source page: https://unsplash.com/photos/aerial-view-of-waves-crashing-on-a-sandy-beach-zWFa7mlQAYk
 Photographer: Hameen Reynolds (https://unsplash.com/@hameen)
 Image: https://images.unsplash.com/photo-1744648617182-519c4bf39e30

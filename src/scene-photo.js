@@ -19,6 +19,9 @@ uniform vec2 uSandSize;
 uniform float uPhase;
 uniform float uGold;
 uniform float uMode;
+uniform vec2 uAnchor;
+uniform vec2 uSandAnchor;
+uniform float uSplit;
 
 vec3 samplePlate(sampler2D tex, vec2 size, vec2 screen, vec2 drift, vec2 anchor) {
   float cover = max(uView.x / size.x, uView.y / size.y);
@@ -102,7 +105,7 @@ void main() {
     float web = causticWeb(screen / vec2(160.0, 140.0), t * 1.1);
     vec3 tint = mix(vec3(0.8, 0.96, 1.0), vec3(1.0, 0.78, 0.5), gold);
     color += tint * web * 0.1 * water;
-  } else {
+  } else if (uMode < 3.5) {
     vec3 still = samplePlate(uWater, uWaterSize, screen, vec2(0.0), vec2(0.46, 0.5));
     vec2 wash = vec2(sin(t * 0.62) * 22.0, sin(screen.y * 0.01 + t * 0.4) * 6.0);
     vec3 moved = samplePlate(uWater, uWaterSize, screen, wash, vec2(0.46, 0.5));
@@ -111,6 +114,23 @@ void main() {
     color = mix(still, moved, bright * sea * 0.85);
     float band = smoothstep(0.22, 0.0, abs(fract(xN * 0.45 - t * 0.045) - 0.5));
     color += vec3(0.95, 0.97, 1.0) * band * bright * sea * 0.16;
+  } else if (uMode < 4.5) {
+    vec2 uv = screen / vec2(150.0, 128.0);
+    float web = causticWeb(uv + rip * 0.12, t * 1.25);
+    vec3 reef = samplePlate(uWater, uWaterSize, screen, rip * 4.0, uAnchor);
+    vec2 drift = vec2(sin(t * 0.28) * 24.0, cos(t * 0.19) * 10.0);
+    vec3 deep = samplePlate(uSand, uSandSize, screen, drift, uSandAnchor);
+    float ocean = smoothstep(uSplit, uSplit + 0.32, xN);
+    vec3 tint = mix(vec3(0.8, 0.96, 1.0), vec3(1.0, 0.74, 0.46), gold);
+    reef += tint * web * 0.1 * (1.0 - ocean);
+    color = mix(reef, deep, ocean);
+  } else {
+    vec3 pool = samplePlate(uWater, uWaterSize, screen, rip * 5.0, uAnchor);
+    float web = causticWeb(screen / vec2(170.0, 150.0), t);
+    float wet = smoothstep(0.28, 0.62, pool.b - pool.r * 0.25);
+    vec3 tint = mix(vec3(0.86, 0.95, 1.0), vec3(1.0, 0.78, 0.5), gold);
+    pool += tint * web * 0.07 * wet;
+    color = pool;
   }
 
   gl_FragColor = vec4(warm(color, gold), 1.0);
@@ -143,7 +163,13 @@ function makeTexture(gl, image) {
 
 const SCENES = {
   tidepool: { mode: 0, water: "scene/tidepool.jpg", sand: "tropic-sand.jpg" },
+  tidepool2: { mode: 5, water: "scene/tidepool2.jpg", sand: "scene/tidepool2.jpg", anchor: [0.22, 0.58] },
+  tidepool3: { mode: 5, water: "scene/tidepool3.jpg", sand: "scene/tidepool3.jpg", anchor: [0.5, 0.72] },
+  tidepool4: { mode: 5, water: "scene/tidepool4.jpg", sand: "scene/tidepool4.jpg", anchor: [0.48, 0.44] },
   reef: { mode: 1, water: "scene/reef.jpg", sand: "scene/ocean.jpg" },
+  reef2: { mode: 4, water: "scene/reef2.jpg", sand: "scene/ocean.jpg", anchor: [0.5, 0.7], sandAnchor: [0.55, 0.42], split: 0.74 },
+  reef3: { mode: 4, water: "scene/reef3.jpg", sand: "scene/ocean.jpg", anchor: [0.36, 0.84], sandAnchor: [0.5, 0.4], split: 0.7 },
+  reef4: { mode: 4, water: "scene/reef4.jpg", sand: "scene/ocean.jpg", anchor: [0.3, 0.9], sandAnchor: [0.55, 0.42], split: 0.58 },
   lagoon: { mode: 2, water: "scene/lagoon.jpg", sand: "scene/lagoon.jpg" },
   blacksand: { mode: 3, water: "scene/blacksand.jpg", sand: "scene/blacksand.jpg" },
 };
@@ -195,7 +221,7 @@ export function createScenePhoto() {
       gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, stride, 0);
       gl.enableVertexAttribArray(aUv);
       gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, stride, 8);
-      for (const name of ["uView", "uWaterSize", "uSandSize", "uPhase", "uGold", "uMode"]) {
+      for (const name of ["uView", "uWaterSize", "uSandSize", "uPhase", "uGold", "uMode", "uAnchor", "uSandAnchor", "uSplit"]) {
         loc[name] = gl.getUniformLocation(program, name);
       }
       loc.water = gl.getUniformLocation(program, "uWater");
@@ -244,6 +270,11 @@ export function createScenePhoto() {
       gl.uniform1f(loc.uPhase, Number.isFinite(phase) ? phase : 0);
       gl.uniform1f(loc.uGold, Number.isFinite(gold) ? gold : 0);
       gl.uniform1f(loc.uMode, spec.mode);
+      const anchor = spec.anchor || [0.5, 0.5];
+      const sandAnchor = spec.sandAnchor || [0.5, 0.5];
+      gl.uniform2f(loc.uAnchor, anchor[0], anchor[1]);
+      gl.uniform2f(loc.uSandAnchor, sandAnchor[0], sandAnchor[1]);
+      gl.uniform1f(loc.uSplit, spec.split ?? 0.5);
       gl.uniform1i(loc.water, 0);
       gl.uniform1i(loc.sand, 1);
       gl.activeTexture(gl.TEXTURE0);

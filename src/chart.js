@@ -370,7 +370,9 @@ export function createChart(stage) {
 
   const sceneName = () => {
     const value = new URLSearchParams(location.search).get("scene");
-    if (value === "tidepool" || value === "reef" || value === "lagoon" || value === "blacksand") {
+    if (value === "tidepool" || value === "tidepool2" || value === "tidepool3" || value === "tidepool4"
+      || value === "reef" || value === "reef2" || value === "reef3" || value === "reef4"
+      || value === "lagoon" || value === "blacksand") {
       return value;
     }
     return "";
