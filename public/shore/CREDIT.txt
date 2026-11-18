@@ -64,6 +64,7 @@ Source page: https://www.pexels.com/photo/green-palm-tree-casting-shadow-on-beac
 Photographer: Jess Loiterton
 Image: https://images.pexels.com/photos/5231851/pexels-photo-5231851.jpeg
 File: scene/lagoon.jpg, the left portion of that photograph, with the swimmer removed.
+A soft wash is drawn on top of this photograph: a faint foam line laps onto the sand and back about every 7 seconds, and the sand it covers darkens, then lightens as the water recedes. The palm shadow and the photograph itself are unchanged.
 License: Pexels License, https://www.pexels.com/license/
 
 ?scene=blacksand

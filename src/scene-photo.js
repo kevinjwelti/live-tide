@@ -22,6 +22,7 @@ uniform float uMode;
 uniform vec2 uAnchor;
 uniform vec2 uSandAnchor;
 uniform float uSplit;
+uniform float uWash;
 
 vec3 samplePlate(sampler2D tex, vec2 size, vec2 screen, vec2 drift, vec2 anchor) {
   float cover = max(uView.x / size.x, uView.y / size.y);
@@ -47,6 +48,40 @@ vec3 warm(vec3 c, float g) {
 vec2 hash2(vec2 p) {
   p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
   return fract(sin(p) * 43758.5453);
+}
+
+float lagoonLap(float u) {
+  if (u < 0.36) return smoothstep(0.0, 1.0, u / 0.36);
+  if (u < 0.46) return 1.0;
+  if (u < 0.82) return 1.0 - smoothstep(0.0, 1.0, (u - 0.46) / 0.36);
+  return 0.0;
+}
+
+vec3 lagoonWash(vec3 color, float xN, float yN, float gold, float seconds) {
+  float cycle = 7.0;
+  float u = fract(seconds / cycle);
+  float reach = lagoonLap(u);
+  float behind = lagoonLap(fract((seconds - 0.55) / cycle));
+  float shore = 0.642 + (yN - 0.9) * 0.05 + sin(yN * 21.0 + seconds * 0.4) * 0.005;
+  float travel = 0.05;
+  float front = shore + reach * travel;
+  float wetFront = shore + max(reach, behind * 0.92) * travel;
+  float low = smoothstep(0.68, 0.84, yN);
+  float pale = smoothstep(0.34, 0.7, luma(color));
+  float onSand = smoothstep(shore - 0.006, shore + 0.016, xN);
+  float covered = 1.0 - smoothstep(wetFront - 0.006, wetFront + 0.014, xN);
+  float wet = onSand * covered * max(reach * 0.9, behind * 0.38) * low * pale;
+  vec3 damp = color * vec3(0.74, 0.82, 0.88);
+  color = mix(color, damp, wet * 0.78);
+  float foamGate = smoothstep(0.1, 0.42, reach) * low;
+  float lace = 0.45 + 0.55 * sin(yN * 46.0 + reach * 2.2 + sin(yN * 13.0 + seconds));
+  lace *= 0.75 + 0.25 * sin(yN * 91.0 - seconds * 1.3);
+  float frontJ = front + sin(yN * 37.0 + seconds * 0.8) * 0.004;
+  float edge = exp(-pow((xN - frontJ) / 0.007, 2.0)) * clamp(lace, 0.15, 1.0);
+  float core = exp(-pow((xN - frontJ) / 0.0026, 2.0));
+  vec3 foam = mix(vec3(0.96, 0.98, 0.97), vec3(1.0, 0.9, 0.76), gold);
+  color = mix(color, foam, clamp((edge * 0.42 + core * 0.28) * foamGate, 0.0, 0.62));
+  return color;
 }
 
 float causticWeb(vec2 x, float t) {
@@ -105,6 +140,7 @@ void main() {
     float web = causticWeb(screen / vec2(160.0, 140.0), t * 1.1);
     vec3 tint = mix(vec3(0.8, 0.96, 1.0), vec3(1.0, 0.78, 0.5), gold);
     color += tint * web * 0.1 * water;
+    color = lagoonWash(color, xN, yN, gold, uWash);
   } else if (uMode < 3.5) {
     vec3 still = samplePlate(uWater, uWaterSize, screen, vec2(0.0), vec2(0.46, 0.5));
     vec2 wash = vec2(sin(t * 0.62) * 22.0, sin(screen.y * 0.01 + t * 0.4) * 6.0);
@@ -186,6 +222,7 @@ export function createScenePhoto() {
   let program = null;
   const loc = {};
   const base = import.meta.env.BASE_URL || "/";
+  const washStarted = performance.now();
 
   const loadImage = (url) => new Promise((resolve, reject) => {
     const img = new Image();
@@ -221,7 +258,7 @@ export function createScenePhoto() {
       gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, stride, 0);
       gl.enableVertexAttribArray(aUv);
       gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, stride, 8);
-      for (const name of ["uView", "uWaterSize", "uSandSize", "uPhase", "uGold", "uMode", "uAnchor", "uSandAnchor", "uSplit"]) {
+      for (const name of ["uView", "uWaterSize", "uSandSize", "uPhase", "uGold", "uMode", "uAnchor", "uSandAnchor", "uSplit", "uWash"]) {
         loc[name] = gl.getUniformLocation(program, name);
       }
       loc.water = gl.getUniformLocation(program, "uWater");
@@ -275,6 +312,9 @@ export function createScenePhoto() {
       gl.uniform2f(loc.uAnchor, anchor[0], anchor[1]);
       gl.uniform2f(loc.uSandAnchor, sandAnchor[0], sandAnchor[1]);
       gl.uniform1f(loc.uSplit, spec.split ?? 0.5);
+      const still = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      const washSec = still ? 6.3 : (performance.now() - washStarted) / 1000;
+      gl.uniform1f(loc.uWash, washSec);
       gl.uniform1i(loc.water, 0);
       gl.uniform1i(loc.sand, 1);
       gl.activeTexture(gl.TEXTURE0);
