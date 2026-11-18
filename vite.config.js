@@ -8,6 +8,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, "index.html"),
         moods: resolve(__dirname, "moods.html"),
+        scenes: resolve(__dirname, "scenes.html"),
       },
     },
   },

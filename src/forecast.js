@@ -148,6 +148,7 @@ export function createForecast(root, hooks = {}) {
 
   const onKey = (event) => {
     if (!active || root.hidden) return;
+    if (document.querySelector("#scene-picker:not([hidden])")) return;
     if (event.target?.closest?.("input, textarea")) return;
     if (open != null && ["Escape", "Backspace", "Enter", " ", "GoBack", "BrowserBack"].includes(event.key)) {
       event.preventDefault();
