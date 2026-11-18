@@ -1,0 +1,38 @@
+name: Android TV debug APK
+
+on:
+  push:
+    branches:
+      - main
+      - "cursor/**"
+    paths:
+      - "tv-app/**"
+      - ".github/workflows/tv-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  debug-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - name: Install the Android 35 SDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Build the debug APK
+        working-directory: tv-app
+        run: chmod +x ./gradlew && ./gradlew assembleDebug --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: live-tide-tv-debug
+          path: tv-app/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LIVE TIDE · Privacy</title>
+    <link rel="icon" href="/live-tide/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500&family=Playfair+Display:wght@500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0;
+        background: #10161c;
+        color: #f3ead8;
+        font-family: "Outfit", "Avenir Next", "Helvetica Neue", sans-serif;
+        line-height: 1.5;
+      }
+      main {
+        max-width: 40rem;
+        margin: 0 auto;
+        padding: 2.2rem 1.3rem 4rem;
+      }
+      a { color: #f3ead8; }
+      h1 {
+        font-family: "Playfair Display", Palatino, Georgia, serif;
+        font-weight: 500;
+        font-size: 2.6rem;
+        margin: 0.4rem 0 0.2rem;
+      }
+      h2 {
+        font-family: "Playfair Display", Palatino, Georgia, serif;
+        font-weight: 500;
+        font-size: 1.35rem;
+        margin: 1.6rem 0 0.3rem;
+      }
+      p, li { font-size: 1.05rem; }
+      .back {
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back" href="./">Live Tide</a>
+      <h1>Privacy</h1>
+      <p>Live Tide is a tide clock. It does not have accounts, and it does not sell information.</p>
+
+      <h2>The website</h2>
+      <p>
+        The page remembers the beach and the scene you picked, in this browser only
+        (local storage on your device). It asks the public NOAA tide service, and sometimes
+        a tide file hosted with this site, for the numbers it draws. Those requests include
+        the usual connection details a web server sees, such as an IP address.
+      </p>
+      <p>
+        “Near me” on the beach list uses your location once, and only after you tap it.
+        The TV app does not show that control and does not ask for location.
+      </p>
+
+      <h2>The TV app</h2>
+      <p>
+        The Fire TV and Google TV app is a full-screen window onto this same page.
+        It does not add analytics, advertising, or an account. It keeps a copy of the
+        page on the device so a short network outage does not blank the screen.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        Questions about this policy can go to the address on the
+        <a href="https://github.com/kevinjwelti/live-tide">Live Tide</a> project page.
+      </p>
+    </main>
+  </body>
+</html>

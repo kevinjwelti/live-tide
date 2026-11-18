@@ -9,6 +9,7 @@ export default defineConfig({
         main: resolve(__dirname, "index.html"),
         moods: resolve(__dirname, "moods.html"),
         scenes: resolve(__dirname, "scenes.html"),
+        privacy: resolve(__dirname, "privacy.html"),
       },
     },
   },

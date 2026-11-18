@@ -2,3 +2,12 @@ node_modules
 dist
 .DS_Store
 *.local
+tv-app/.gradle
+tv-app/build
+tv-app/app/build
+tv-app/local.properties
+tv-app/keystore.properties
+tv-app/*.jks
+tv-app/*.keystore
+*.jks
+*.keystore
