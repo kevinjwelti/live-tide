@@ -23,13 +23,17 @@
       * { box-sizing: border-box; }
       html, body {
         margin: 0;
-        min-height: 100%;
+        height: 100%;
         background: #10161c;
         color: var(--cream);
         font-family: var(--sans);
       }
       body {
-        padding: max(1.4rem, env(safe-area-inset-top)) max(1.2rem, env(safe-area-inset-right)) 2.5rem max(1.2rem, env(safe-area-inset-left));
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+        padding: max(1.1rem, env(safe-area-inset-top)) max(1.2rem, env(safe-area-inset-right)) max(0.8rem, env(safe-area-inset-bottom)) max(1.2rem, env(safe-area-inset-left));
       }
       a { color: inherit; }
       .bar {
@@ -37,7 +41,8 @@
         justify-content: space-between;
         align-items: flex-end;
         gap: 1rem;
-        margin-bottom: 1.4rem;
+        margin-bottom: 0.9rem;
+        flex: none;
       }
       .back {
         font-size: 0.78rem;
@@ -59,16 +64,20 @@
         line-height: 1.4;
       }
       .scene-list {
+        flex: 1;
+        min-height: 0;
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 1.1rem;
+        grid-template-rows: repeat(3, minmax(0, 1fr));
+        gap: 0.8rem;
       }
       .scene-link {
         display: flex;
         flex-direction: column;
-        gap: 0.45rem;
-        min-height: 44px;
-        padding: 0.45rem;
+        gap: 0.35rem;
+        min-height: 0;
+        height: 100%;
+        padding: 0.4rem;
         border-radius: 0.7rem;
         text-decoration: none;
         background: rgba(255, 255, 255, 0.03);
@@ -83,7 +92,8 @@
       }
       .scene-thumb {
         display: block;
-        aspect-ratio: 16 / 9;
+        flex: 1;
+        min-height: 0;
         border-radius: 0.45rem;
         background: #143044 center / cover no-repeat;
         overflow: hidden;
@@ -115,7 +125,14 @@
         padding: 0.15rem 0.25rem 0.35rem;
       }
       @media (max-width: 900px) {
-        .scene-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        body { height: auto; overflow: auto; }
+        .scene-list {
+          flex: none;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-rows: none;
+        }
+        .scene-link { height: auto; }
+        .scene-thumb { flex: none; aspect-ratio: 16 / 9; }
       }
       @media (max-width: 560px) {
         .scene-list { grid-template-columns: 1fr; }
