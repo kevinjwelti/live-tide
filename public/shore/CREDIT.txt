@@ -59,6 +59,7 @@ File: scene/ocean.jpg
 License: Pexels License, https://www.pexels.com/license/
 
 ?scene=lagoon
+This is the default page for every beach. ?scene=tropic opts back to the turquoise water and rippled sand. ?shore=classic keeps the drawn chart.
 Top-down shallow turquoise water over pale sand, with palm shadows across the sand. A swimmer in the source frame was painted out with a nearby patch of water.
 Source page: https://www.pexels.com/photo/green-palm-tree-casting-shadow-on-beach-shore-5231851/
 Photographer: Jess Loiterton

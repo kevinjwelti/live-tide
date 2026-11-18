@@ -375,7 +375,8 @@ export function createChart(stage) {
       || value === "lagoon" || value === "blacksand") {
       return value;
     }
-    return "";
+    if (value === "tropic" || document.documentElement.dataset.shore !== "tropic") return "";
+    return "lagoon";
   };
 
   const shoreScene = () => {
