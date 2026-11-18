@@ -50,37 +50,67 @@ vec2 hash2(vec2 p) {
   return fract(sin(p) * 43758.5453);
 }
 
+float vnoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  float a = hash2(i).x;
+  float b = hash2(i + vec2(1.0, 0.0)).x;
+  float c = hash2(i + vec2(0.0, 1.0)).x;
+  float d = hash2(i + vec2(1.0, 1.0)).x;
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+float fbm(vec2 p) {
+  float v = 0.0;
+  float a = 0.5;
+  v += a * vnoise(p); p = p * 2.03 + vec2(1.7, 9.2); a *= 0.5;
+  v += a * vnoise(p); p = p * 2.02 + vec2(8.3, 2.8); a *= 0.5;
+  v += a * vnoise(p); p = p * 2.01 + vec2(3.1, 6.4); a *= 0.5;
+  v += a * vnoise(p);
+  return v;
+}
+
+float lagoonShore(float yN) {
+  float base = mix(0.67, 0.54, smoothstep(0.76, 0.92, yN));
+  return base + (fbm(vec2(yN * 8.0, 2.4)) - 0.5) * 0.018;
+}
+
 float lagoonLap(float u) {
-  if (u < 0.36) return smoothstep(0.0, 1.0, u / 0.36);
-  if (u < 0.46) return 1.0;
-  if (u < 0.82) return 1.0 - smoothstep(0.0, 1.0, (u - 0.46) / 0.36);
-  return 0.0;
+  float rise = smoothstep(0.0, 0.34, u);
+  float hold = 1.0 - smoothstep(0.34, 0.46, u);
+  float fall = 1.0 - smoothstep(0.46, 0.9, u);
+  return max(rise * step(u, 0.34), max(hold * step(0.34, u) * step(u, 0.46), fall * step(0.46, u)));
 }
 
 vec3 lagoonWash(vec3 color, float xN, float yN, float gold, float seconds) {
-  float cycle = 7.0;
-  float u = fract(seconds / cycle);
-  float reach = lagoonLap(u);
-  float behind = lagoonLap(fract((seconds - 0.55) / cycle));
-  float shore = 0.642 + (yN - 0.9) * 0.05 + sin(yN * 21.0 + seconds * 0.4) * 0.005;
-  float travel = 0.05;
-  float front = shore + reach * travel;
-  float wetFront = shore + max(reach, behind * 0.92) * travel;
-  float low = smoothstep(0.68, 0.84, yN);
-  float pale = smoothstep(0.34, 0.7, luma(color));
-  float onSand = smoothstep(shore - 0.006, shore + 0.016, xN);
-  float covered = 1.0 - smoothstep(wetFront - 0.006, wetFront + 0.014, xN);
-  float wet = onSand * covered * max(reach * 0.9, behind * 0.38) * low * pale;
-  vec3 damp = color * vec3(0.74, 0.82, 0.88);
-  color = mix(color, damp, wet * 0.78);
-  float foamGate = smoothstep(0.1, 0.42, reach) * low;
-  float lace = 0.45 + 0.55 * sin(yN * 46.0 + reach * 2.2 + sin(yN * 13.0 + seconds));
-  lace *= 0.75 + 0.25 * sin(yN * 91.0 - seconds * 1.3);
-  float frontJ = front + sin(yN * 37.0 + seconds * 0.8) * 0.004;
-  float edge = exp(-pow((xN - frontJ) / 0.007, 2.0)) * clamp(lace, 0.15, 1.0);
-  float core = exp(-pow((xN - frontJ) / 0.0026, 2.0));
-  vec3 foam = mix(vec3(0.96, 0.98, 0.97), vec3(1.0, 0.9, 0.76), gold);
-  color = mix(color, foam, clamp((edge * 0.42 + core * 0.28) * foamGate, 0.0, 0.62));
+  float lapA = lagoonLap(fract(seconds / 10.5));
+  float lapB = lagoonLap(fract(seconds / 16.8));
+  float reach = lapA * (0.7 + 0.3 * lapB);
+  float behind = lagoonLap(fract((seconds - 1.4) / 10.5));
+  float grain = fbm(vec2(yN * 7.5, 1.7));
+  float laceN = fbm(vec2(yN * 26.0, seconds * 0.11));
+  float fine = fbm(vec2(yN * 62.0 + 3.0, xN * 18.0 + seconds * 0.23));
+  float shore = lagoonShore(yN);
+  float travel = 0.048;
+  float front = shore + reach * travel + (laceN - 0.5) * 0.016;
+  float wetFront = shore + max(reach, behind * 0.88) * travel + (grain - 0.5) * 0.01;
+  float low = smoothstep(0.4, 0.72, yN);
+  float pale = smoothstep(0.32, 0.72, luma(color));
+  float onSand = smoothstep(shore - 0.01, shore + 0.018, xN);
+  float covered = 1.0 - smoothstep(wetFront - 0.008, wetFront + 0.02, xN);
+  float linger = max(reach * 0.45, behind * 0.8);
+  float wet = onSand * covered * linger * low * pale;
+  vec3 damp = color * vec3(0.7, 0.78, 0.9);
+  color = mix(color, damp, wet * 0.72);
+  float sheet = smoothstep(front - 0.028, front - 0.004, xN) * (1.0 - smoothstep(front - 0.004, front + 0.01, xN));
+  color = mix(color, color * vec3(0.78, 0.86, 0.94) + vec3(0.08, 0.1, 0.09), sheet * reach * low * 0.55);
+  float lace = smoothstep(0.38, 0.74, laceN * 0.62 + fine * 0.38);
+  float foamGate = smoothstep(0.08, 0.35, reach) * low;
+  float edge = exp(-pow((xN - front) / (0.006 + fine * 0.008), 2.0)) * lace;
+  float bubbles = smoothstep(0.68, 0.9, fine) * exp(-pow((xN - front) / 0.02, 2.0));
+  vec3 foam = mix(vec3(0.95, 0.97, 0.96), vec3(1.0, 0.9, 0.74), gold);
+  color = mix(color, foam, clamp((edge * 0.72 + bubbles * 0.36) * foamGate, 0.0, 0.62));
   return color;
 }
 
@@ -113,10 +143,6 @@ vec3 driftOnlyWhere(sampler2D tex, vec2 size, vec2 screen, vec2 drift, vec2 anch
   if (mask <= 0.001) return still;
   vec3 moved = samplePlate(tex, size, screen, drift, anchor);
   return mix(still, moved, clamp(mask, 0.0, 1.0));
-}
-
-float lagoonShore(float yN) {
-  return 0.642 + (yN - 0.9) * 0.05;
 }
 
 float lagoonWaterMask(float xN, float yN) {
@@ -157,11 +183,17 @@ void main() {
     color = mix(reef, deep, ocean);
   } else if (uMode < 2.5) {
     float water = lagoonWaterMask(xN, yN);
-    color = driftOnlyWhere(uWater, uWaterSize, screen, rip * 4.5, vec2(0.4, 0.96), water);
-    float web = causticWeb(screen / vec2(160.0, 140.0), t * 1.1);
-    vec3 tint = mix(vec3(0.8, 0.96, 1.0), vec3(1.0, 0.78, 0.5), gold);
-    color += tint * web * 0.1 * water;
+    float n1 = fbm(screen * 0.011 + vec2(t * 0.035, t * 0.018));
+    float n2 = fbm(screen * 0.027 + vec2(-t * 0.022, t * 0.031));
+    vec2 warp = vec2(n1 - 0.5, n2 - 0.5) * 14.0 * water;
+    color = driftOnlyWhere(uWater, uWaterSize, screen, warp, vec2(0.4, 0.96), water);
+    float spark = smoothstep(0.58, 0.86, fbm(screen * 0.07 + vec2(t * 0.05, -t * 0.03)));
+    spark *= smoothstep(0.48, 0.8, fbm(screen * 0.13 + vec2(-t * 0.04, t * 0.02)));
+    vec3 tint = mix(vec3(0.82, 0.95, 1.0), vec3(1.0, 0.82, 0.55), gold);
+    color += tint * spark * 0.12 * water;
     color = lagoonWash(color, xN, yN, gold, uWash);
+    float shade = smoothstep(0.42, 0.12, luma(color)) * (1.0 - water);
+    color = mix(color, color * vec3(0.84, 0.91, 1.06), shade * 0.28);
   } else if (uMode < 3.5) {
     vec3 still = samplePlate(uWater, uWaterSize, screen, vec2(0.0), vec2(0.46, 0.5));
     vec2 wash = vec2(sin(t * 0.62) * 22.0, sin(screen.y * 0.01 + t * 0.4) * 6.0);
