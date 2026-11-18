@@ -77,29 +77,27 @@ File: scene/blacksand.jpg
 License: Pexels License, https://www.pexels.com/license/
 
 ?scene=reef2
-Snorkel view of a vivid reef: purple, orange, and green coral with tropical fish, lower left, blending into the same dark ocean plate as ?scene=reef.
+Colorful Reef I. Kept as the snorkel photograph Kevin liked: purple, orange, and green coral with tropical fish, lower left, blending into the same dark ocean plate as ?scene=reef. The colorful coral sways a few pixels in the current. The pale rock and the dark ocean plate are not warped; the ocean plate still drifts, because it is open water.
 Source page: https://www.pexels.com/photo/vibrant-underwater-coral-reef-with-tropical-fish-35449035/
 Photographer: Lorenzo Manera
 Image: https://images.pexels.com/photos/35449035/pexels-photo-35449035.jpeg
 File: scene/reef2.jpg, a 16:9 crop with the fish and purple coral in the lower left.
 License: Pexels License, https://www.pexels.com/license/
+A matching free video of this same close reef was not available. Cut-out fish pasted on top of it looked like stickers, so they were not added.
 
 ?scene=reef3
-Pink sea whip and orange sponge on a reef, lower left, blending into dark ocean on the right.
-Source page: https://www.pexels.com/photo/colorful-underwater-corals-4603283/
-Photographer: Tom Fisk
-Image: https://images.pexels.com/photos/4603283/pexels-photo-4603283.jpeg
-West Papua, Indonesia.
-File: scene/reef3.jpg
-License: Pexels License, https://www.pexels.com/license/
+Colorful Reef II. A wide view of a Red Sea reef: coral heads across the slope, a school of blue fish, and Moorish idols and butterflyfish in the open water. The earlier tight photograph (Tom Fisk, pink sea whip, Pexels 4603283) is retired.
+Source page: https://mixkit.co/free-stock-video/coral-reef-in-the-red-sea-with-moorish-idol-fish-44869/
+File: scene/reef3.mp4, an 8 second seamless loop, 1920×1080 H.264, about 2.6 MB. scene/reef3.jpg is the still poster until the video has loaded. The video is requested only while this scene is on screen.
+The camera in the source drifts slowly. The loop point is a half-second crossfade back to the opening frame.
+License: Mixkit Stock Video Free License, https://mixkit.co/license/#videoFree
 
 ?scene=reef4
-Wide underwater reef with tan, pink, and purple coral and a few fish. The coral sits in the lower part of the frame. The right side blends into the dark ocean plate.
-Source page: https://www.pexels.com/photo/underwater-photo-of-a-coral-reef-and-tropical-fish-17100727/
-Photographer: Francesco Ungaro
-Image: https://images.pexels.com/photos/17100727/pexels-photo-17100727.jpeg
-File: scene/reef4.jpg
-License: Pexels License, https://www.pexels.com/license/
+Colorful Reef III. A wider reef landscape: a coral wall, a pale sand channel, and open blue water falling away, with butterflyfish over the coral. The earlier tighter photograph (Francesco Ungaro, Pexels 17100727) is retired.
+Source page: https://mixkit.co/free-stock-video/beautiful-coral-reef-with-exotic-reef-fish-44868/
+File: scene/reef4.mp4, an 8 second seamless loop, 1920×1080 H.264, about 3.4 MB. scene/reef4.jpg is the still poster until the video has loaded. The video is requested only while this scene is on screen.
+The camera is nearly still. The loop point is a half-second crossfade back to the opening frame.
+License: Mixkit Stock Video Free License, https://mixkit.co/license/#videoFree
 
 ?scene=tidepool2
 Orange and purple sea stars with green anemones on wet rock in a Cannon Beach tide pool. The whole lower field is this photograph.

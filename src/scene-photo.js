@@ -171,7 +171,15 @@ void main() {
     float foam = smoothstep(0.55, 0.82, luma(still));
     color += vec3(0.95, 0.97, 1.0) * band * foam * sea * 0.16;
   } else if (uMode < 4.5) {
-    vec3 reef = samplePlate(uWater, uWaterSize, screen, vec2(0.0), uAnchor);
+    vec3 reefStill = samplePlate(uWater, uWaterSize, screen, vec2(0.0), uAnchor);
+    float mx = max(reefStill.r, max(reefStill.g, reefStill.b));
+    float mn = min(reefStill.r, min(reefStill.g, reefStill.b));
+    float coral = smoothstep(0.06, 0.2, mx - mn) * smoothstep(0.12, 0.32, mx);
+    vec2 sway = vec2(
+      sin(screen.y * 0.05 + t * 0.9) * 7.0,
+      cos(screen.x * 0.03 + t * 0.7) * 3.6
+    ) * coral;
+    vec3 reef = samplePlate(uWater, uWaterSize, screen, sway, uAnchor);
     vec2 drift = vec2(sin(t * 0.28) * 24.0, cos(t * 0.19) * 10.0);
     vec3 deep = samplePlate(uSand, uSandSize, screen, drift, uSandAnchor);
     float ocean = smoothstep(uSplit, uSplit + 0.32, xN);
@@ -179,7 +187,7 @@ void main() {
     vec3 tint = mix(vec3(0.8, 0.96, 1.0), vec3(1.0, 0.74, 0.46), gold);
     deep += tint * web * 0.1;
     color = mix(reef, deep, ocean);
-  } else {
+  } else if (uMode < 5.5) {
     vec3 still = samplePlate(uWater, uWaterSize, screen, vec2(0.0), uAnchor);
     float wet = coolWater(still);
     vec3 pool = driftOnlyWhere(uWater, uWaterSize, screen, rip * 5.0, uAnchor, wet);
@@ -187,6 +195,8 @@ void main() {
     vec3 tint = mix(vec3(0.86, 0.95, 1.0), vec3(1.0, 0.78, 0.5), gold);
     pool += tint * web * 0.07 * wet;
     color = pool;
+  } else {
+    color = samplePlate(uWater, uWaterSize, screen, vec2(0.0), vec2(0.5, 0.5));
   }
 
   gl_FragColor = vec4(warm(color, gold), 1.0);
@@ -224,8 +234,8 @@ const SCENES = {
   tidepool4: { mode: 5, water: "scene/tidepool4.jpg", sand: "scene/tidepool4.jpg", anchor: [0.48, 0.44] },
   reef: { mode: 1, water: "scene/reef.jpg", sand: "scene/ocean.jpg" },
   reef2: { mode: 4, water: "scene/reef2.jpg", sand: "scene/ocean.jpg", anchor: [0.5, 0.7], sandAnchor: [0.55, 0.42], split: 0.74 },
-  reef3: { mode: 4, water: "scene/reef3.jpg", sand: "scene/ocean.jpg", anchor: [0.36, 0.84], sandAnchor: [0.5, 0.4], split: 0.7 },
-  reef4: { mode: 4, water: "scene/reef4.jpg", sand: "scene/ocean.jpg", anchor: [0.3, 0.9], sandAnchor: [0.55, 0.42], split: 0.58 },
+  reef3: { mode: 6, water: "scene/reef3.jpg", sand: "scene/reef3.jpg", video: "scene/reef3.mp4" },
+  reef4: { mode: 6, water: "scene/reef4.jpg", sand: "scene/reef4.jpg", video: "scene/reef4.mp4" },
   lagoon: { mode: 2, water: "scene/lagoon.jpg", sand: "scene/lagoon.jpg" },
   blacksand: { mode: 3, water: "scene/blacksand.jpg", sand: "scene/blacksand.jpg" },
 };
@@ -300,6 +310,66 @@ export function createScenePhoto() {
   }
 
   const plate = (file) => images[file];
+  const clips = {};
+  let lastFrameAt = 0;
+
+  const clipFor = (file) => {
+    if (!file || !gl) return null;
+    if (!clips[file]) {
+      const el = document.createElement("video");
+      el.muted = true;
+      el.loop = true;
+      el.playsInline = true;
+      el.preload = "none";
+      el.setAttribute("playsinline", "");
+      el.dataset.reefClip = file;
+      el.style.cssText = "position:fixed;width:2px;height:2px;opacity:0;pointer-events:none";
+      document.body.append(el);
+      const slot = { el, tex: null, ready: false, asked: false };
+      el.addEventListener("loadeddata", () => { slot.ready = true; });
+      clips[file] = slot;
+    }
+    return clips[file];
+  };
+
+  const liveClip = (file) => {
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    Object.entries(clips).forEach(([name, slot]) => {
+      if (name !== file && !slot.el.paused) slot.el.pause();
+    });
+    if (!file || reduced) return null;
+    const slot = clipFor(file);
+    if (!slot.asked) {
+      slot.asked = true;
+      slot.el.preload = "auto";
+      slot.el.src = `${base}shore/${file}`;
+    }
+    if (slot.el.paused) {
+      const pending = slot.el.play();
+      if (pending?.catch) pending.catch(() => {});
+    }
+    if (!slot.ready || slot.el.readyState < 2 || !slot.el.videoWidth) return null;
+    gl.activeTexture(gl.TEXTURE0);
+    if (!slot.tex) slot.tex = makeTexture(gl, slot.el);
+    else {
+      gl.bindTexture(gl.TEXTURE_2D, slot.tex);
+      try {
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, slot.el);
+      } catch {
+        return null;
+      }
+    }
+    return slot;
+  };
+
+  if (gl) {
+    window.setInterval(() => {
+      if (performance.now() - lastFrameAt < 800) return;
+      Object.values(clips).forEach((slot) => {
+        if (!slot.el.paused) slot.el.pause();
+      });
+    }, 500);
+  }
 
   return {
     ready(scene) {
@@ -322,7 +392,11 @@ export function createScenePhoto() {
       gl.viewport(0, 0, bw, bh);
       gl.useProgram(program);
       gl.uniform2f(loc.uView, w, h);
-      gl.uniform2f(loc.uWaterSize, water.img.width, water.img.height);
+      const clip = liveClip(spec.video);
+      lastFrameAt = performance.now();
+      const waterW = clip ? clip.el.videoWidth : water.img.width;
+      const waterH = clip ? clip.el.videoHeight : water.img.height;
+      gl.uniform2f(loc.uWaterSize, waterW, waterH);
       gl.uniform2f(loc.uSandSize, sand.img.width, sand.img.height);
       gl.uniform1f(loc.uPhase, Number.isFinite(phase) ? phase : 0);
       gl.uniform1f(loc.uGold, Number.isFinite(gold) ? gold : 0);
@@ -338,7 +412,14 @@ export function createScenePhoto() {
       gl.uniform1i(loc.water, 0);
       gl.uniform1i(loc.sand, 1);
       gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, water.tex);
+      gl.bindTexture(gl.TEXTURE_2D, clip?.tex || water.tex);
+      if (clip?.tex) {
+        try {
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, clip.el);
+        } catch {
+          gl.bindTexture(gl.TEXTURE_2D, water.tex);
+        }
+      }
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, sand.tex);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
