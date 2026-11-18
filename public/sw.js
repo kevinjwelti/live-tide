@@ -3,7 +3,7 @@
  * A visit while online fills the cache. A brief outage keeps the page,
  * the pictures, and The Boom's tide file.
  */
-const CACHE = "live-tide-shell-v94";
+const CACHE = "live-tide-shell-v96";
 
 const SHELL = ["./", "./index.html", "./privacy.html", "./favicon.svg", "./scenes.html"];
 
@@ -17,7 +17,7 @@ function worthCaching(url, navigate) {
   const path = url.pathname;
   if (path.includes("/data/boom-tides.json")) return true;
   if (path.includes("/assets/") || path.includes("/shore/")) return true;
-  return /\.(?:js|css|svg|png|jpe?g|webp|json|html|woff2?)$/.test(path);
+  return /\.(?:js|css|svg|png|jpe?g|webp|json|html|woff2?|mp4|webm)$/.test(path);
 }
 
 async function warm(cache) {
