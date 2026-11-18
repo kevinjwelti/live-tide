@@ -369,13 +369,13 @@ export function createChart(stage) {
   );
 
   const sceneName = () => {
-    const value = new URLSearchParams(location.search).get("scene");
-    if (value === "tidepool" || value === "tidepool2" || value === "tidepool3" || value === "tidepool4"
-      || value === "reef" || value === "reef2" || value === "reef3" || value === "reef4"
-      || value === "lagoon" || value === "blacksand") {
-      return value;
+    const choice = document.documentElement.dataset.sceneChoice || new URLSearchParams(location.search).get("scene") || "";
+    if (choice === "tidepool" || choice === "tidepool2" || choice === "tidepool3" || choice === "tidepool4"
+      || choice === "reef" || choice === "reef2" || choice === "reef3" || choice === "reef4"
+      || choice === "lagoon" || choice === "blacksand") {
+      return choice;
     }
-    if (value === "tropic" || document.documentElement.dataset.shore !== "tropic") return "";
+    if (choice === "tropic" || choice === "classic" || choice === "real" || document.documentElement.dataset.shore !== "tropic") return "";
     return "lagoon";
   };
 
@@ -1024,7 +1024,7 @@ export function createChart(stage) {
 
   const onPointerDown = (event) => {
     if (!series.length) return;
-    if (event.target?.closest?.(".forecast-toggle")) return;
+    if (event.target?.closest?.(".chart-tools, .scene-picker, .forecast-toggle")) return;
     scrubbing = true;
     if (anim) cancelAnimationFrame(anim);
     anim = null;
@@ -1143,6 +1143,10 @@ export function createChart(stage) {
     lastBreathMs = 0;
     breathFrame = requestAnimationFrame(onBreathFrame);
   };
+
+  document.addEventListener("livetide-scene", () => {
+    if (series.length > 1) paint();
+  });
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {

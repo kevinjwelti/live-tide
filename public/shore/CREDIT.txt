@@ -35,7 +35,7 @@ The Pexels License allows the photos to be downloaded, copied, modified, and use
 
 ?scene= previews
 
-These replace the lower water and sand plates. The default page does not use them. The sky, haze, tide curve, and labels stay the same. At night the scene is off and the starry chart shows.
+These replace the lower water and sand plates. The lagoon is the default. The Scenes button and scenes.html list each one by name: Lagoon (default), Tropic Shore, Black Sand, Reef, Colorful Reef I, Colorful Reef II, Colorful Reef III, Tide Pool, Starfish Pool, Anemone Pool, Mirror Pool, and Classic. The sky, haze, tide curve, and labels stay the same. At night the scene is off and the starry chart shows.
 
 ?scene=tidepool
 Rocky tide pool, bottom left. Clear shallow water over wet rock, with the cliff and sky reflected in the surface.

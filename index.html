@@ -12,29 +12,35 @@
     <meta name="apple-mobile-web-app-title" content="LIVE TIDE" />
     <meta name="theme-color" content="#000000" />
     <meta http-equiv="Cache-Control" content="no-cache" />
-    <meta name="live-tide-build" content="moods-v92" />
+    <meta name="live-tide-build" content="moods-v93" />
     <script>
       const liveTideQuery = new URLSearchParams(location.search);
       if (liveTideQuery.has("kiosk")) {
         document.documentElement.dataset.kiosk = "1";
       }
-      const shore = liveTideQuery.get("shore");
-      if (shore === "real") {
-        document.documentElement.dataset.shore = "real";
-      } else if (shore !== "classic") {
-        document.documentElement.dataset.shore = "tropic";
-      }
       const theme = liveTideQuery.get("theme");
       if (theme === "shells" || theme === "palms" || theme === "sunset-cove" || theme === "driftwood") {
         document.documentElement.dataset.theme = theme;
       }
-      const scene = liveTideQuery.get("scene");
       const photoScenes = ["tidepool", "tidepool2", "tidepool3", "tidepool4", "reef", "reef2", "reef3", "reef4", "lagoon", "blacksand"];
-      if (photoScenes.indexOf(scene) !== -1) {
-        document.documentElement.dataset.scene = scene;
-      } else if (scene !== "tropic" && shore !== "classic" && shore !== "real") {
-        document.documentElement.dataset.scene = "lagoon";
+      const shoreName = liveTideQuery.get("shore");
+      let choice = "lagoon";
+      if (liveTideQuery.has("scene")) {
+        const named = liveTideQuery.get("scene") || "";
+        if (named === "tropic" || named === "classic") choice = named;
+        else if (photoScenes.indexOf(named) !== -1) choice = named;
+      } else if (shoreName === "classic" || shoreName === "real") {
+        choice = shoreName;
+      } else {
+        try {
+          const saved = localStorage.getItem("live-tide-scene");
+          if (saved === "tropic" || saved === "classic" || photoScenes.indexOf(saved) !== -1) choice = saved;
+        } catch (error) { /* private mode */ }
       }
+      if (choice === "real") document.documentElement.dataset.shore = "real";
+      else if (choice !== "classic") document.documentElement.dataset.shore = "tropic";
+      if (photoScenes.indexOf(choice) !== -1) document.documentElement.dataset.scene = choice;
+      document.documentElement.dataset.sceneChoice = choice;
     </script>
     <style>
       html[data-kiosk="1"],
@@ -47,6 +53,7 @@
       html[data-kiosk="1"] .mood-caption,
       html[data-kiosk="1"] .credit,
       html[data-kiosk="1"] .beach-menu,
+      html[data-kiosk="1"] .scene-picker,
       html[data-kiosk="1"] button:not(#place-name) {
         display: none !important;
       }
@@ -168,9 +175,14 @@
         <ol id="day-tides" class="day-tides" aria-label="Today's highs and lows"></ol>
         <p id="status-msg" class="status-msg" hidden></p>
         <div id="chart-hit" class="chart-hit"></div>
-        <button id="forecast-toggle" class="forecast-toggle" type="button" aria-pressed="false">
-          Forecast
-        </button>
+        <div class="chart-tools">
+          <button id="forecast-toggle" class="forecast-toggle" type="button" aria-pressed="false">
+            Forecast
+          </button>
+          <button id="scene-toggle" class="scene-toggle" type="button" aria-haspopup="dialog" aria-expanded="false">
+            Scenes
+          </button>
+        </div>
         <section id="forecast" class="forecast" hidden aria-label="Seven day tide forecast"></section>
       </section>
 

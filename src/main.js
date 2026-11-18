@@ -10,6 +10,7 @@ import { initKiosk, isKiosk, KIOSK_RETRY_START_MS, nextRetryDelay } from "./kios
 import { rememberBeach, resolveInitialBeach, writeBeachParam } from "./beaches.js";
 import { initBeachMenu } from "./beach-menu.js";
 import { createForecast } from "./forecast.js";
+import { initScenePicker } from "./scene-picker.js";
 import { cachedStations, loadStations, upgradeBeach } from "./stations.js";
 
 const params = new URLSearchParams(location.search);
@@ -234,14 +235,29 @@ document.addEventListener("keydown", (event) => {
   if (event.target?.closest?.("input, textarea")) return;
   const menu = document.querySelector("#beach-menu");
   if (menu && !menu.hidden) return;
-  const toggle = els.forecastToggle;
-  if (!toggle || toggle.offsetParent === null) return;
+  const picker = document.querySelector("#scene-picker");
+  if (picker && !picker.hidden) return;
+  const tools = [els.forecastToggle, document.querySelector("#scene-toggle")].filter(
+    (el) => el && el.offsetParent !== null
+  );
+  if (!tools.length) return;
   event.preventDefault();
-  if (document.activeElement === toggle && (event.key === "ArrowUp" || event.key === "ArrowLeft")) {
-    els.placeName?.focus();
+  const current = tools.indexOf(document.activeElement);
+  if (event.key === "ArrowUp") {
+    if (current <= 0) els.placeName?.focus();
+    else tools[current - 1].focus();
     return;
   }
-  toggle.focus();
+  if (event.key === "ArrowLeft") {
+    if (current > 0) tools[current - 1].focus();
+    else tools[0].focus();
+    return;
+  }
+  if (current < 0) {
+    tools[0].focus();
+    return;
+  }
+  if (current < tools.length - 1) tools[current + 1].focus();
 });
 
 document.querySelector(".wordmark").addEventListener("click", async () => {
@@ -259,6 +275,8 @@ document.querySelector(".wordmark").addEventListener("click", async () => {
 window.addEventListener("livetide-sky", () => {
   pulse(resolveNow());
 });
+
+initScenePicker({ button: document.querySelector("#scene-toggle") });
 
 initBeachMenu({
   button: els.placeName,
