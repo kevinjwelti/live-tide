@@ -116,6 +116,101 @@ body {
   opacity: var(--star-opacity, 0);
 }
 
+.theme-art {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+html[data-theme] .theme-art {
+  display: block;
+}
+
+.theme-art .deco {
+  display: none;
+  position: absolute;
+  overflow: visible;
+}
+
+.theme-art .ink { fill: rgba(255, 248, 236, 0.88); }
+.theme-art .line {
+  fill: none;
+  stroke: rgba(255, 248, 236, 0.8);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+.theme-art .trunk {
+  fill: none;
+  stroke: rgba(22, 48, 40, 0.82);
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+.theme-art .wood {
+  fill: none;
+  stroke: rgba(92, 64, 42, 0.8);
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+.theme-art .grass {
+  fill: none;
+  stroke: rgba(62, 92, 58, 0.75);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+html[data-theme="shells"] .shell-a,
+html[data-theme="shells"] .shell-b,
+html[data-theme="shells"] .shell-c,
+html[data-theme="shells"] .star,
+html[data-theme="palms"] .palm-left,
+html[data-theme="palms"] .palm-right,
+html[data-theme="palms"] .isle,
+html[data-theme="sunset-cove"] .frond,
+html[data-theme="sunset-cove"] .cove-wash,
+html[data-theme="driftwood"] .wood,
+html[data-theme="driftwood"] .grass-l,
+html[data-theme="driftwood"] .grass-r {
+  display: block;
+}
+
+.shell-a { left: 2%; bottom: 7%; width: 84px; height: auto; transform: rotate(-14deg); }
+.shell-b { left: 8%; bottom: 5.5%; width: 48px; height: auto; transform: rotate(16deg); opacity: 0.85; }
+.shell-c { right: 2.2%; bottom: 6%; width: 74px; height: auto; transform: rotate(8deg); }
+.star { right: 9%; bottom: 4.5%; width: 58px; height: auto; opacity: 0.9; }
+
+.palm-left { left: -2.5%; top: 30%; width: 148px; height: auto; }
+.palm-right { right: -1%; top: 18%; width: min(12vw, 190px); height: auto; }
+.isle { left: 14%; top: 46%; width: 78px; height: auto; opacity: 0.7; }
+html[data-theme="palms"] .ink { fill: rgba(16, 42, 36, 0.8); }
+
+.frond { left: 46%; top: -3%; width: 168px; height: auto; }
+html[data-theme="sunset-cove"] .ink { fill: rgba(28, 62, 40, 0.72); }
+.cove-wash {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 150, 70, 0.26), transparent 46%),
+    linear-gradient(180deg, rgba(255, 120, 64, 0.12), transparent 40%);
+}
+
+.wood { left: 14%; bottom: 5%; width: min(18vw, 240px); height: auto; }
+.grass-l { left: 11%; bottom: 3.5%; width: 36px; height: auto; }
+.grass-r { right: 2%; bottom: 5%; width: 40px; height: auto; }
+
+html[data-light="night"] .theme-art .ink { fill: rgba(4, 6, 10, 0.62); }
+html[data-light="night"] .theme-art .line { stroke: rgba(4, 6, 10, 0.55); }
+html[data-light="night"] .theme-art .trunk,
+html[data-light="night"] .theme-art .wood,
+html[data-light="night"] .theme-art .grass { stroke: rgba(4, 6, 10, 0.5); }
+html[data-light="night"] .cove-wash { opacity: 0.18; }
+
+@media (max-width: 700px) and (orientation: portrait) {
+  .theme-art { display: none !important; }
+}
+
 .scene::after {
   content: "";
   position: absolute;

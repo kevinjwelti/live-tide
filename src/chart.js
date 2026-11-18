@@ -831,6 +831,21 @@ export function createChart(stage) {
       : null;
     const orbPy = cursor ? L.y(cursor.height) - swellPx : null;
     const placed = [];
+    const forecastEl = stage.querySelector("#forecast-toggle");
+    let forecastBlock = null;
+    if (forecastEl && getComputedStyle(forecastEl).display !== "none") {
+      const box = forecastEl.getBoundingClientRect();
+      const host = stage.getBoundingClientRect();
+      forecastBlock = {
+        left: box.left - host.left - 12,
+        top: box.top - host.top - 8,
+        right: box.right - host.left + 8,
+        bottom: box.bottom - host.top + 10,
+      };
+    }
+    const hitsForecast = (area) => forecastBlock
+      && area.right > forecastBlock.left && area.left < forecastBlock.right
+      && area.bottom > forecastBlock.top && area.top < forecastBlock.bottom;
     dayExtrema.forEach((e) => {
       const node = document.createElement("div");
       const low = e.type !== "H";
@@ -884,9 +899,22 @@ export function createChart(stage) {
         nudge = toward * Math.min(88, width * 0.55);
         rect = rectFor(gap, nudge, above);
       }
+      if (hitsForecast(rect)) {
+        nudge = forecastBlock.left - 8 - width / 2 - px;
+        rect = rectFor(gap, nudge, above);
+        if (hitsForecast(rect) || rect.left < 8) {
+          above = !above;
+          nudge = 0;
+          rect = rectFor(gap, nudge, above);
+        }
+      }
       const half = width / 2;
-      const left = Math.min(w - half - 8, Math.max(half + 8, px + nudge));
-      nudge = left - px;
+      let rightLimit = w - 8;
+      if (forecastBlock && rect.bottom > forecastBlock.top && rect.top < forecastBlock.bottom) {
+        rightLimit = Math.min(rightLimit, forecastBlock.left - 4);
+      }
+      const left = Math.min(rightLimit - width, Math.max(8, px + nudge - half));
+      nudge = left + half - px;
       node.classList.toggle("is-low", !above);
       node.style.left = `${px}px`;
       node.style.top = `${py}px`;
