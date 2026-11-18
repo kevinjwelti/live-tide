@@ -156,13 +156,15 @@ export function createForecast(root, hooks = {}) {
       return;
     }
     if (open != null) return;
-    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    const vertical = document.documentElement.dataset.tv === "1"
+      && (event.key === "ArrowUp" || event.key === "ArrowDown");
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft" && !vertical) return;
     const pills = [...root.querySelectorAll(".tide-pill")];
     if (!pills.length) return;
     const current = pills.findIndex((pill) => pill === document.activeElement);
     if (current < 0) return;
     event.preventDefault();
-    const dir = event.key === "ArrowRight" ? 1 : -1;
+    const dir = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1;
     pills[(current + dir + pills.length) % pills.length]?.focus();
   };
 
@@ -344,6 +346,9 @@ export function createForecast(root, hooks = {}) {
         return;
       }
       render();
+      if (document.documentElement.dataset.tv === "1") {
+        root.querySelector(".tide-pill.is-lead, .tide-pill")?.focus();
+      }
     },
     isActive() {
       return active;

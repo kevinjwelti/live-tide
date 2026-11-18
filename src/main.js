@@ -11,6 +11,7 @@ import { rememberBeach, resolveInitialBeach, writeBeachParam } from "./beaches.j
 import { initBeachMenu } from "./beach-menu.js";
 import { createForecast } from "./forecast.js";
 import { initScenePicker } from "./scene-picker.js";
+import { tvBackAction, tvClickTarget, tvShouldWake } from "./tv-remote.js";
 import { cachedStations, loadStations, upgradeBeach } from "./stations.js";
 
 const params = new URLSearchParams(location.search);
@@ -229,23 +230,102 @@ els.forecastToggle?.addEventListener("click", (event) => {
   showForecast(!forecast.isActive());
 });
 
+const tvOn = () => document.documentElement.dataset.tv === "1";
+let tvIdleTimer = 0;
+
+function scenePickerOpen() {
+  const picker = document.querySelector("#scene-picker");
+  return Boolean(picker && !picker.hidden);
+}
+
+function wakeTvControls() {
+  if (!tvOn()) return;
+  document.documentElement.dataset.tvAwake = "1";
+  clearTimeout(tvIdleTimer);
+  tvIdleTimer = window.setTimeout(() => {
+    if (scenePickerOpen() || forecast.isActive()) return;
+    delete document.documentElement.dataset.tvAwake;
+  }, 8000);
+}
+
+function runTvBack() {
+  const action = tvBackAction({
+    pickerOpen: scenePickerOpen(),
+    forecastDetail: document.documentElement.dataset.forecastOpen === "1",
+    forecastOpen: forecast.isActive(),
+  });
+  if (action === "close-picker") {
+    document.querySelector(".scene-close")?.click();
+    wakeTvControls();
+    return true;
+  }
+  if (action === "close-detail") {
+    document.querySelector(".forecast-open")?.click();
+    wakeTvControls();
+    return true;
+  }
+  if (action === "close-forecast") {
+    showForecast(false);
+    wakeTvControls();
+    els.forecastToggle?.focus();
+    return true;
+  }
+  return false;
+}
+
+window.__liveTideBack = () => runTvBack();
+window.__liveTideKey = (name) => {
+  document.dispatchEvent(new KeyboardEvent("keydown", { key: name, bubbles: true, cancelable: true }));
+};
+
 document.addEventListener("keydown", (event) => {
-  if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
+  const arrows = ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"];
+  const isArrow = arrows.includes(event.key);
+  const isEnter = event.key === "Enter" || event.key === " ";
+  if (tvOn() && (event.key === "Escape" || event.key === "GoBack" || event.key === "BrowserBack")) {
+    if (runTvBack()) event.preventDefault();
+    return;
+  }
+  if (tvOn() && (isArrow || isEnter)) {
+    const asleep = tvShouldWake({
+      tv: true,
+      awake: document.documentElement.dataset.tvAwake === "1",
+      pickerOpen: scenePickerOpen(),
+      forecastOpen: forecast.isActive(),
+    });
+    if (asleep) {
+      wakeTvControls();
+      event.preventDefault();
+      const toggle = els.forecastToggle;
+      toggle?.getBoundingClientRect();
+      toggle?.focus();
+      return;
+    }
+    if (!scenePickerOpen() && !forecast.isActive()) wakeTvControls();
+    if (isEnter && tvClickTarget(document.activeElement, { trusted: event.isTrusted })) {
+      event.preventDefault();
+      document.activeElement.click();
+      return;
+    }
+  }
+  if (!isArrow) return;
   if (forecast.isActive()) return;
   if (event.target?.closest?.("input, textarea")) return;
   const menu = document.querySelector("#beach-menu");
   if (menu && !menu.hidden) return;
-  const picker = document.querySelector("#scene-picker");
-  if (picker && !picker.hidden) return;
+  if (scenePickerOpen()) return;
   const tools = [els.forecastToggle, document.querySelector("#scene-toggle")].filter(
     (el) => el && el.offsetParent !== null
   );
   if (!tools.length) return;
   event.preventDefault();
   const current = tools.indexOf(document.activeElement);
+  const placeAllowed = !(tvOn() && document.documentElement.dataset.kiosk === "1");
   if (event.key === "ArrowUp") {
-    if (current <= 0) els.placeName?.focus();
-    else tools[current - 1].focus();
+    if (current <= 0) {
+      if (placeAllowed) els.placeName?.focus();
+      else tools[0]?.focus();
+    } else tools[current - 1].focus();
     return;
   }
   if (event.key === "ArrowLeft") {
@@ -312,3 +392,8 @@ setInterval(() => {
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") loadTide("visible");
 });
+
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  const worker = `${import.meta.env.BASE_URL}sw.js`;
+  navigator.serviceWorker.register(worker).catch(() => {});
+}

@@ -2180,6 +2180,33 @@ html[data-kiosk="1"] .forecast-stage::-webkit-scrollbar {
   display: none;
 }
 
+html[data-kiosk="1"][data-tv="1"][data-tv-awake="1"] #forecast-toggle,
+html[data-kiosk="1"][data-tv="1"][data-tv-awake="1"] #scene-toggle,
+html[data-kiosk="1"][data-view="forecast"][data-tv="1"] #scene-toggle {
+  display: inline-flex !important;
+}
+
+html[data-kiosk="1"][data-tv="1"] #scene-picker:not([hidden]) {
+  display: flex !important;
+}
+
+html[data-kiosk="1"][data-tv="1"] #scene-picker:not([hidden]) button {
+  display: flex !important;
+}
+
+html[data-tv="1"] #forecast-toggle:focus,
+html[data-tv="1"] #scene-toggle:focus,
+html[data-tv="1"] .scene-card:focus,
+html[data-tv="1"] .scene-close:focus,
+html[data-tv="1"] .tide-pill:focus,
+html[data-tv="1"] .forecast-back:focus {
+  outline-style: solid !important;
+  outline-width: 3px !important;
+  outline-color: #f7f1e6 !important;
+  outline-offset: 4px;
+  box-shadow: 0 0 0 6px rgba(212, 181, 106, 0.9) !important;
+}
+
 .scene-picker {
   position: fixed;
   left: 0;

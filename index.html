@@ -12,11 +12,14 @@
     <meta name="apple-mobile-web-app-title" content="LIVE TIDE" />
     <meta name="theme-color" content="#000000" />
     <meta http-equiv="Cache-Control" content="no-cache" />
-    <meta name="live-tide-build" content="moods-v93" />
+    <meta name="live-tide-build" content="moods-v94" />
     <script>
       const liveTideQuery = new URLSearchParams(location.search);
       if (liveTideQuery.has("kiosk")) {
         document.documentElement.dataset.kiosk = "1";
+      }
+      if (liveTideQuery.has("tv")) {
+        document.documentElement.dataset.tv = "1";
       }
       const theme = liveTideQuery.get("theme");
       if (theme === "shells" || theme === "palms" || theme === "sunset-cove" || theme === "driftwood") {
@@ -56,6 +59,16 @@
       html[data-kiosk="1"] .scene-picker,
       html[data-kiosk="1"] button:not(#place-name) {
         display: none !important;
+      }
+      html[data-kiosk="1"][data-tv="1"][data-tv-awake="1"] #forecast-toggle,
+      html[data-kiosk="1"][data-tv="1"][data-tv-awake="1"] #scene-toggle {
+        display: inline-flex !important;
+      }
+      html[data-kiosk="1"][data-tv="1"] #scene-picker:not([hidden]) {
+        display: flex !important;
+      }
+      html[data-kiosk="1"][data-tv="1"] #scene-picker:not([hidden]) button {
+        display: inline-flex !important;
       }
       .kiosk-wake {
         display: none;

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Live Tide</string>
+    <string name="reconnecting">Reconnecting…</string>
+    <string name="reconnecting_detail">The tide will be right back.</string>
+</resources>
