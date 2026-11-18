@@ -3,6 +3,7 @@ dist
 .DS_Store
 *.local
 tv-app/.gradle
+tv-app/.kotlin
 tv-app/build
 tv-app/app/build
 tv-app/local.properties
